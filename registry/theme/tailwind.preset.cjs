@@ -997,16 +997,16 @@ module.exports = {
                         'general-destructive-container': '#fee2e2',
                         'general-destructive-on-container': '#b91c1c',
                         'general-destructive-on-fill': '#fff',
-                        'general-success-default': '#059669',
-                        'general-success-hover': '#047857',
-                        'general-success-active': '#059669',
+                        'general-success-default': '#047857',
+                        'general-success-hover': '#065f46',
+                        'general-success-active': '#064e3b',
                         'general-success-disabled': '#a7f3d0',
                         'general-success-on': '#f8fafc',
                         'general-success-container': '#d1fae5',
                         'general-success-on-container': '#047857',
-                        'general-warning-default': '#ea580c',
-                        'general-warning-hover': '#c2410c',
-                        'general-warning-active': '#ea580c',
+                        'general-warning-default': '#c2410c',
+                        'general-warning-hover': '#9a3412',
+                        'general-warning-active': '#7c2d12',
                         'general-warning-disabled': '#fed7aa',
                         'general-warning-on': '#f8fafc',
                         'general-warning-container': '#ffedd5',
@@ -1027,7 +1027,7 @@ module.exports = {
                         'general-pink-default': '#db2777',
                         'general-pink-container': '#fce7f3',
                         'general-pink-on-container': '#be185d',
-                        'button-background-success-default': '#059669',
+                        'button-background-success-default': '#047857',
                         'button-background-primary-default': '#2563eb',
                         'button-background-primary-hover': '#1d4ed8',
                         'button-foreground-link-hover': '#475569',
@@ -1383,14 +1383,14 @@ module.exports = {
                         'background-destructive-bold-active': '#991b1b',
                         'background-success-subtle': '#d1fae5',
                         'background-success-subtle-hover': '#a7f3d0',
-                        'background-success-bold-default': '#059669',
-                        'background-success-bold-hover': '#047857',
-                        'background-success-bold-active': '#065f46',
+                        'background-success-bold-default': '#047857',
+                        'background-success-bold-hover': '#065f46',
+                        'background-success-bold-active': '#064e3b',
                         'background-warning-subtle': '#ffedd5',
                         'background-warning-subtle-hover': '#fed7aa',
-                        'background-warning-bold-default': '#ea580c',
-                        'background-warning-bold-hover': '#c2410c',
-                        'background-warning-bold-active': '#9a3412',
+                        'background-warning-bold-default': '#c2410c',
+                        'background-warning-bold-hover': '#9a3412',
+                        'background-warning-bold-active': '#7c2d12',
                         'background-info-subtle': '#dbeafe',
                         'background-info-subtle-hover': '#bfdbfe',
                         'background-info-bold-default': '#2563eb',
@@ -1435,16 +1435,16 @@ module.exports = {
                         'text-placeholder': '#64748b',
                         'text-disabled': '#cbd5e1',
                         'text-inverse': '#f8fafc',
-                        'text-selected': '#2563eb',
-                        'text-brand': '#2563eb',
+                        'text-selected': '#1d4ed8',
+                        'text-brand': '#1d4ed8',
                         'text-on-brand': '#f8fafc',
                         'text-destructive': '#b91c1c',
                         'text-on-destructive': '#f8fafc',
-                        'text-success': '#047857',
+                        'text-success': '#065f46',
                         'text-on-success': '#f8fafc',
-                        'text-warning': '#c2410c',
+                        'text-warning': '#92400e',
                         'text-on-warning': '#f8fafc',
-                        'text-info': '#2563eb',
+                        'text-info': '#1d4ed8',
                         'text-on-info': '#f8fafc',
                         'text-on-paper': '#0f172a',
                         'text-on-paper-subtle': '#475569',
@@ -1645,6 +1645,13 @@ module.exports = {
                         'status-dot': '6px',
                         'breakpoint-tablet': '768px',
                         'breakpoint-desktop': '1280px',
+                        'breakpoint-container-area-2xs': '420px',
+                        'breakpoint-container-area-xs': '480px',
+                        'breakpoint-container-area-sm': '560px',
+                        'breakpoint-container-area-md': '600px',
+                        'breakpoint-container-area-lg': '760px',
+                        'breakpoint-container-area': '860px',
+                        'breakpoint-container-area-xl': '900px',
                         'sidebar-collapsed': '56px',
                         'gap-control': '6px',
                         'gap-label': '6px',
@@ -1971,6 +1978,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#b45309',
+                            'text-brand': '#b45309',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -2197,6 +2208,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#1d4ed8',
+                            'text-brand': '#1d4ed8',
                         },
                         icon: {
                             default: {
@@ -2425,6 +2440,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#0e7490',
+                            'text-brand': '#0e7490',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -2651,6 +2670,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#047857',
+                            'text-brand': '#047857',
                         },
                         icon: {
                             default: {
@@ -2879,6 +2902,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#a21caf',
+                            'text-brand': '#a21caf',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -3105,6 +3132,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#15803d',
+                            'text-brand': '#15803d',
                         },
                         icon: {
                             default: {
@@ -3333,6 +3364,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#2563eb',
+                            'text-brand': '#2563eb',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -3560,6 +3595,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#4d7c0f',
+                            'text-brand': '#4d7c0f',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -3714,7 +3753,7 @@ module.exports = {
                             'general-secondary-active': '#1e293b',
                             'general-secondary-disabled': '#e2e8f0',
                             'general-secondary-on': '#f8fafc',
-                            'general-ring-default': '#64748b',
+                            'general-ring-default': '#0f172a',
                             'button-background-default': '#0f172a',
                             'button-background-hover': '#1e293b',
                             'button-background-destructive': '#dc2626',
@@ -3807,6 +3846,8 @@ module.exports = {
                             'background-brand-subtle-hover': '#e2e8f0',
                             'background-selected-default': '#f1f5f9',
                             'background-selected-hover': '#e2e8f0',
+                            'text-selected': '#0f172a',
+                            'text-brand': '#0f172a',
                             'link-default': '#0f172a',
                             'link-hover': '#334155',
                             'link-active': '#334155',
@@ -4039,6 +4080,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#c2410c',
+                            'text-brand': '#c2410c',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -4265,6 +4310,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#be185d',
+                            'text-brand': '#be185d',
                         },
                         icon: {
                             default: {
@@ -4493,6 +4542,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#2563eb',
+                            'text-brand': '#2563eb',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -4720,6 +4773,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#b91c1c',
+                            'text-brand': '#b91c1c',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -4945,6 +5002,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#be123c',
+                            'text-brand': '#be123c',
                         },
                         icon: {
                             default: {
@@ -5173,6 +5234,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#0369a1',
+                            'text-brand': '#0369a1',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -5399,6 +5464,10 @@ module.exports = {
                             'dialog-background-default': 'transparent',
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
+                        },
+                        semantic: {
+                            'text-selected': '#0f766e',
+                            'text-brand': '#0f766e',
                         },
                         icon: {
                             default: {
@@ -5627,6 +5696,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#2563eb',
+                            'text-brand': '#2563eb',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -5710,21 +5783,21 @@ module.exports = {
                             'general-error-hover': '#a00000',
                             'general-error-active': '#800000',
                             'general-error-disabled': '#808080',
-                            'general-error-container': '#ffffff',
+                            'general-error-container': '#dfdfdf',
                             'general-error-on-container': '#800000',
                             'general-error-on-fill': '#ffffff',
                             'general-destructive-default': '#800000',
                             'general-destructive-hover': '#a00000',
                             'general-destructive-active': '#800000',
                             'general-destructive-disabled': '#808080',
-                            'general-destructive-container': '#ffffff',
+                            'general-destructive-container': '#dfdfdf',
                             'general-destructive-on-container': '#800000',
                             'general-destructive-on-fill': '#ffffff',
                             'general-success-default': '#005a00',
                             'general-success-hover': '#004800',
                             'general-success-active': '#005a00',
                             'general-success-disabled': '#808080',
-                            'general-success-container': '#ffffff',
+                            'general-success-container': '#dfdfdf',
                             'general-success-on-container': '#005a00',
                             'general-warning-default': '#505000',
                             'general-warning-hover': '#3c3c00',
@@ -5736,10 +5809,10 @@ module.exports = {
                             'general-info-hover': '#0000a0',
                             'general-info-active': '#000080',
                             'general-info-disabled': '#808080',
-                            'general-info-container': '#ffffff',
+                            'general-info-container': '#dfdfdf',
                             'general-info-on-container': '#000080',
                             'general-placeholder-default': '#404040',
-                            'general-ring-default': '#000000',
+                            'general-ring-default': '#000080',
                             'button-background-default': '#000080',
                             'button-background-hover': '#0000a0',
                             'button-background-destructive': '#800000',
@@ -5776,6 +5849,7 @@ module.exports = {
                             'textarea-foreground-label': '#000000',
                             'textarea-foreground-hint': '#404040',
                             'textarea-border-default': '#000000',
+                            'table-background-default': '#ffffff',
                             'popover-foreground-filled': '#000000',
                             'popover-foreground-muted': '#404040',
                             'tooltip-background-default': '#ffffe1',
@@ -5855,13 +5929,13 @@ module.exports = {
                             'background-neutral-bold-disabled': '#808080',
                             'background-brand-subtle': '#ffffff',
                             'background-brand-subtle-hover': '#dfdfdf',
-                            'background-destructive-subtle': '#ffffff',
-                            'background-destructive-subtle-hover': '#dfdfdf',
+                            'background-destructive-subtle': '#dfdfdf',
+                            'background-destructive-subtle-hover': '#c0c0c0',
                             'background-destructive-bold-default': '#800000',
                             'background-destructive-bold-hover': '#a00000',
                             'background-destructive-bold-active': '#600000',
-                            'background-success-subtle': '#ffffff',
-                            'background-success-subtle-hover': '#dfdfdf',
+                            'background-success-subtle': '#dfdfdf',
+                            'background-success-subtle-hover': '#c0c0c0',
                             'background-success-bold-default': '#005a00',
                             'background-success-bold-hover': '#004800',
                             'background-success-bold-active': '#003000',
@@ -5870,8 +5944,8 @@ module.exports = {
                             'background-warning-bold-default': '#505000',
                             'background-warning-bold-hover': '#3c3c00',
                             'background-warning-bold-active': '#282800',
-                            'background-info-subtle': '#ffffff',
-                            'background-info-subtle-hover': '#dfdfdf',
+                            'background-info-subtle': '#dfdfdf',
+                            'background-info-subtle-hover': '#c0c0c0',
                             'background-info-bold-default': '#000080',
                             'background-info-bold-hover': '#0000a0',
                             'background-info-bold-active': '#000060',
@@ -5896,7 +5970,7 @@ module.exports = {
                             'border-brand-subtle': '#000080',
                             'border-destructive-subtle': '#800000',
                             'border-control': '#000000',
-                            'border-control-hover': '#000080',
+                            'border-control-hover': '#0000ff',
                             'text-default': '#000000',
                             'text-base': '#000000',
                             'text-hover': '#000080',
@@ -6207,6 +6281,10 @@ module.exports = {
                             'dialog-foreground-default': '#0f172a',
                             'dialog-foreground-muted': '#64748b',
                         },
+                        semantic: {
+                            'text-selected': '#854d0e',
+                            'text-brand': '#854d0e',
+                        },
                         icon: {
                             default: {
                                 borderColor: '#0f172a',
@@ -6271,6 +6349,7 @@ module.exports = {
                             'button-background-destructive-hover': '#b91c1c',
                             'button-foreground-default': '#fff',
                             'button-foreground-hover': '#fff',
+                            'button-foreground-destructive': '#fff',
                             'button-foreground-outline-default': '#0f172a',
                             'button-foreground-ghost-default': '#0f172a',
                             'button-foreground-ghost-hover': '#0f172a',
@@ -6299,6 +6378,11 @@ module.exports = {
                             'background-selected-hover': '#dbeafe',
                             'border-default': '#e2e8f0',
                             'border-input': '#e2e8f0',
+                            'text-selected': '#2563eb',
+                            'text-brand': '#2563eb',
+                            'text-success': '#047857',
+                            'text-warning': '#c2410c',
+                            'text-info': '#2563eb',
                             'link-visited': '#2563eb',
                             'surface-canvas': '#f1f5f9',
                             'surface-raised': '#fff',

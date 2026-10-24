@@ -1,6 +1,12 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
+
+import * as React from 'react';
 
 import { Button } from './button';
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from './drawer';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
 import { Toast, ToastAction, ToastClose, ToastDescription, ToastProvider, ToastViewport } from './toast';
 import { Toaster } from './toaster';
 import { useToast } from './use-toast';
@@ -138,4 +144,248 @@ export const InverseCompact: Story = {
       <ToastViewport />
     </ToastProvider>
   ),
+};
+
+const isHiddenFromUsers = (el: Element) => el.closest('[inert], [aria-hidden="true"]') !== null;
+
+const toastRegion = () => document.querySelector('[role="region"][aria-label^="Notifications"]') as HTMLElement;
+
+const OverSheetDemo = ({ toastFirst }: { toastFirst: boolean }) => {
+  const { toast } = useToast();
+  const [open, setOpen] = React.useState(false);
+  const fire = () =>
+    toast({
+      title: 'Task deleted',
+      duration: 600000,
+      action: <ToastAction altText="Undo the deletion">Undo</ToastAction>,
+    });
+  return (
+    <main>
+      {toastFirst ? <Button onClick={fire}>Fire toast</Button> : null}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button>Open sheet</Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Details</SheetTitle>
+            <SheetDescription>The page behind is inert, the toast stays reachable.</SheetDescription>
+          </SheetHeader>
+          <Button onClick={fire}>Delete task</Button>
+          <SheetFooter className="sticky bottom-0 mt-auto border-0 border-t border-solid border-hairline bg-background py-4">
+            <Button>Save changes</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </main>
+  );
+};
+
+// A toast fired while a modal Sheet is open stays visible to assistive technology and operable by keyboard (A11Y-WBDASH-013).
+export const OverModalSheet: Story = {
+  name: 'Over a modal sheet',
+  render: () => <OverSheetDemo toastFirst={false} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Open sheet' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete task' }));
+    const undo = await within(document.body).findByRole('button', { name: 'Undo' });
+    await waitFor(() => expect(isHiddenFromUsers(toastRegion())).toBe(false));
+    expect(isHiddenFromUsers(undo)).toBe(false);
+    // The page behind the sheet stays inert.
+    expect(isHiddenFromUsers(canvas.getByRole('button', { name: 'Open sheet' }))).toBe(true);
+    // F8 moves focus into the toast region and the action is focusable while the sheet is open.
+    document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'F8', code: 'F8', bubbles: true }));
+    await waitFor(() => expect(toastRegion().contains(document.activeElement)).toBe(true));
+    undo.focus();
+    await waitFor(() => expect(document.activeElement).toBe(undo));
+    // The sheet is still open: focus in the toast does not dismiss it.
+    expect(within(document.body).queryByRole('dialog')).not.toBeNull();
+    // Dismissing works with the sheet open and leaves the sheet alone.
+    await userEvent.click(within(toastRegion()).getByRole('button', { name: /dismiss|close/i }));
+    await waitFor(() => expect(within(document.body).queryByRole('button', { name: 'Undo' })).toBeNull());
+    expect(within(document.body).queryByRole('dialog')).not.toBeNull();
+    // Focus goes back into the sheet, not to the emptied toast list.
+    await waitFor(() => expect(within(document.body).getByRole('dialog').contains(document.activeElement)).toBe(true));
+  },
+};
+
+// A toast that is already open when the sheet opens keeps working.
+export const OpenBeforeModalSheet: Story = {
+  name: 'Open before a modal sheet',
+  render: () => <OverSheetDemo toastFirst />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Fire toast' }));
+    await within(document.body).findByRole('button', { name: 'Undo' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Open sheet' }));
+    await within(document.body).findByRole('dialog');
+    const undo = within(document.body).getByRole('button', { name: 'Undo' });
+    await waitFor(() => expect(isHiddenFromUsers(toastRegion())).toBe(false));
+    expect(isHiddenFromUsers(undo)).toBe(false);
+    undo.focus();
+    await waitFor(() => expect(document.activeElement).toBe(undo));
+    expect(within(document.body).queryByRole('dialog')).not.toBeNull();
+    await userEvent.click(within(toastRegion()).getByRole('button', { name: /dismiss|close/i }));
+    await waitFor(() => expect(within(document.body).queryByRole('button', { name: 'Undo' })).toBeNull());
+    await waitFor(() => expect(within(document.body).getByRole('dialog').contains(document.activeElement)).toBe(true));
+  },
+};
+
+const isPhone = () => window.innerWidth < 640;
+
+// Phones put the toast at the bottom edge. It must stay on screen, below the sheet header with its close button and above the sticky footer action.
+const expectPhonePlacement = (toastEl: HTMLElement, headerEl: HTMLElement, actionEl: HTMLElement) => {
+  const toastBox = toastEl.getBoundingClientRect();
+  expect(toastBox.bottom).toBeLessThanOrEqual(window.innerHeight);
+  expect(toastBox.top).toBeGreaterThanOrEqual(headerEl.getBoundingClientRect().bottom);
+  expect(toastBox.top).toBeGreaterThan(0);
+  expect(toastBox.bottom).toBeLessThanOrEqual(actionEl.getBoundingClientRect().top + 1);
+};
+
+// Phone width (390px): the toast sits at the bottom edge instead of the top, so it never covers the sheet header or its close button, and it rides above the sticky footer action.
+export const PhoneBottomOverSheet: Story = {
+  name: 'Phone, bottom, over a sheet (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <OverSheetDemo toastFirst={false} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Open sheet' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete task' }));
+    const undo = await within(document.body).findByRole('button', { name: 'Undo' });
+    const toastEl = undo.closest('li') as HTMLElement;
+    await waitFor(() => expect(isHiddenFromUsers(toastRegion())).toBe(false));
+    if (!isPhone()) {
+      // Desktop is unchanged: bottom right, narrower than the viewport.
+      const box = toastEl.getBoundingClientRect();
+      expect(box.right).toBeLessThanOrEqual(window.innerWidth);
+      expect(box.left).toBeGreaterThan(window.innerWidth / 2);
+      return;
+    }
+    await waitFor(() => expectPhonePlacement(toastEl, within(dialog).getByText('Details'), within(dialog).getByRole('button', { name: 'Save changes' })));
+    // The close button of the sheet stays uncovered and reachable.
+    const closeBox = within(dialog).getByRole('button', { name: /close/i }).getBoundingClientRect();
+    const toastBox = toastEl.getBoundingClientRect();
+    expect(toastBox.top).toBeGreaterThan(closeBox.bottom);
+  },
+};
+
+const SheetFooterDemo = ({ side, sticky }: { side: 'right' | 'bottom'; sticky: boolean }) => {
+  const { toast } = useToast();
+  return (
+    <main>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button>Open sheet</Button>
+        </SheetTrigger>
+        <SheetContent side={side} className="flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Edit month</SheetTitle>
+            <SheetDescription>The toast rides above the footer actions on phones.</SheetDescription>
+          </SheetHeader>
+          <Button variant="outline" onClick={() => toast({ title: 'Month saved', duration: 600000, action: <ToastAction altText="Undo the save">Undo</ToastAction> })}>
+            Save month
+          </Button>
+          <SheetFooter className={sticky ? 'sticky bottom-0 mt-auto bg-background' : 'mt-auto'}>
+            <Button>Publish</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      <Toaster />
+    </main>
+  );
+};
+
+// Phone width: with or without a sticky footer, on the right or the bottom edge, the toast ends above the top of the footer actions of an open sheet.
+const phoneFooterPlay: Story['play'] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole('button', { name: 'Open sheet' }));
+  const dialog = await within(document.body).findByRole('dialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Save month' }));
+  await waitFor(() => expect(within(toastRegion()).getByRole('button', { name: 'Undo' })).toBeTruthy());
+  const undo = within(toastRegion()).getByRole('button', { name: 'Undo' });
+  const toastEl = undo.closest('li') as HTMLElement;
+  const publish = within(dialog).getByRole('button', { name: 'Publish' });
+  if (!isPhone()) return;
+  await waitFor(() => expect(toastEl.getBoundingClientRect().bottom).toBeLessThanOrEqual(publish.getBoundingClientRect().top + 1));
+  await waitFor(() => {
+    const box = publish.getBoundingClientRect();
+    expect(publish.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2))).toBe(true);
+  });
+};
+
+export const PhoneAboveSheetFooterRight: Story = {
+  name: 'Phone, above a sheet footer, side right (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <SheetFooterDemo side="right" sticky={false} />,
+  play: phoneFooterPlay,
+};
+
+export const PhoneAboveSheetFooterSticky: Story = {
+  name: 'Phone, above a sticky sheet footer (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <SheetFooterDemo side="right" sticky />,
+  play: phoneFooterPlay,
+};
+
+export const PhoneAboveSheetFooterBottom: Story = {
+  name: 'Phone, above a sheet footer, side bottom (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <SheetFooterDemo side="bottom" sticky={false} />,
+  play: phoneFooterPlay,
+};
+
+const BottomDrawerDemo = () => {
+  const { toast } = useToast();
+  return (
+    <main>
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button>Open drawer</Button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Move goal</DrawerTitle>
+            <DrawerDescription>The toast rides above the drawer footer on phones.</DrawerDescription>
+          </DrawerHeader>
+          <Button
+            variant="outline"
+            onClick={() => toast({ title: 'Goal moved', duration: 600000, action: <ToastAction altText="Undo the move">Undo</ToastAction> })}
+          >
+            Move goal
+          </Button>
+          <DrawerFooter>
+            <Button>Submit</Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </main>
+  );
+};
+
+// A Drawer from the bottom: the primary action in its footer stays visible and clickable while a toast is shown (phones).
+export const PhoneBottomOverDrawer: Story = {
+  name: 'Phone, bottom, over a drawer (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <BottomDrawerDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Open drawer' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Move goal' }));
+    const undo = await within(document.body).findByRole('button', { name: 'Undo' });
+    const toastEl = undo.closest('li') as HTMLElement;
+    const submit = within(dialog).getByRole('button', { name: 'Submit' });
+    if (!isPhone()) return;
+    // Wait for the drawer slide-in, then the toast must end above the Submit button.
+    await waitFor(() => expect(toastEl.getBoundingClientRect().bottom).toBeLessThanOrEqual(submit.getBoundingClientRect().top + 1));
+    // The drawer is still sliding in at first, so wait until the Submit button is hit-testable.
+    await waitFor(() => {
+      const box = submit.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      expect(submit.contains(hit)).toBe(true);
+    });
+  },
 };

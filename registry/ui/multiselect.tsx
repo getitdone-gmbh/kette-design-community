@@ -65,6 +65,8 @@ const MultiSelectProvider: FC<MultiSelectProviderProps> = ({ children }) => {
 };
 
 export interface MultiSelectProps {
+  // `sm` puts the field on the Button sm height (control-sm token: 32, zero 28): one row, compact search input and toggle. Chips inside wrap with a tighter gap and padding. `default` keeps the control-md field.
+  size?: 'default' | 'sm';
   // Built-in texts. Each wins over the provider text.
   emptyText?: string;
   addHintText?: string;
@@ -210,9 +212,11 @@ const MultiSelectInput: FC<
   invalidValues,
   isValueInvalid,
   loading,
+  size = 'default',
 }) => {
   const l = useLabels();
   const zero = usePreset() === 'zero';
+  const sm = size === 'sm';
   const invalidProps = { invalidValues, isValueInvalid, loading };
   const anyValueInvalid = (selected ?? []).some((id) => isSelectedValueInvalid(options, id, invalidProps));
   return (
@@ -239,19 +243,23 @@ const MultiSelectInput: FC<
       'border',
       'border-solid',
       ...(zero ? compositeFieldZero : compositeFieldDefault),
+      // Size sm: min height is the control-sm token (border included), after the composite recipe so it wins.
+      { 'min-h-[var(--size-control-sm)]': sm },
       { 'cursor-text': !useSheet },
       { 'cursor-pointer': useSheet },
       'rounded-default',
       'relative',
       'overflow-visible',
       { 'opacity-disabled cursor-not-allowed': disabled },
-      { 'py-2': chipsInside && height[0] > 44 },
+      { 'py-2': chipsInside && !sm && height[0] > 44 },
+      { 'py-1': chipsInside && sm && height[0] > 32 },
     )}
   >
     <div
       className={cn(
-        'flex gap-2 flex-wrap items-center flex-grow-default [&_[cmdk-input-wrapper]]:flex-grow-default',
-        zero ? 'min-h-0' : 'min-h-[40px]',
+        'flex flex-wrap items-center flex-grow-default [&_[cmdk-input-wrapper]]:flex-grow-default',
+        sm ? 'gap-1' : 'gap-2',
+        zero || sm ? 'min-h-0' : 'min-h-[40px]',
       )}
       onClick={() => setOpenId(id)}
     >
@@ -306,7 +314,7 @@ const MultiSelectInput: FC<
           onKeyDown={handleKeyDown}
           ref={inputRef}
           disabled={disabled}
-          className="flex-grow-default h-7"
+          className={cn('flex-grow-default', sm ? 'h-6 py-0' : 'h-7')}
           autoFocus={false}
         />
       )}
@@ -320,7 +328,7 @@ const MultiSelectInput: FC<
         className={cn(
           { 'hover:bg-transparent': decentToggle },
           'text-sm',
-          'h-control-sm',
+          sm ? 'h-control-xs' : 'h-control-sm',
           'p-2',
           'flex',
           'items-center',
@@ -354,8 +362,8 @@ const MultiSelectInput: FC<
             size="sm"
             className={cn(
               { 'hover:bg-transparent': decentToggle },
-              'h-control-sm',
-              'w-10',
+              sm ? 'h-control-xs' : 'h-control-sm',
+              sm ? 'w-control-xs' : 'w-10',
               'flex',
               'items-center',
               'justify-center',
@@ -1018,6 +1026,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   ariaLabel,
   invalidValues,
   isValueInvalid,
+  size = 'default',
 }) => {
   const l = useLabels();
   const placeholder = placeholderProp ?? l.searchEllipsis;
@@ -1034,7 +1043,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newItemLabel, setNewItemLabel] = useState('');
-  const initialHeight = 44;
+  const initialHeight = size === 'sm' ? 32 : 44;
 
   // State for persistent mode
   const [tempSelected, setTempSelected] = useState<string[]>(selected);
@@ -1139,7 +1148,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
       if (dropdown) observer.unobserve(dropdown);
       window.removeEventListener('resize', handleResize);
     };
-  }, [open, selected, disableAddNew, useSheet]);
+  }, [open, selected, disableAddNew, useSheet, initialHeight]);
 
   useEffect(() => {
     const isMobileDev = isMobileDevice();
@@ -1260,7 +1269,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     }
 
     if (chipsInside) {
-      return inputHeight < initialHeight ? inputHeight + labelHeight : inputHeight + labelHeight + 12;
+      return inputHeight < initialHeight ? inputHeight + labelHeight : inputHeight + labelHeight + (size === 'sm' ? 4 : 12);
     }
   };
 
@@ -1299,6 +1308,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     invalidValues,
     isValueInvalid,
     loading,
+    size,
   };
 
   const multiSelectChipsProps = {
@@ -1593,6 +1603,7 @@ const MultiSelect: FC<MultiSelectProps> = ({ readOnly = false, ...props }) => {
         className={cn(
           'flex w-full flex-wrap items-center gap-2 border border-solid bg-muted text-sm',
           zero ? 'min-h-[var(--size-control-md)] border-input px-control-px-sm py-1' : 'border-form-border-default px-2 py-1',
+          props.size === 'sm' && 'min-h-[var(--size-control-sm)] gap-1 py-0',
           'rounded-default focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default focus-visible:border-ring',
           'aria-[invalid=true]:border-error',
           className,

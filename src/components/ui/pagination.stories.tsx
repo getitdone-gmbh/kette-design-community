@@ -129,3 +129,18 @@ export const Localized: Story = {
     </DesignSystemProvider>
   ),
 };
+
+// Size sm puts every control on the Button sm height (control-sm token: 32, zero 28). The button group variant is the one that changes, the other variants already sit on that height.
+export const SizeSm: Story = {
+  args: {} as any,
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {(['page', 'card-minimal', 'card-button-group', 'compact'] as PaginationVariant[]).map((v) => (
+        <div key={v} className="flex flex-col gap-2">
+          <span className="typography-text-extra-small text-text-subtle">{`${v}, size sm`}</span>
+          <Pagination variant={v} size="sm" aria-label={`Pagination, ${v}, small`} pageCount={10} total={214} defaultPage={4} />
+        </div>
+      ))}
+    </div>
+  ),
+};

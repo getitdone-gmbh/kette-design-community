@@ -1,7 +1,7 @@
 import { expectTypeOf, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
+import { createRef, type MouseEvent as ReactMouseEvent } from 'react';
 
 import { KpiStrip, MetricItem, type MetricItemProps } from './metric';
 
@@ -73,6 +73,74 @@ describe('MetricItem', () => {
     const ref = createRef<HTMLElement>();
     render(<MetricItem ref={ref} label="a" value="1" />);
     expect(ref.current).toBeInstanceOf(HTMLElement);
+  });
+});
+
+describe('MetricItem as link', () => {
+  it('renders one real anchor named by label and value, with no nested interactive element', () => {
+    const { container } = render(<MetricItem label="Open demands" value="24" delta="+3" caption="Across all projects" href="/demands?status=open" />);
+    const link = screen.getByRole('link', { name: /Open demands.*24.*\+3.*Across all projects/ });
+    expect(link).toHaveAttribute('href', '/demands?status=open');
+    expect(container.querySelectorAll('a')).toHaveLength(1);
+    expect(link.querySelector('a, button, input, select, textarea, [tabindex]')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('is reachable by keyboard and carries the tile hover, focus and no-underline classes', () => {
+    render(<MetricItem label="Late" value="3" href="/late" />);
+    const link = screen.getByRole('link');
+    link.focus();
+    expect(link).toHaveFocus();
+    expect(link).toHaveClass('hover:bg-muted', 'focus-visible:ring-ring-default', 'focus-visible:ring-inset', 'no-underline', 'flex');
+  });
+
+  it('marks the selected link with aria-current and keeps rel safe for new tabs', () => {
+    render(<MetricItem label="Late" value="3" href="/late" selected target="_blank" />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('aria-current', 'true');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('merges the tile into the child link with asChild and keeps its own props', async () => {
+    const onClick = vi.fn((e: ReactMouseEvent) => e.preventDefault());
+    render(
+      <MetricItem label="Filled" value="8" asChild>
+        {/* eslint-disable-next-line jsx-a11y/anchor-has-content -- content is merged in by asChild */}
+        <a href="/filled" data-router-link onClick={onClick} />
+      </MetricItem>,
+    );
+    const link = screen.getByRole('link', { name: /Filled.*8/ });
+    expect(link).toHaveAttribute('data-router-link');
+    expect(link).toHaveClass('hover:bg-muted');
+    await userEvent.click(link);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll('a')).toHaveLength(1);
+  });
+
+  it('falls back to a static, non-link tile while loading or disabled', () => {
+    const { rerender } = render(<MetricItem label="a" value="1" href="/x" loading />);
+    expect(screen.queryByRole('link')).toBeNull();
+    rerender(<MetricItem label="a" value="1" href="/x" disabled />);
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('does not change the markup or classes of non-link tiles', () => {
+    const { container } = render(<MetricItem label="a" value="1" />);
+    const el = container.firstElementChild as HTMLElement;
+    expect(el.tagName).toBe('DIV');
+    expect(el.className).not.toMatch(/no-underline|cursor-pointer|ring-inset/);
+  });
+
+  it('works inside a KpiStrip as peers of button tiles', () => {
+    render(
+      <KpiStrip aria-label="KPIs">
+        <MetricItem label="Open" value="24" href="/open" />
+        <MetricItem label="Late" value="3" onClick={() => {}} />
+      </KpiStrip>,
+    );
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });
 

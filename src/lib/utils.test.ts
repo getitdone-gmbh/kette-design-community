@@ -64,3 +64,10 @@ describe('cn / tailwind-merge token config', () => {
     expect(cn('typography-ui', 'typography-ui-semibold', 'typography-detail')).toBe('typography-detail');
   });
 });
+
+describe('cn page frame width', () => {
+  it('lets max-w-none or another cap replace max-w-content', () => {
+    expect(cn('max-w-content mx-auto', 'max-w-none')).toBe('mx-auto max-w-none');
+    expect(cn('max-w-[1170px]', 'max-w-content')).toBe('max-w-content');
+  });
+});

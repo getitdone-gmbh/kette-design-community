@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "toast-inset",
+  "title": "Toast Inset",
+  "description": "Helper used by the Get IT Done components.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/lib/toast-inset.ts",
+      "content": "// On phones the toast sits at the bottom edge. A sticky footer of an open Sheet, Dialog or Drawer reports its height here, so the toast stays above the footer actions.\n// The toast viewport reads it as --toast-inset-bottom on the document element (phones only). With several open layers the tallest footer wins.\nexport const TOAST_INSET_PROPERTY = '--toast-inset-bottom';\n\nconst footers = new Map<object, number>();\n\nconst publish = () => {\n  if (typeof document === 'undefined') return;\n  const height = Math.max(0, ...footers.values());\n  if (height > 0) document.documentElement.style.setProperty(TOAST_INSET_PROPERTY, `${height}px`);\n  else document.documentElement.style.removeProperty(TOAST_INSET_PROPERTY);\n};\n\n// A height of 0 releases the entry.\nexport function reportToastInset(owner: object, height: number) {\n  if (height > 0) footers.set(owner, height);\n  else footers.delete(owner);\n  publish();\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

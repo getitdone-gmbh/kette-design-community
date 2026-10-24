@@ -3,6 +3,7 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as React from 'react';
 
+import { MODAL_OVERLAY_ATTRIBUTE, useModalInertRef } from '@/lib/modal-inert';
 import { cn } from '@/lib/utils';
 import { useLabels } from '@/components/ui/labels-context';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -22,13 +23,16 @@ const LoadingOverlay = ({ open, label: labelProp, description, container, classN
   const l = useLabels();
   const label = labelProp ?? l.loading;
   const scoped = Boolean(container);
+  const inertRef = useModalInertRef<HTMLDivElement>(true);
   return (
     <DialogPrimitive.Root open={open} modal>
       <DialogPrimitive.Portal container={container ?? undefined}>
         <DialogPrimitive.Overlay
+          {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }}
           className={cn('inset-0 z-dialog bg-overlay data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none', scoped ? 'absolute' : 'fixed')}
         />
         <DialogPrimitive.Content
+          ref={inertRef}
           aria-busy="true"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => event.preventDefault()}

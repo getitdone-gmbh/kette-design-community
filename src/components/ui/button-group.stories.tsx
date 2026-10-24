@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { LayoutGrid, List, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from './button';
 import { ButtonGroup, ButtonGroupItem } from './button-group';
 
 const meta = {
@@ -60,5 +61,31 @@ export const WithDisabled: Story = {
       <ButtonGroupItem>Previous</ButtonGroupItem>
       <ButtonGroupItem disabled>Next</ButtonGroupItem>
     </ButtonGroup>
+  ),
+};
+
+// Size sm is exactly as high as Button size="sm" (control-sm token: 32, zero 28). Use it for prev, today, next and view switches next to small buttons.
+export const SizeSm: Story = {
+  render: () => (
+    <div className="flex flex-col items-start gap-4">
+      <div className="flex items-center gap-2">
+        <ButtonGroup aria-label="Week" size="sm">
+          <ButtonGroupItem icon={<ChevronLeft className="h-full w-full" />} aria-label="Previous week" />
+          <ButtonGroupItem>Today</ButtonGroupItem>
+          <ButtonGroupItem icon={<ChevronRight className="h-full w-full" />} aria-label="Next week" />
+        </ButtonGroup>
+        <Button variant="outline" size="sm">
+          Button sm
+        </Button>
+        <Button variant="outline" size="icon-sm" aria-label="Add">
+          <Plus aria-hidden="true" />
+        </Button>
+      </div>
+      <ButtonGroup aria-label="Default size">
+        <ButtonGroupItem>Previous</ButtonGroupItem>
+        <ButtonGroupItem>Today</ButtonGroupItem>
+        <ButtonGroupItem>Next</ButtonGroupItem>
+      </ButtonGroup>
+    </div>
   ),
 };

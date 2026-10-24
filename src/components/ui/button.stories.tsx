@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { ArrowLeftIcon, MoreHorizontalIcon, XIcon } from 'lucide-react';
 import { Button, ButtonProps } from './button';
+import { Input } from './input';
 
 const meta = {
   title: 'Primitives/Button',
@@ -330,7 +331,7 @@ const SIZE_ROWS = [
   { label: '2xl', text: '2xl', icon: 'icon-2xl' },
 ] as const;
 
-/** Text and icon-only button of every size side by side. Each icon size has the height of its text size, so mixed rows line up. Use the theme switcher to compare the default scale with zero. */
+/** Text and icon-only button of every size side by side. Each icon size has the height of its text size, so mixed rows line up. Heights are the control tokens: 28, 32, 40, 42, 48 and 56 for 2xl (zero: 24, 28, 32, 36, 40, 48). Use the theme switcher to compare the default scale with zero. */
 export const SizeScale: StoryObj<typeof Button> = {
   render: () => (
     <div className="grid grid-cols-[80px_repeat(4,max-content)] items-center gap-x-4 gap-y-3 p-6 text-sm text-foreground">
@@ -379,5 +380,43 @@ export const LinkPadded: StoryObj<typeof Button> = {
         </Button>
       </div>
     </div>
+  ),
+};
+
+/** `size="inline"` is for a link button inside running text. It looks like a link by default (link colour, underline), inherits font size, weight and line height of the paragraph (a `text-*` or `font-*` class you pass always wins), has no border and no fixed height, so the box is the text line. The 24px target (WCAG 2.5.8) is a centered hit area that is at most 8px taller than the line, so it never covers the lines or controls around it. Use it instead of `size="sm"` with `h-auto`. Use `sm` for a link button in a toolbar or button group. Hover changes colour and underline thickness only, the text never reflows. */
+export const LinkInline: StoryObj<typeof Button> = {
+  render: () => (
+    <div className="flex max-w-reading flex-col gap-4 p-6 text-base text-foreground">
+      <p className="m-0">
+        Read the <Button variant="link" size="inline" underline>documentation</Button> before you start, or ask in the <Button variant="link" size="inline" underline>community forum</Button>. Your data is handled as described in the <Button variant="link" size="inline" underline>privacy policy</Button>.
+      </p>
+      <p className="m-0 text-sm">
+        The same size in a smaller paragraph: <Button variant="link" size="inline" underline>terms of use</Button>.
+      </p>
+    </div>
+  ),
+};
+
+/** Tight line height: a 14px label with a 14px line (consent checkbox next to a form field). The box stays one line high, the hit area grows to at most 22px and does not reach the input above or below. */
+export const LinkInlineTightLine: StoryObj<typeof Button> = {
+  render: () => (
+    <div className="flex max-w-reading flex-col gap-2 p-6 text-foreground">
+      <label className="flex items-start gap-2 text-sm leading-[14px]">
+        <input type="checkbox" className="mt-0" />
+        <span>
+          I accept the <Button variant="link" size="inline">terms of use</Button> and the <Button variant="link" size="inline">privacy policy</Button>.
+        </span>
+      </label>
+      <Input aria-label="Name" />
+    </div>
+  ),
+};
+
+/** Type classes of the consumer win over the inherited type. */
+export const LinkInlineTypeOverride: StoryObj<typeof Button> = {
+  render: () => (
+    <p className="m-0 max-w-reading p-6 text-base text-foreground">
+      Body text with a <Button variant="link" size="inline" className="text-sm font-medium">smaller medium link</Button> and an <Button variant="link" size="inline">inherited link</Button>.
+    </p>
   ),
 };

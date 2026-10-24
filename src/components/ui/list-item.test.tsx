@@ -66,3 +66,16 @@ describe('ListItem link mode', () => {
     expect(link).toHaveTextContent('12');
   });
 });
+
+describe('ListItem responsive', () => {
+  it('stacks the trailing controls by default of the container query and moves them at the area-2xs screen', () => {
+    render(<ListItem responsive title="t" trailing={<span data-testid="tr" />} data-testid="row" />);
+    expect(screen.getByTestId('row')).toHaveClass('flex-wrap', '@area-2xs:flex-nowrap');
+    expect(screen.getByTestId('tr').parentElement).toHaveClass('w-full', '@area-2xs:w-auto');
+  });
+
+  it('is unchanged without responsive', () => {
+    render(<ListItem title="t" trailing={<span data-testid="tr" />} data-testid="row" />);
+    expect(screen.getByTestId('row')).not.toHaveClass('flex-wrap');
+  });
+});

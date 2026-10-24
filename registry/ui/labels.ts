@@ -18,6 +18,10 @@ export interface Labels {
   copied: string;
   copyCode: string;
   dismiss: string;
+  // Accessible name of the toast region. `{hotkey}` is replaced by the shortcut that jumps into it (F8).
+  toastRegion: string;
+  // Spoken before the text of each toast, so a screen reader announces what it is.
+  toastNotification: string;
   find: string;
   group: string;
   help: string;

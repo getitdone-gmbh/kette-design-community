@@ -6,6 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { AlertCircle, X } from 'lucide-react';
 import * as React from 'react';
 
+import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from '@/lib/modal-inert';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from '@/lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from '@/lib/sticky-inset';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ const SheetOverlay = React.forwardRef<
   const zero = usePreset() === 'zero';
   return (
     <SheetPrimitive.Overlay
+      {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }}
       className={cn(
         'fixed inset-0 z-sheet data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         zero ? 'bg-overlay-scrim' : 'bg-overlay',
@@ -135,6 +137,8 @@ interface SheetContentProps
   container?: HTMLElement | null;
   /** Moves focus into the sheet when it opens. Defaults to true for modal sheets and false when `Sheet` has `modal={false}` (docked usage keeps the page focus). */
   focusOnOpen?: boolean;
+  /** Runs once the sheet is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener. Put "focus this field after closing" code here. */
+  onAfterClose?: () => void;
 }
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
@@ -157,6 +161,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       inset = 'none',
       container,
       focusOnOpen,
+      onAfterClose,
       ...props
     },
     ref,
@@ -170,8 +175,13 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     const nonModal = !React.useContext(SheetModalContext);
     const escapeGuard = React.useContext(EscapeGuardContext);
     const contentRef = React.useRef<HTMLDivElement | null>(null);
+    // A modal sheet makes everything outside its portal inert while it is open, see lib/modal-inert.
+    const inertRef = useModalInertRef<HTMLDivElement>(!nonModal);
+    const afterClose = useAfterModalClose<HTMLDivElement>(onAfterClose);
     const setRefs = (node: HTMLDivElement | null) => {
       contentRef.current = node;
+      inertRef(node);
+      afterClose.capture(node);
       if (typeof ref === 'function') ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
     };
@@ -192,7 +202,10 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             onOpenAutoFocus?.(event);
             if (!(focusOnOpen ?? !nonModal)) event.preventDefault();
           }}
-          onCloseAutoFocus={returnFocus.onCloseAutoFocus}
+          onCloseAutoFocus={(event) => {
+            returnFocus.onCloseAutoFocus(event);
+            afterClose.run();
+          }}
           onEscapeKeyDown={(event) => {
             onEscapeKeyDown?.(event);
             // Escape inside a select list, menu or popover closes that layer only.
@@ -291,7 +304,7 @@ interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ className, variant: variantProp, status, leftAction, children, ...props }, ref) => {
   const state = React.useContext(SheetStateContext);
-  const stickyRef = useStickyInset<HTMLDivElement>('bottom', ref);
+  const stickyRef = useStickyInset<HTMLDivElement>('bottom', ref, { place: 'auto' });
   const zero = usePreset() === 'zero';
   const variant = variantProp ?? (zero ? 'zero' : 'default');
   if (variant === 'zero') {

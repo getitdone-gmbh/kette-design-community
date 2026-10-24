@@ -80,6 +80,8 @@ const numberVariants = cva(
 
 export interface PaginationProps extends Omit<React.HTMLAttributes<HTMLElement>, 'onChange'> {
   variant?: PaginationVariant;
+  // `sm` puts every control on the Button sm height (control-sm token: 32, zero 28). The page, card, minimal, lazy and compact variants already sit on that height, so for them `sm` changes nothing. The button group variant drops from control-md (40, zero 32) to control-sm.
+  size?: 'default' | 'sm';
   shape?: PaginationShape;
   // Controlled current page (1 based).
   page?: number;
@@ -135,6 +137,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
     {
       className,
       variant = 'page',
+      size = 'default',
       shape = 'square',
       page: pageProp,
       defaultPage = 1,
@@ -304,7 +307,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
     } else if (variant === 'card-button-group') {
       body = (
         <div className={cn('flex w-full', alignClass[align])}>
-          <ButtonGroup aria-label={l.pages}>
+          <ButtonGroup aria-label={l.pages} size={size}>
             <ButtonGroupItem disabled={off || atStart} icon={<ArrowLeft />} onClick={() => goTo(page - 1)}>
               {l.previous}
             </ButtonGroupItem>
@@ -317,7 +320,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                   aria-current={item === page ? 'page' : undefined}
                   data-current={item === page ? true : undefined}
                   // Below sm only the current page stays, so the group never overflows a 390px screen.
-                  className={cn('w-control-md px-0', item !== page && 'max-sm:hidden')}
+                  className={cn(size === 'sm' ? 'w-control-sm' : 'w-control-md', 'px-0', item !== page && 'max-sm:hidden')}
                   onClick={() => goTo(item)}
                 >
                   {item}
@@ -326,7 +329,10 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                 <span
                   key={item}
                   aria-hidden="true"
-                  className="inline-flex h-control-md w-control-md items-center justify-center border-r border-solid border-input typography-label text-text-subtle max-sm:hidden"
+                  className={cn(
+                    'inline-flex items-center justify-center border-r border-solid border-input typography-label text-text-subtle max-sm:hidden',
+                    size === 'sm' ? 'h-full w-control-sm' : 'h-control-md w-control-md',
+                  )}
                 >
                   ...
                 </span>
@@ -421,6 +427,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         aria-label={ariaLabel}
         aria-busy={pagerBusy || undefined}
         data-variant={variant}
+        data-size={size === 'sm' ? 'sm' : undefined}
         data-shape={shape}
         className={cn(frameVariants({ variant }), className)}
         {...props}

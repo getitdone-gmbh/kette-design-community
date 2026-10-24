@@ -134,6 +134,12 @@ if (hasCssVars) {
         const { card: _card, ...rest } = theme('colors');
         return { ...rest, DEFAULT: theme('colors.gray.200', 'currentColor') };
       },
+      // `text-destructive` is the error TEXT step (--semantic-text-destructive, AA on every surface), the same value as
+      // `text-text-destructive`. The `destructive` colour itself stays the fill (bg-destructive, border-destructive, ring-destructive).
+      textColor: ({ theme }) => {
+        const colors = theme('colors');
+        return colors['text-destructive'] ? { ...colors, destructive: colors['text-destructive'] } : colors;
+      },
       // stroke-chart-* / stroke-data-* (chart and data palettes only), same colour functions as fill-*
       stroke: {
         ...mergedTheme.stroke,
@@ -162,6 +168,8 @@ if (hasCssVars) {
         // ring-halo (3px field halo), ring-focus and ring-offset-focus (2px shared keyboard focus ring)
         ringWidth: themeExtend.ringWidth || {},
         ringOffsetWidth: themeExtend.ringOffsetWidth || {},
+        // Container breakpoints for @tailwindcss/container-queries: @area:, @area-xs: ... @area-xl:
+        containers: themeExtend.containers || {},
       },
       colors: {
         ...twColors,

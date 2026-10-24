@@ -13,14 +13,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-accordion-foreground-default))`
                         : `rgb(var(--colors-accordion-foreground-default) / ${opacityValue})`,
-                'avatar-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-avatar-background-default))`
-                        : `rgb(var(--colors-avatar-background-default) / ${opacityValue})`,
-                'avatar-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-avatar-foreground-default))`
-                        : `rgb(var(--colors-avatar-foreground-default) / ${opacityValue})`,
                 background: ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-background))`
@@ -95,10 +87,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-button-background-ghost-hover))`
                         : `rgb(var(--colors-button-background-ghost-hover) / ${opacityValue})`,
-                'button-background-ghost-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-button-background-ghost-default))`
-                        : `rgb(var(--colors-button-background-ghost-default) / ${opacityValue})`,
                 'button-background-hover': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-button-background-hover))`
@@ -160,10 +148,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-button-foreground-hover))`
                         : `rgb(var(--colors-button-foreground-hover) / ${opacityValue})`,
-                'button-foreground-link-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-button-foreground-link-default))`
-                        : `rgb(var(--colors-button-foreground-link-default) / ${opacityValue})`,
                 'button-foreground-link-hover': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-button-foreground-link-hover))`
@@ -204,10 +188,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-checkbox-background-checked))`
                         : `rgb(var(--colors-checkbox-background-checked) / ${opacityValue})`,
-                'checkbox-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-checkbox-background-default))`
-                        : `rgb(var(--colors-checkbox-background-default) / ${opacityValue})`,
                 'checkbox-background-label-checked': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-checkbox-background-label-checked))`
@@ -224,10 +204,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-checkbox-foreground-label))`
                         : `rgb(var(--colors-checkbox-foreground-label) / ${opacityValue})`,
-                'checkbox-foreground-text': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-checkbox-foreground-text))`
-                        : `rgb(var(--colors-checkbox-foreground-text) / ${opacityValue})`,
                 'chip-background-selected': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-chip-background-selected))`
@@ -929,14 +905,6 @@ module.exports = {
                         ? `rgb(var(--colors-data-workload-over-fg))`
                         : `rgb(var(--colors-data-workload-over-fg) / ${opacityValue})`,
                 'dialog-background-default': 'transparent',
-                'dialog-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-dialog-foreground-default))`
-                        : `rgb(var(--colors-dialog-foreground-default) / ${opacityValue})`,
-                'dialog-foreground-muted': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-dialog-foreground-muted))`
-                        : `rgb(var(--colors-dialog-foreground-muted) / ${opacityValue})`,
                 'dropdown-background-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-dropdown-background-default))`
@@ -1261,14 +1229,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-highlight-hit-on))`
                         : `rgb(var(--colors-highlight-hit-on) / ${opacityValue})`,
-                'inline-code-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-inline-code-background-default))`
-                        : `rgb(var(--colors-inline-code-background-default) / ${opacityValue})`,
-                'inline-code-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-inline-code-foreground-default))`
-                        : `rgb(var(--colors-inline-code-foreground-default) / ${opacityValue})`,
                 'input-background-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-input-background-default))`
@@ -1313,62 +1273,10 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-menu-foreground-muted))`
                         : `rgb(var(--colors-menu-foreground-muted) / ${opacityValue})`,
-                'menubar-selected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-menubar-selected-background-default))`
-                        : `rgb(var(--colors-menubar-selected-background-default) / ${opacityValue})`,
-                'menubar-selected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-menubar-selected-foreground-default))`
-                        : `rgb(var(--colors-menubar-selected-foreground-default) / ${opacityValue})`,
-                'menubar-unselected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-menubar-unselected-background-default))`
-                        : `rgb(var(--colors-menubar-unselected-background-default) / ${opacityValue})`,
-                'menubar-unselected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-menubar-unselected-foreground-default))`
-                        : `rgb(var(--colors-menubar-unselected-foreground-default) / ${opacityValue})`,
-                'navigation-selected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-selected-background-default))`
-                        : `rgb(var(--colors-navigation-selected-background-default) / ${opacityValue})`,
-                'navigation-selected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-selected-foreground-default))`
-                        : `rgb(var(--colors-navigation-selected-foreground-default) / ${opacityValue})`,
-                'navigation-selected-foreground-muted': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-selected-foreground-muted))`
-                        : `rgb(var(--colors-navigation-selected-foreground-muted) / ${opacityValue})`,
-                'navigation-unselected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-unselected-background-default))`
-                        : `rgb(var(--colors-navigation-unselected-background-default) / ${opacityValue})`,
-                'navigation-unselected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-unselected-foreground-default))`
-                        : `rgb(var(--colors-navigation-unselected-foreground-default) / ${opacityValue})`,
-                'navigation-unselected-foreground-muted': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-navigation-unselected-foreground-muted))`
-                        : `rgb(var(--colors-navigation-unselected-foreground-muted) / ${opacityValue})`,
-                'placeholder-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-placeholder-default))`
-                        : `rgb(var(--colors-placeholder-default) / ${opacityValue})`,
                 'popover-background-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-popover-background-default))`
                         : `rgb(var(--colors-popover-background-default) / ${opacityValue})`,
-                'popover-foreground-filled': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-popover-foreground-filled))`
-                        : `rgb(var(--colors-popover-foreground-filled) / ${opacityValue})`,
-                'popover-foreground-muted': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-popover-foreground-muted))`
-                        : `rgb(var(--colors-popover-foreground-muted) / ${opacityValue})`,
                 primary: ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-primary))`
@@ -1485,30 +1393,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-product-workstream-subtle))`
                         : `rgb(var(--colors-product-workstream-subtle) / ${opacityValue})`,
-                'progress-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-progress-background-default))`
-                        : `rgb(var(--colors-progress-background-default) / ${opacityValue})`,
-                'progress-background-progress': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-progress-background-progress))`
-                        : `rgb(var(--colors-progress-background-progress) / ${opacityValue})`,
-                'radio-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-radio-background-default))`
-                        : `rgb(var(--colors-radio-background-default) / ${opacityValue})`,
-                'radio-background-default-selected': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-radio-background-default-selected))`
-                        : `rgb(var(--colors-radio-background-default-selected) / ${opacityValue})`,
-                'radio-border-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-radio-border-default))`
-                        : `rgb(var(--colors-radio-border-default) / ${opacityValue})`,
-                'radio-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-radio-foreground-default))`
-                        : `rgb(var(--colors-radio-foreground-default) / ${opacityValue})`,
                 'rating-empty': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-rating-empty))`
@@ -1517,19 +1401,7 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-rating-filled))`
                         : `rgb(var(--colors-rating-filled) / ${opacityValue})`,
-                'scroll-area-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-scroll-area-background-default))`
-                        : `rgb(var(--colors-scroll-area-background-default) / ${opacityValue})`,
-                'scroll-area-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-scroll-area-foreground-default))`
-                        : `rgb(var(--colors-scroll-area-foreground-default) / ${opacityValue})`,
                 'scroll-item-background-default': 'transparent',
-                'scroll-item-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-scroll-item-foreground-default))`
-                        : `rgb(var(--colors-scroll-item-foreground-default) / ${opacityValue})`,
                 'select-background-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-select-background-default))`
@@ -1538,10 +1410,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-select-foreground-default))`
                         : `rgb(var(--colors-select-foreground-default) / ${opacityValue})`,
-                'separator-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-separator-background-default))`
-                        : `rgb(var(--colors-separator-background-default) / ${opacityValue})`,
                 'sidebar-accent': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-sidebar-accent))`
@@ -1570,18 +1438,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-sidebar-ring))`
                         : `rgb(var(--colors-sidebar-ring) / ${opacityValue})`,
-                'slider-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-slider-background-default))`
-                        : `rgb(var(--colors-slider-background-default) / ${opacityValue})`,
-                'slider-background-progress': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-slider-background-progress))`
-                        : `rgb(var(--colors-slider-background-progress) / ${opacityValue})`,
-                'slider-background-progress-indicator': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-slider-background-progress-indicator))`
-                        : `rgb(var(--colors-slider-background-progress-indicator) / ${opacityValue})`,
                 'status-destructive-dot': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-status-destructive-dot))`
@@ -1598,18 +1454,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-status-warning-dot))`
                         : `rgb(var(--colors-status-warning-dot) / ${opacityValue})`,
-                'switch-background-activated': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-switch-background-activated))`
-                        : `rgb(var(--colors-switch-background-activated) / ${opacityValue})`,
-                'switch-background-deactivated': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-switch-background-deactivated))`
-                        : `rgb(var(--colors-switch-background-deactivated) / ${opacityValue})`,
-                'switch-background-toggle-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-switch-background-toggle-default))`
-                        : `rgb(var(--colors-switch-background-toggle-default) / ${opacityValue})`,
                 'switch-background-unchecked': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-switch-background-unchecked))`
@@ -1618,30 +1462,6 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-switch-background-unchecked-hover))`
                         : `rgb(var(--colors-switch-background-unchecked-hover) / ${opacityValue})`,
-                'switch-foreground-content': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-switch-foreground-content))`
-                        : `rgb(var(--colors-switch-foreground-content) / ${opacityValue})`,
-                'switch-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-switch-foreground-default))`
-                        : `rgb(var(--colors-switch-foreground-default) / ${opacityValue})`,
-                'tab-selected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-tab-selected-background-default))`
-                        : `rgb(var(--colors-tab-selected-background-default) / ${opacityValue})`,
-                'tab-selected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-tab-selected-foreground-default))`
-                        : `rgb(var(--colors-tab-selected-foreground-default) / ${opacityValue})`,
-                'tab-unselected-background-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-tab-unselected-background-default))`
-                        : `rgb(var(--colors-tab-unselected-background-default) / ${opacityValue})`,
-                'tab-unselected-foreground-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-tab-unselected-foreground-default))`
-                        : `rgb(var(--colors-tab-unselected-foreground-default) / ${opacityValue})`,
                 'table-background-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-table-background-default))`
@@ -1662,26 +1482,10 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-textarea-background-default))`
                         : `rgb(var(--colors-textarea-background-default) / ${opacityValue})`,
-                'textarea-background-hover': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-textarea-background-hover))`
-                        : `rgb(var(--colors-textarea-background-hover) / ${opacityValue})`,
-                'textarea-border-default': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-textarea-border-default))`
-                        : `rgb(var(--colors-textarea-border-default) / ${opacityValue})`,
                 'textarea-foreground-filled': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-textarea-foreground-filled))`
                         : `rgb(var(--colors-textarea-foreground-filled) / ${opacityValue})`,
-                'textarea-foreground-hint': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-textarea-foreground-hint))`
-                        : `rgb(var(--colors-textarea-foreground-hint) / ${opacityValue})`,
-                'textarea-foreground-label': ({ opacityValue }) =>
-                    opacityValue === undefined
-                        ? `rgb(var(--colors-textarea-foreground-label))`
-                        : `rgb(var(--colors-textarea-foreground-label) / ${opacityValue})`,
                 'textarea-foreground-placeholder': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-textarea-foreground-placeholder))`
@@ -2761,6 +2565,8 @@ module.exports = {
                 'control-lg': 'var(--size-control-lg)',
                 micro: 'var(--space-micro)',
                 label: 'var(--space-label)',
+                'grid-margin': 'var(--grid-margin)',
+                'grid-gutter': 'var(--grid-gutter)',
                 'control-xs': 'var(--size-control-xs)',
                 'control-xl': 'var(--size-control-xl)',
                 'control-2xl': 'var(--size-control-2xl)',
@@ -2878,6 +2684,7 @@ module.exports = {
             },
             maxWidth: {
                 page: 'var(--size-page-max)',
+                content: 'var(--size-page-max)',
                 reading: 'var(--size-reading-max)',
                 'sheet-sm': 'var(--size-sheet-sm)',
                 'sheet-md': 'var(--size-sheet-md)',
@@ -2950,10 +2757,20 @@ module.exports = {
                 muted: 'var(--opacity-muted)',
                 faded: 'var(--opacity-faded)',
                 done: 'var(--opacity-done)',
+                disabled: 'var(--opacity-disabled)',
             },
             ringWidth: {
                 halo: 'var(--size-ring-width)',
                 focus: 'var(--size-focus-ring-width)',
+            },
+            containers: {
+                'area-2xs': '420px',
+                'area-xs': '480px',
+                'area-sm': '560px',
+                'area-md': '600px',
+                'area-lg': '760px',
+                area: '860px',
+                'area-xl': '900px',
             },
             ringOffsetWidth: {
                 focus: 'var(--size-focus-ring-offset)',

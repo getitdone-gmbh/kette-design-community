@@ -2,6 +2,43 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.4.2
+
+Synced from kette-design-enterprise 0.27.13 and kette-tokens 5.23.1 (library changelogs 0.27.3 to 0.27.13, token changelogs 5.19.0 to 5.23.1). Only the changes to components and theme parts that are in this package are listed. The package description is new.
+
+### Components
+
+- **`Button`**: new `size="inline"` for a link inside running text: it inherits font size, weight and line height, has no fixed height and no border, looks like a link (link colour roles, underline) and keeps a 24px target (WCAG 2.5.8) through a centred hit area that is at most 8px taller than the line. `size="2xl"` and `icon-2xl` now use the `control-2xl` token instead of a fixed 60px: 48px in the zero theme. `hover:font-semibold` applies to the other link sizes only. The element carries `data-variant`.
+- **`Alert`**: a link button inside an info, success, warning or destructive alert takes the alert text colour and keeps the underline (the blue link was below 4.5:1 on the warning and destructive tints).
+- **`Badge`**: the info tone uses `bg-background-info-subtle` with `text-text-info-on-subtle` in the zero preset. Same look in the zero theme.
+- **`ButtonGroup`**, **`Pagination`**, **`MultiSelect`**: new `size="sm"` on the `control-sm` height (28px in zero). New type export `ButtonGroupSize`.
+- **`Card`**: `density="compact"` (20px padding, new type `CardDensity`) and `container` (makes the card a size container). `CardHeader` actions sit centred on the title row and taller actions are no longer clipped (`data-slot="card-actions"`).
+- **`CookieConsent`**: new `openCookieSettings()` and `useCookieConsent()` (`{ reopen }`) to reopen the banner from a "Cookie settings" link, new `onReopen` and `size` (`default` | `sm`) props. Escape closes the banner like the close button, only when `closable` is set; in the settings view it goes back to the summary first. Focus return after a reopen searches the opener's region only and uses `preventScroll`; without an opener focus goes to `<main>`, else the first `h1`, instead of the body. The region and its title show a thin outline only for keyboard users.
+- **`Dialog`**, **`Sheet`**, **`Drawer`**, **`LoadingOverlay`**: while modal they make everything outside their layer inert (with `aria-hidden` as fallback), also when a live region sits in the page; nested layers stack, non-modal layers leave the page alone. The page is freed as soon as the layer starts closing. Toasts and elements with `data-modal-exempt` stay reachable. New `onAfterClose` on `SheetContent` and `DialogContent`. The Radix focus guards are no longer made inert, so Shift+Tab stays in the document. Drawer gets the focus return of Dialog and Sheet.
+- **`DropdownMenu`**: a menu item that opens a Dialog, Sheet, Drawer or Confirm Dialog returns focus to the menu trigger when the overlay closes (WCAG 2.4.3). New `density` on `DropdownMenuContent` (`default`, `touch`: 44px rows below `sm`, `auto`: 44px rows on coarse pointers), new type `DropdownMenuDensity`.
+- **`Grid`**: the page frame (`max-w-content`) is centred with `mx-auto`, and classes merge through `cn`, so `gap-6` or `max-w-none` replace the defaults.
+- **`ListItem`**: `responsive` puts the trailing controls under the title and moves them to the end of the row from the `@area-2xs` container screen (420px).
+- **`MetricItem`**: `href` (with `target` and `rel`) renders the tile as one link, `asChild` merges it into your own link element. Link and button tiles share hover and pressed states; in a `KpiStrip` the focus ring sits inside the tile.
+- **`PageHeader`**: new `overflow` and `overflowLabel` (below `sm` the `actions` collapse into a More menu with touch rows) and `primaryAction` (always visible; on a phone it follows the title and the tabs slot, from `sm` up it is the last item of the actions group). Empty action wrappers leave the layout.
+- **`SecondaryNav`**: `orientation="horizontal"` (one scrollable row with edge fades, arrow keys, Home and End, current item kept in view) and `orientation="responsive"` (a row below the `@area` container screen, 860px, the column from there). New `SecondaryNavLayout` (nav slot plus content, `fill` takes the parent height). New types `SecondaryNavOrientation`, `SecondaryNavLayoutProps`.
+- **`Section`**: new `contentClassName` for the inner frame; no invalid inline `max-width` without `maxWidth`.
+- **`Toast`**: below `sm` the viewport sits at the bottom, full width and centred, with swipe down to dismiss; it rides above a sticky Sheet footer or a Drawer footer (`--toast-inset-bottom`). The viewport is exempt from modal inertness, so F8 and its action work while a Sheet or Dialog is open. The region name and the text spoken before each toast come from the labels (`toastRegion`, `toastNotification` in English and German).
+- **Labels**: `toastRegion` and `toastNotification` in `Labels`, `labels-en` and `labels-de`.
+- **Helpers** (`src/lib`): new `modal-inert`, `toast-inset` and `use-collapse-empty`; `return-focus` finds the opener's region (`regionOf`); `sticky-inset` reports sheet footers to the toast; `cn` knows `max-w-content`.
+- Tests: the library tests of the changed components, plus `menu-focus-return.test.tsx`, `modal-inert.test.tsx`, `modal-close.test.tsx`, `compiled-classes-0273` to `-0279` and `-0713` (without the FooterOneLiner case). `small-sizes.test.tsx` and `button-sizes.test.tsx` check the zero preset against `styles/theme.css` only, because this package ships the zero theme only. `patch-0121.test.tsx` now expects the zero success and warning `-default` pairs to pass 4.5:1 (it pinned their old 3.6 and 3.4:1, fixed in kette-tokens 5.23.1).
+- Not taken: FooterOneLiner and ServicePage (not in this package), the Code Connect files.
+
+### Theme and Tailwind preset
+
+- From kette-tokens 5.19.0 to 5.23.1: container screens `@area-2xs` (420) to `@area-xl` (900) with `--size-breakpoint-container-area-*`, `--opacity-disabled` and `opacity-disabled`, `max-w-content` and the `grid-margin` and `grid-gutter` spacing keys, `text-destructive` as the AA error text. Status, brand and selected text roles reach 4.5:1 on every surface, fill and text pairs are set together in every mode block and in the paper scope, the page background inside the paper is the paper colour, the destructive button text `--colors-button-foreground-destructive` is defined, and the destructive hover follows the theme. Status on-colour pairs hold 4.5:1 (5.23.1): in light the success and warning fills are one ramp step darker (`emerald.700`, `orange.700`, hover and active step along) with the white label, in dark the labels on bold success, warning and info fills are `slate.900`. The zero dark sidebar stays black on the black canvas with the `#1e293b` border, as in the prototype.
+- `tailwind/tailwind.theme.cjs` no longer lists 49 colours whose variable the zero theme does not declare (for example `avatar-background-default`, `switch-background-activated`); their classes compiled to an invalid colour and no component used them. `npm run theme:prune` removes them after every theme copy.
+- New tests: `src/lib/theme-vars.test.ts` (every variable the Tailwind config references exists in `styles/theme.css`) and `src/lib/theme-pairs.test.ts` (the kette-tokens `check:pairs` and `check:scopes` gates for this theme, plus the status pairs).
+- Variable names: no variable was removed or renamed. New in `:root`: `--colors-button-foreground-destructive`, `--opacity-disabled`, `--size-breakpoint-container-area` and `-2xs`, `-xs`, `-sm`, `-md`, `-lg`, `-xl`. New in `.dark`, the dark media block and the paper scope (31 names each, pinned fill/text pair variables such as `--colors-button-background-primary-default`, `--colors-general-brand-*`, `--semantic-background-brand-bold-*`, `--semantic-text-on-brand`, `--semantic-text-on-destructive`, `--semantic-text-on-success`, `--semantic-text-on-warning`, `--semantic-text-on-info`); `document-surface.css` follows.
+
+### Stories
+
+- Synced from the v0.27.13 tag: 128 story files with 1073 stories. The stories with play functions need `@storybook/jest` and `@storybook/testing-library` (dev dependencies, not shipped).
+
 ## 0.4.1
 
 Synced from kette-design-enterprise 0.27.2 and kette-tokens 5.18.1 (was component-library-react 0.26.23 and figma-design-tokens 5.16.0; both upstream packages were renamed in between, kette-design-enterprise 0.27.0 and kette-tokens 5.18.0 have no component or theme changes).

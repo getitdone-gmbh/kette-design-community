@@ -298,3 +298,80 @@ describe('Interactive Card nested controls (0.15)', () => {
     expect(onCardClick).toHaveBeenCalledTimes(3);
   });
 });
+
+describe('Card density', () => {
+  const renderCard = (density?: 'default' | 'compact') =>
+    render(
+      <Card density={density} data-testid="card">
+        <CardHeader divider>
+          <CardTitle>Title</CardTitle>
+        </CardHeader>
+        <CardContent data-testid="content">Body</CardContent>
+        <CardFooter data-testid="footer" divider>
+          Footer
+        </CardFooter>
+      </Card>,
+    );
+
+  it('keeps 24px padding by default', () => {
+    renderCard();
+    expect(screen.getByTestId('content')).toHaveClass('p-6', 'pt-0');
+    expect(screen.getByTestId('footer')).toHaveClass('p-6');
+    expect(screen.getByTestId('card')).not.toHaveAttribute('data-density');
+  });
+
+  it('compact gives header, content and footer 20px without class overrides', () => {
+    renderCard('compact');
+    expect(screen.getByTestId('card')).toHaveAttribute('data-density', 'compact');
+    expect(screen.getByTestId('content')).toHaveClass('p-5', 'pt-0');
+    expect(screen.getByTestId('footer')).toHaveClass('p-5');
+    expect(screen.getByText('Title').parentElement).toHaveClass('p-5', 'pb-5');
+  });
+
+  it('container makes the card a size container', () => {
+    render(
+      <Card container data-testid="card">
+        x
+      </Card>,
+    );
+    expect(screen.getByTestId('card')).toHaveClass('@container');
+  });
+
+  it('places the actions in the title row, centered on it', () => {
+    render(
+      <Card>
+        <CardHeader actions={<button type="button">Act</button>}>
+          <CardTitle>Title</CardTitle>
+          <CardDescription>Description</CardDescription>
+        </CardHeader>
+      </Card>,
+    );
+    const actions = screen.getByRole('button', { name: 'Act' }).parentElement;
+    expect(actions).toHaveAttribute('data-slot', 'card-actions');
+    expect(actions).toHaveClass('row-start-1', 'col-start-2', 'self-center', '-my-2');
+    expect(actions).not.toHaveClass('h-0');
+  });
+
+  it('does not clip taller actions: no fixed height and no overflow rule on the actions box', () => {
+    render(
+      <Card>
+        <CardHeader
+          actions={
+            <div>
+              <button type="button">Sync</button>
+              <span>Last run 2 min ago</span>
+            </div>
+          }
+        >
+          <CardTitle>Title</CardTitle>
+        </CardHeader>
+      </Card>,
+    );
+    const actions = screen.getByRole('button', { name: 'Sync' }).parentElement?.parentElement;
+    expect(actions).toHaveAttribute('data-slot', 'card-actions');
+    expect(actions?.className).not.toMatch(/(^|\s)(h-|overflow-)/);
+    expect(screen.getByText('Last run 2 min ago')).toBeVisible();
+    // The title centers in the first row, so it stays level with the actions when the row grows.
+    expect(actions?.parentElement?.className).toContain('[&>:first-child:not([data-slot=card-actions])]:self-center');
+  });
+});

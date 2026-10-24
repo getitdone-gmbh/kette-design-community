@@ -5,17 +5,23 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import * as React from 'react';
 
+import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from '@/lib/modal-inert';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from '@/lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from '@/lib/sticky-inset';
 import { cn } from '@/lib/utils';
 import { useLabels, usePreset } from '@/components/ui/labels-context';
 
-const Dialog = ({ open, defaultOpen, onOpenChange, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) => {
+// Remembers the modal flag so DialogContent can make the page behind inert only for modal dialogs.
+const DialogModalContext = React.createContext(true);
+
+const Dialog = ({ open, defaultOpen, onOpenChange, modal = true, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) => {
   const state = useGuardedOpen({ open, defaultOpen, onOpenChange });
   return (
-    <EscapeGuardContext.Provider value={state.guard}>
-      <DialogPrimitive.Root open={state.open} onOpenChange={state.onOpenChange} {...props} />
-    </EscapeGuardContext.Provider>
+    <DialogModalContext.Provider value={modal}>
+      <EscapeGuardContext.Provider value={state.guard}>
+        <DialogPrimitive.Root open={state.open} onOpenChange={state.onOpenChange} modal={modal} {...props} />
+      </EscapeGuardContext.Provider>
+    </DialogModalContext.Provider>
   );
 };
 Dialog.displayName = 'Dialog';
@@ -87,6 +93,7 @@ const DialogOverlay = React.forwardRef<
   return (
     <DialogPrimitive.Overlay
       ref={ref}
+      {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }}
       className={cn(
         'fixed inset-0 z-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         zero ? 'bg-overlay-scrim' : 'bg-overlay',
@@ -116,26 +123,43 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof Dialo
   closeLabel?: string;
   // `first-field` moves initial focus to the first form control (input, select, textarea, radio, checkbox, switch) in DOM order, before tabs, links and buttons, also in dialogs without DialogBody. Default `auto` keeps the Radix default for those dialogs. A `scrollable` DialogBody always uses this priority.
   initialFocus?: 'auto' | 'first-field';
+  // Runs once the dialog is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener.
+  onAfterClose?: () => void;
 }
 
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
-  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, initialFocus = 'auto', onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, ...props }, ref) => {
+  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, initialFocus = 'auto', onAfterClose, onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, ...props }, ref) => {
   const returnFocus = useReturnFocusFallback(onCloseAutoFocus);
   const l = useLabels({ close: closeLabel });
   const zero = usePreset() === 'zero';
   const escapeGuard = React.useContext(EscapeGuardContext);
+  // A modal dialog makes everything outside its portal inert while it is open, see lib/modal-inert.
+  const inertRef = useModalInertRef<HTMLDivElement>(React.useContext(DialogModalContext));
+  const afterClose = useAfterModalClose<HTMLDivElement>(onAfterClose);
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      inertRef(node);
+      afterClose.capture(node);
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    },
+    [inertRef, afterClose, ref],
+  );
   // Zero: confirm width (440) unless a size is given.
   const size = sizeProp ?? (zero ? 'sm' : undefined);
   return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
-      ref={ref}
+      ref={setRefs}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
         if (!event.defaultPrevented) focusInitial(event, initialFocus === 'first-field');
       }}
-      onCloseAutoFocus={returnFocus.onCloseAutoFocus}
+      onCloseAutoFocus={(event) => {
+        returnFocus.onCloseAutoFocus(event);
+        afterClose.run();
+      }}
       onEscapeKeyDown={(event) => {
         onEscapeKeyDown?.(event);
         // Escape inside a select list, menu or popover closes that layer only.

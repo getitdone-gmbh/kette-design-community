@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { DesignSystemProvider } from './design-system-provider';
+
 import {
   Toast,
   ToastAction,
@@ -34,6 +36,58 @@ const renderToast = (props: React.ComponentProps<typeof Toast> = {}) =>
       <ToastViewport />
     </ToastProvider>,
   );
+
+describe('Toast placement', () => {
+  it('sits at the bottom on phones with the newest toast nearest the edge, bottom right from sm (desktop unchanged)', () => {
+    renderToast();
+    const viewport = screen.getByRole('region').querySelector('ol') as HTMLElement;
+    expect(viewport).toHaveClass('fixed', 'bottom-0', 'z-toast', 'flex-col-reverse', 'sm:right-0', 'sm:flex-col', 'md:max-w-[420px]');
+    expect(viewport).not.toHaveClass('top-0');
+    expect(viewport).not.toHaveClass('sm:top-auto');
+    expect(viewport.className).toContain('max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]');
+    expect(viewport.className).toContain('max-sm:bottom-[var(--toast-inset-bottom,0px)]');
+    // Anchored on both sides on a phone: centred, full width.
+    expect(viewport).toHaveClass('max-sm:inset-x-0', 'w-full');
+  });
+
+  it('opens from the bottom and slides out downward on phones', () => {
+    renderToast();
+    const toast = screen.getByTestId('toast');
+    expect(toast).toHaveClass('data-[state=open]:slide-in-from-bottom-full', 'max-sm:data-[state=closed]:slide-out-to-bottom-full', 'sm:data-[state=closed]:slide-out-to-right-full');
+    expect(toast.className).toContain('data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)]');
+  });
+
+  const mockMatchMedia = (phone: boolean) => {
+    window.matchMedia = ((query: string) => ({
+      matches: phone && query.includes('639px'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  };
+
+  it.each([
+    [true, 'down'],
+    [false, 'right'],
+  ])('phone=%s swipes to dismiss in direction %s', async (phone, direction) => {
+    mockMatchMedia(phone);
+    renderToast();
+    await waitFor(() => expect(screen.getByTestId('toast')).toHaveAttribute('data-swipe-direction', direction));
+  });
+
+  it('an explicit swipeDirection on the provider wins over the responsive default', async () => {
+    mockMatchMedia(true);
+    render(
+      <ToastProvider swipeDirection="left">
+        <Toast data-testid="toast">
+          <ToastTitle>Hi</ToastTitle>
+        </Toast>
+        <ToastViewport />
+      </ToastProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('toast')).toHaveAttribute('data-swipe-direction', 'left'));
+  });
+});
 
 describe('Toast component', () => {
   it('renders open by default (uncontrolled) with title, description and action', () => {
@@ -260,5 +314,52 @@ describe('Toast component', () => {
         '[.group_&]:leading-clamp-small',
       );
     });
+  });
+});
+
+describe('Toast built-in texts follow the labels context', () => {
+  const full = (viewport?: string, provider?: string) => (
+    <ToastProvider label={provider}>
+      <Toast>
+        <ToastTitle>Gespeichert</ToastTitle>
+        <ToastClose />
+      </Toast>
+      <ToastViewport label={viewport} />
+    </ToastProvider>
+  );
+
+  it('English by default: region, close button and spoken prefix', async () => {
+    render(full());
+    expect(screen.getByRole('region', { name: 'Notifications (F8)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+    await waitFor(() => expect(document.body.textContent).toContain('Notification Gespeichert'));
+  });
+
+  it('German with the German locale: no English left', async () => {
+    render(<DesignSystemProvider locale="de">{full()}</DesignSystemProvider>);
+    expect(screen.getByRole('region', { name: 'Benachrichtigungen (F8)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Schließen' })).toBeInTheDocument();
+    await waitFor(() => expect(document.body.textContent).toContain('Benachrichtigung Gespeichert'));
+    expect(document.body.textContent).not.toMatch(/Notification|Dismiss/);
+  });
+
+  it('keeps the hotkey in the region name', () => {
+    render(
+      <DesignSystemProvider locale="de">
+        <ToastProvider>
+          <ToastViewport hotkey={['altKey', 'KeyT']} />
+        </ToastProvider>
+      </DesignSystemProvider>,
+    );
+    expect(screen.getByRole('region', { name: 'Benachrichtigungen (alt+T)' })).toBeInTheDocument();
+  });
+
+  it('a label prop or a provider label override wins over the locale', async () => {
+    const { rerender } = render(<DesignSystemProvider locale="de">{full('Meldungen', 'Meldung')}</DesignSystemProvider>);
+    expect(screen.getByRole('region', { name: 'Meldungen' })).toBeInTheDocument();
+    await waitFor(() => expect(document.body.textContent).toContain('Meldung Gespeichert'));
+    rerender(<DesignSystemProvider locale="de" labels={{ toastRegion: 'Hinweise ({hotkey})', dismiss: 'Weg' }}>{full()}</DesignSystemProvider>);
+    expect(screen.getByRole('region', { name: 'Hinweise (F8)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Weg' })).toBeInTheDocument();
   });
 });

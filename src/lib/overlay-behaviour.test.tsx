@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
@@ -270,5 +270,127 @@ describe('Sheet focus management', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByRole('button', { name: 'Plain opener' })).toHaveFocus();
+  });
+});
+
+describe('Phone toast lifts above the bottom bar of an open layer', () => {
+  const inset = () => document.documentElement.style.getPropertyValue('--toast-inset-bottom');
+
+  it('Sheet: a sticky footer reports its height to the toast and releases it on close', () => {
+    mockHeights();
+    const { unmount } = render(
+      <Sheet open>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit</SheetTitle>
+            <SheetDescription>Details</SheetDescription>
+          </SheetHeader>
+          <SheetFooter data-testid="bar-footer" style={{ position: 'sticky', bottom: 0 }}>
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+    expect(inset()).toBe(`${FOOTER_HEIGHT}px`);
+    unmount();
+    expect(inset()).toBe('');
+  });
+
+  it('Sheet: a footer in normal flow does not move the toast', () => {
+    mockHeights();
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit</SheetTitle>
+            <SheetDescription>Details</SheetDescription>
+          </SheetHeader>
+          <SheetFooter data-testid="bar-footer">
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+    expect(inset()).toBe('');
+  });
+
+  it('Drawer: the footer is docked to the bottom edge, so it lifts the toast', () => {
+    mockHeights();
+    render(
+      <Drawer open>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Move</DrawerTitle>
+            <DrawerDescription>Details</DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter data-testid="bar-footer">
+            <button type="button">Submit</button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>,
+    );
+    expect(inset()).toBe(`${FOOTER_HEIGHT}px`);
+  });
+});
+
+describe('Phone toast rides above a sheet footer that sits at the bottom edge (0.27.13)', () => {
+  const inset = () => document.documentElement.style.getPropertyValue('--toast-inset-bottom');
+  const VIEWPORT = 844;
+
+  // jsdom has no layout: the footer is placed by hand. `top` is the footer top in the viewport.
+  const placeFooter = (top: number, height = FOOTER_HEIGHT) => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.testid === 'bar-footer') return { top, bottom: top + height, height, left: 0, right: 390, width: 390, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+      return { top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: VIEWPORT });
+  };
+
+  const renderSheet = (side: 'right' | 'bottom' = 'right') =>
+    render(
+      <Sheet open>
+        <SheetContent side={side}>
+          <SheetHeader>
+            <SheetTitle>Edit</SheetTitle>
+            <SheetDescription>Details</SheetDescription>
+          </SheetHeader>
+          <SheetFooter data-testid="bar-footer">
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+
+  it('a footer in normal flow at the bottom edge lifts the toast above its top edge, panel padding included', () => {
+    // Footer 56px high with 24px panel padding below it: its top is 80px above the viewport bottom.
+    placeFooter(VIEWPORT - 80);
+    renderSheet();
+    expect(inset()).toBe('80px');
+  });
+
+  it('works for a sheet from the bottom edge and releases on close', () => {
+    placeFooter(VIEWPORT - 80);
+    const { unmount } = renderSheet('bottom');
+    expect(inset()).toBe('80px');
+    unmount();
+    expect(inset()).toBe('');
+  });
+
+  it('a footer far above the bottom edge (short sheet content scrolled away) does not lift the toast', () => {
+    placeFooter(300);
+    renderSheet();
+    expect(inset()).toBe('');
+  });
+
+  it('follows scrolling of the footer', () => {
+    placeFooter(VIEWPORT - 80);
+    renderSheet();
+    expect(inset()).toBe('80px');
+    vi.restoreAllMocks();
+    placeFooter(VIEWPORT + 200);
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    expect(inset()).toBe('');
   });
 });

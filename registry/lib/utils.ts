@@ -61,6 +61,8 @@ const twMerge = extendTailwindMerge<'typography'>({
       'ring-w': [{ ring: ['focus', 'halo'] }],
       'ring-offset-w': [{ 'ring-offset': ['focus'] }],
       'font-weight': [{ font: ['regular'] }],
+      // Page frame width of the preset (`max-w-content`), so `max-w-none` or `max-w-4xl` from a consumer replaces it.
+      'max-w': [{ 'max-w': ['content'] }],
       // Type roles (`typography-ui`, `typography-detail`, ...) set a whole font shorthand. The later role wins, so a className override is not swallowed by the component's own role.
       typography: [{ typography: [() => true] }],
     },

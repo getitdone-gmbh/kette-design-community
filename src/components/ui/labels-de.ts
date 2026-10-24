@@ -14,6 +14,8 @@ export const labelsDe: Labels = {
   copied: 'Kopiert',
   copyCode: 'Code kopieren',
   dismiss: 'Schließen',
+  toastRegion: 'Benachrichtigungen ({hotkey})',
+  toastNotification: 'Benachrichtigung',
   find: 'Suchen',
   group: 'Gruppe',
   help: 'Hilfe',

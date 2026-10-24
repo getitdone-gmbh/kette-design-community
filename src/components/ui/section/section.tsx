@@ -4,6 +4,7 @@ import { SectionProps } from './section.interface';
 export const Section: React.FC<SectionProps> = ({
   Comp = 'section',
   maxWidth,
+  contentClassName,
   className,
   fullWidth = false,
   children,
@@ -36,8 +37,8 @@ export const Section: React.FC<SectionProps> = ({
         children
       ) : (
         <div
-          className={cn('relative', 'z-10', { 'max-w-[1170px]': !maxWidth }, 'w-full', 'md:m-auto')}
-          style={{ maxWidth: `${maxWidth}px` }}
+          className={cn('relative', 'z-10', { 'max-w-[1170px]': !maxWidth }, 'w-full', 'md:m-auto', contentClassName)}
+          style={maxWidth ? { maxWidth: `${maxWidth}px` } : undefined}
         >
           {children}
         </div>

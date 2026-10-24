@@ -1,5 +1,6 @@
 'use client';
 
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
@@ -35,13 +36,20 @@ const metricItemVariants = cva(['relative min-w-0 text-left', ...transitionBase]
       true: 'pointer-events-none opacity-disabled',
       false: '',
     },
+    // Anchor tile: no browser link styling, the tile keeps its own text roles.
+    link: {
+      true: 'no-underline text-inherit',
+      false: '',
+    },
   },
   compoundVariants: [
+    // The strip clips overflow, so its focus ring sits inside the tile (same recipe as ButtonGroup).
+    { variant: 'strip', interactive: true, className: 'focus-visible:ring-inset focus-visible:ring-offset-0' },
     { variant: 'strip', selected: true, className: 'border-b-2 border-solid' },
     { variant: 'card', density: 'default', className: 'p-6' },
     { variant: 'card', density: 'compact', className: 'p-4' },
   ],
-  defaultVariants: { variant: 'strip', density: 'default', interactive: false, selected: false, disabled: false },
+  defaultVariants: { variant: 'strip', density: 'default', interactive: false, selected: false, disabled: false, link: false },
 });
 
 const deltaToneClass = {
@@ -74,8 +82,14 @@ export interface MetricItemProps
   selected?: boolean;
   loading?: boolean;
   disabled?: boolean;
-  // Makes the item a real button (filter-by-metric pattern).
+  // Makes the item a real button (filter-by-metric pattern). With `href` or `asChild` it is a click listener on the link.
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  // Makes the item a real link (`<a href>`): middle click, new tab and the context menu work. Label, value, delta and caption form the link name. Wins over `onClick` as the element, so it is never a button.
+  href?: string;
+  target?: React.HTMLAttributeAnchorTarget;
+  rel?: string;
+  // The single child is the link element (Next.js `Link`, router link). The tile classes, state and content are merged into it. Replaces the extra-content `children`, which is not rendered then.
+  asChild?: boolean;
   // Leading icon. Card: icon tile above the label. Strip and compact: small decorative icon before the label.
   icon?: React.ReactNode;
   // Supporting line under the value, e.g. "Target 160 h" (all variants).
@@ -101,6 +115,10 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
       loading = false,
       disabled = false,
       onClick,
+      href,
+      target,
+      rel,
+      asChild = false,
       icon,
       caption,
       chart,
@@ -111,8 +129,9 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
     ref,
   ) => {
     const isStrip = variant === 'strip';
-    const interactive = Boolean(onClick) && !disabled && !loading;
-    const classes = cn(metricItemVariants({ variant, density, interactive, selected, disabled }), className);
+    const isLink = (Boolean(href) || asChild) && !disabled && !loading;
+    const interactive = (Boolean(onClick) || isLink) && !disabled && !loading;
+    const classes = cn(metricItemVariants({ variant, density, interactive, selected, disabled, link: isLink }), className);
 
     const labelClass = cn('block truncate', isStrip || variant === 'compact' ? 'typography-kpi-label' : 'typography-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle');
     const valueClass = isStrip || variant === 'compact' ? 'typography-kpi-value' : 'typography-kpi-value-lg';
@@ -157,7 +176,7 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
           ) : null}
         </span>
         {caption ? <span className={cn('typography-kpi-label block break-words md:truncate', selected ? 'text-general-brand-on-container' : 'text-text-subtle')}>{caption}</span> : null}
-        {children}
+        {asChild ? null : children}
       </>
     );
 
@@ -172,6 +191,29 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
       </>
     );
 
+    if (isLink) {
+      const linkProps = {
+        ref: ref as React.Ref<HTMLAnchorElement>,
+        className: classes,
+        'aria-current': selected ? ('true' as const) : undefined,
+        'data-selected': selected || undefined,
+        onClick: onClick as unknown as React.MouseEventHandler<HTMLAnchorElement> | undefined,
+        ...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>),
+      };
+      if (asChild) {
+        return (
+          <Slot {...linkProps}>
+            <Slottable>{children}</Slottable>
+            {inner}
+          </Slot>
+        );
+      }
+      return (
+        <a href={href} target={target} rel={rel ?? (target === '_blank' ? 'noopener noreferrer' : undefined)} {...linkProps}>
+          {inner}
+        </a>
+      );
+    }
     if (interactive) {
       return (
         <button

@@ -15,6 +15,8 @@ export const labelsEn: Labels = {
   copied: 'Copied',
   copyCode: 'Copy code',
   dismiss: 'Dismiss',
+  toastRegion: 'Notifications ({hotkey})',
+  toastNotification: 'Notification',
   find: 'Find',
   group: 'Group',
   help: 'Help',
