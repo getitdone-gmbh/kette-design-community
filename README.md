@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@getitdone-gmbh/kette-design-community?label=npm&color=cb3837)](https://www.npmjs.com/package/@getitdone-gmbh/kette-design-community) [![license](https://img.shields.io/npm/l/@getitdone-gmbh/kette-design-community)](LICENSE)
 
-Version 0.4.2 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
+Version 0.4.3 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
 
 We build business software with many screens, tables, forms and states. These components are the base layer of that system. We are sharing them in case they are useful to others working on similar products.
 
@@ -29,7 +29,7 @@ The CLI itself is free. Without a licence key it sets up the Community rule set 
 
 ## What is included
 
-127 components: 40 primitives and 87 general components, plus the `useToast` hook, German and English labels and their helpers.
+127 components: 40 primitives and 87 general components, plus the `useToast` hook, the toast inset helpers `useToastInset` and `reportToastInset`, German and English labels and their helpers.
 
 **Primitives (40):** Accordion, Alert, Avatar, Badge, Breadcrumb, Button, Calendar, Card, Carousel, Checkbox, Collapsible, Command, Dialog, Drawer, Dropdown Menu, Form, Hover Card, Input, Kbd, Label, Navigation Menu, Pagination, Popover, Progress, Radio Group, Scroll Area, Select, Separator, Sheet, Skeleton, Slider, Switch, Table, Tabs, Textarea, Toast, Toaster, Toggle, Toggle Group, Tooltip.
 
@@ -37,7 +37,7 @@ The CLI itself is free. Without a licence key it sets up the Community rule set 
 
 Plus the zero theme as CSS variables (typography, colours, radii, elevation, light and dark) and a Tailwind CSS 3 preset.
 
-Every component with a story in the library comes with it: 128 story files with 1073 stories, see [Storybook](#storybook).
+Every component with a story in the library comes with it: 129 story files with 1080 stories, see [Storybook](#storybook).
 
 The library and token versions each release is synced from are listed in one place, the [sync history](docs/MAINTAINING.md#sync-history). What changed per release is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -128,7 +128,26 @@ Alongside the colour roles, the theme sets typography (`--typo-*`, `--font-*`), 
 
 Keep every fill and the text on it together: when you change a `--semantic-background-*-bold-*` fill, change its `--semantic-text-on-*` text in the same block, and keep 4.5:1 between them in light and dark. The tests in `src/lib/theme-pairs.test.ts` show the pairs this package checks.
 
-A theme generator command, `kette theme`, is planned for the Kette CLI and will write these variables for you once it is released.
+`theme.css` is self-contained: it declares every variable the Tailwind preset references and every fill/text pair, in `:root`, in both dark blocks and in the paper scope, so it works without any other theme file underneath.
+
+### Generate your own theme
+
+The free Kette CLI writes these variables for you from your brand colour. Install it with `curl -fsSL https://kette.itdone.de/install | sh` (Windows: `irm https://kette.itdone.de/install.ps1 | iex`), details on [kette.itdone.de/en/setup](https://kette.itdone.de/en/setup). Then run:
+
+```bash
+kette theme --primary <hex> [--accent <hex>] [--neutral cool|warm|neutral|<hex>] [--radius none|sm|md|lg|full|<px>] [--font <family>] [--out theme.css] [--preview]
+```
+
+It creates a drop-in replacement for `@getitdone-gmbh/kette-design-community/theme.css`, light and dark, with every fill/text pair at WCAG AA (4.5:1). Without options it asks for the values in the terminal. `--preview` also writes `theme-preview.html` with the components in both modes and the contrast table. Then swap the import:
+
+```css
+/* before */
+@import '@getitdone-gmbh/kette-design-community/theme.css';
+/* after */
+@import './theme.css';
+```
+
+With the prebuilt `styles.css` instead of Tailwind, import your `theme.css` after it. All options are in the [kette-cli README](https://github.com/getitdone-gmbh/kette-cli#theming).
 
 ## The rest of the system
 

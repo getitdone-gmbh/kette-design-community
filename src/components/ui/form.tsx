@@ -84,7 +84,7 @@ const FormLabel = React.forwardRef<
     <Label
       ref={ref}
       className={cn(
-        error && 'text-error',
+        error && 'text-text-destructive',
         '[&_.typography-button]:!typography-input-label',
         { 'text-clamp': clamp },
         { 'leading-clamp': clamp },
@@ -133,7 +133,7 @@ const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<
     }
 
     return (
-      <p ref={ref} id={formMessageId} className={cn('text-sm text-error', className)} {...props}>
+      <p ref={ref} id={formMessageId} className={cn('text-sm text-text-destructive', className)} {...props}>
         {body}
       </p>
     );

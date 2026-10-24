@@ -72,14 +72,6 @@ const avatarVariants = cva(
       interactive: {
         true: [
           'cursor-pointer',
-          // AVATAR-A11Y-04 (interim mitigation): `ring-ring-default` does not yet ship a working
-          // dark-mode override in the *published* the design tokens package
-          // (the source token JSON has one, but dist/theme.css never emits it — a token
-          // build/publish gap owned by design-tokens-maintainer, tracked as a token gap below).
-          // Until that package is rebuilt and republished, this ring reuses the sibling
-          // `general-ring-default` token, which already carries a correct, verified dark-mode
-          // value (rgb(59 130 246)) in the published package. Revert to `ring-ring-default` once
-          // AVATAR-A11Y-04 is closed upstream.
           'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default',
           "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-background-inverse after:opacity-0 after:transition-opacity after:content-['']",
           'hover:after:opacity-10',
@@ -134,19 +126,6 @@ export interface AvatarProps
  * Chip, Tooltip's trigger wrapper, and Button) rather than fabricating the halo without a safe
  * dark-mode value.
  *
- * KNOWN TOKEN GAP — focus ring dark-mode value (AVATAR-A11Y-04, blocker, owner:
- * design-tokens-maintainer): the bare `ring.default` token has a correct dark-mode value in the
- * token JSON source (`figma-tokens/default_theme_dark.json`), but the currently *published*
- * the design tokens (`styles/theme.css`) package never emits a dark-mode override for
- * `--colors-ring-default` in `dist/theme.css` (light-mode value, blue.600, leaks into dark mode —
- * ~2.83:1 against a plausible dark secondary surface, under the 3:1 AA non-text-contrast floor).
- * The sibling `--colors-general-ring-default` token built correctly with both light and dark
- * values, so this Avatar's focus-visible ring reuses `general-ring-default` as an interim
- * mitigation until design-tokens-maintainer rebuilds/republishes the package with a working
- * `--colors-ring-default` dark override — re-point back to `ring-ring-default` once that ships
- * (verify `--colors-ring-default` reads `59 130 246` after `setMode('dark')`). Button, Chip, and
- * Tooltip's trigger wrapper reuse the same bare `ring-default` token and share this exposure but
- * are out of scope for this fix (see their own components).
  */
 // Size of the surrounding Avatar, so the initials pick their type role without a repeated `size` prop.
 const AvatarSizeContext = React.createContext<NonNullable<VariantProps<typeof avatarVariants>['size']> | undefined>(undefined);

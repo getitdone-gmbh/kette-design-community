@@ -207,3 +207,50 @@ export const HiddenActionsLeaveNoGap: Story = {
     await waitFor(() => expect(a.getBoundingClientRect().height).toBe(b.getBoundingClientRect().height));
   },
 };
+
+// Reports-like header: wide tabs plus several actions and a primary action, in a container of a fixed width.
+const allReportActions = ['Export PDF', 'Import data', 'Reminders', 'Bulk edit', 'Archive', 'Share report', 'Schedule', 'Compare', 'Annotate', 'Subscribe', 'Print layout', 'Duplicate'];
+// Wider frames get more actions so the row really wraps at every width.
+const reportHeaderStory = (width: number, count: number): Story => {
+  const reportActions = allReportActions.slice(0, count - 1).concat('Duplicate');
+  return {
+  args: {
+    variant: 'zero',
+    title: 'Reports',
+    subtitle: 'Hours and revenue per project.',
+    tabs: scopeTabs,
+    actions: (
+      <>
+        {reportActions.map((name) => (
+          <Button key={name} variant="outline" size="sm">{name}</Button>
+        ))}
+      </>
+    ),
+    primaryAction: <Button variant="primary" size="sm" icon={<Plus />}>New report</Button>,
+  },
+  decorators: [(Story) => <div data-testid="frame" style={{ width, maxWidth: '100%' }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Below the sm breakpoint of the viewport the group dissolves on purpose, so only desktop width is checked.
+    if (!window.matchMedia('(min-width: 640px)').matches) return;
+    await waitFor(() => {
+      const frame = canvas.getByTestId('frame');
+      // No horizontal overflow of the frame or the page.
+      expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth);
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+      // The primary action shares the row of the last action (same bottom edge) instead of floating between rows.
+      const primary = canvas.getByRole('button', { name: 'New report' }).getBoundingClientRect();
+      const last = canvas.getByRole('button', { name: reportActions[reportActions.length - 1] }).getBoundingClientRect();
+      expect(primary.width).toBeGreaterThan(0);
+      // The actions really wrap (the last one sits lower than the first), so the check above is meaningful.
+      const first = canvas.getByRole('button', { name: reportActions[0] }).getBoundingClientRect();
+      expect(last.top).toBeGreaterThan(first.top);
+      expect(Math.abs(primary.bottom - last.bottom)).toBeLessThanOrEqual(1);
+    });
+  },
+};
+};
+export const WrappedActions640: Story = reportHeaderStory(640, 8);
+export const WrappedActions700: Story = reportHeaderStory(700, 8);
+export const WrappedActions900: Story = reportHeaderStory(900, 11);
+export const WrappedActions1024: Story = reportHeaderStory(1024, 12);

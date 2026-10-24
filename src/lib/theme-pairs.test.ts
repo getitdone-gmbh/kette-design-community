@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BADGE_PAIRS, HEADERS, PAIRS, PAIR_VARS, STATUS_PAIRS, blockVars, ratio } from '../../scripts/theme-pairs.mjs';
+import { BADGE_PAIRS, HEADERS, PAIRS, PAIR_VARS, STANDALONE_CONTEXTS, STATUS_PAIRS, blockVars, ratio, resolveAlone } from '../../scripts/theme-pairs.mjs';
 
 // Port of the kette-tokens gates check:pairs and check:scopes for the one theme this package ships (styles/theme.css, zero), plus the status pairs.
 type Rgb = [number, number, number];
@@ -65,6 +65,21 @@ describe('fill/text pairs (kette-tokens check:pairs)', () => {
   });
 
   it.each(CONTEXTS)('every pair holds 4.5:1 in %s', (_name, vars) => {
+    expect(low(vars, pairs)).toEqual([]);
+  });
+
+  it('checks all 51 pairs of kette-tokens', () => {
+    expect(pairs.length).toBe(51);
+  });
+
+  it('pins every pair variable in :root, both dark blocks and the paper scope', () => {
+    const missing = BLOCKS.flatMap(([name, vars]) => [...(PAIR_VARS as Set<string>)].filter((v) => !(v in vars)).map((v) => `${name} ${v}`));
+    expect(missing).toEqual([]);
+  });
+
+  it.each(STANDALONE_CONTEXTS.map((c) => [c.name, c] as const))('every pair holds 4.5:1 with the theme alone in %s', (_name, c) => {
+    const vars = resolveAlone({ root, dark, media, paper }, c.cls, c.os, c.surface) as Vars;
+    expect(pairs.filter(([, fill, text]) => !(fill in vars) || !(text in vars)).map(([label]) => label)).toEqual([]);
     expect(low(vars, pairs)).toEqual([]);
   });
 

@@ -5,6 +5,7 @@ import { userEvent, waitFor, within } from '@storybook/testing-library';
 import * as React from 'react';
 
 import { Button } from './button';
+import { CookieConsent } from './cookie-consent';
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from './drawer';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
 import { Toast, ToastAction, ToastClose, ToastDescription, ToastProvider, ToastViewport } from './toast';
@@ -387,5 +388,49 @@ export const PhoneBottomOverDrawer: Story = {
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
       expect(submit.contains(hit)).toBe(true);
     });
+  },
+};
+
+const CookieBannerDemo = () => {
+  const { toast } = useToast();
+  return (
+    <main>
+      <Button variant="outline" onClick={() => toast({ variant: 'destructive', title: 'Could not save', description: 'The server did not answer.', duration: 600000 })}>
+        Save
+      </Button>
+      <CookieConsent
+        description="We use cookies to measure how the site is used."
+        onAccept={() => {}}
+        onDecline={() => {}}
+        layout="compact"
+        closable={false}
+      />
+    </main>
+  );
+};
+
+// A fixed cookie banner reports its inset by itself (useToastInset): on phones the error toast ends above the banner, so Accept and Decline stay visible and clickable.
+export const PhoneAboveCookieBanner: Story = {
+  name: 'Phone, above a cookie banner (390px)',
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => <CookieBannerDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }));
+    const close = await within(document.body).findByRole('button', { name: /dismiss|close/i });
+    const toastEl = close.closest('li') as HTMLElement;
+    const banner = within(document.body).getByRole('region', { name: /cookie/i });
+    const accept = within(banner).getByRole('button', { name: /accept/i });
+    const decline = within(banner).getByRole('button', { name: /decline|reject/i });
+    if (!isPhone()) return;
+    // Geometry: the toast ends above the banner top and covers neither button.
+    await waitFor(() => expect(toastEl.getBoundingClientRect().bottom).toBeLessThanOrEqual(banner.getBoundingClientRect().top + 1));
+    for (const button of [accept, decline]) {
+      const box = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      expect(button.contains(hit)).toBe(true);
+    }
+    // The dismiss control of the destructive toast stays reachable.
+    expect(toastEl.getBoundingClientRect().top).toBeGreaterThan(0);
   },
 };

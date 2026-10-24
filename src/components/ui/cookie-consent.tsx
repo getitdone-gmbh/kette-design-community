@@ -3,6 +3,7 @@
 import * as React from 'react';
 
 import { findReplacement, focusPageStart, regionOf } from '../../lib/return-focus';
+import { useToastInset } from '../../lib/toast-inset';
 import { cn } from '../../lib/utils';
 import type { HeadingTag } from './heading-tag';
 import { Button } from './button';
@@ -299,6 +300,8 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       [],
     );
     const reserveScrollSpace = visible && positioning === 'fixed';
+    // On phones a toast rides above the fixed banner instead of covering its buttons.
+    useToastInset(sectionRef, { enabled: reserveScrollSpace });
     // While a fixed banner is showing, keep focused page content above it. Its height is reserved as scroll padding on the document scroller, and as an end-of-body spacer so the end of the page can scroll clear of it too, whatever the body height.
     React.useEffect(() => {
       const node = sectionRef.current;

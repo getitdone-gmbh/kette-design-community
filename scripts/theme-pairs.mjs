@@ -1,6 +1,6 @@
-// Fill/text pair lists and the colour maths shared by scripts/repair-theme.mjs and src/lib/theme-pairs.test.ts.
+// Fill/text pair lists and the colour maths shared by src/lib/theme-pairs.test.ts and src/lib/theme-vars.test.ts.
 
-// Pairs that must travel together, from kette-tokens scripts/color-pairs.js (check:pairs). 'shared' marks a fill that reuses the text of another pair.
+// Pairs that must travel together, the 51 pairs of kette-tokens scripts/color-pairs.js (check:pairs, check:standalone, 5.23.2). 'shared' marks a fill that reuses the text of another pair.
 export const PAIRS = [
   ['button default', '--colors-button-background-default', '--colors-button-foreground-default'],
   ['button hover', '--colors-button-background-hover', '--colors-button-foreground-hover'],
@@ -29,10 +29,34 @@ export const PAIRS = [
   ['sidebar', '--colors-sidebar-background', '--colors-sidebar-foreground'],
   ['sidebar muted', '--colors-sidebar-background', '--colors-sidebar-muted-foreground', 'shared'],
   ['sidebar accent', '--colors-sidebar-accent', '--colors-sidebar-accent-foreground'],
+  ['success bold', '--semantic-background-success-bold-default', '--semantic-text-on-success'],
+  ['success bold hover', '--semantic-background-success-bold-hover', '--semantic-text-on-success', 'shared'],
+  ['success bold active', '--semantic-background-success-bold-active', '--semantic-text-on-success', 'shared'],
+  ['success general', '--colors-general-success-default', '--colors-general-success-on'],
+  ['success general hover', '--colors-general-success-hover', '--colors-general-success-on', 'shared'],
+  ['success general active', '--colors-general-success-active', '--colors-general-success-on', 'shared'],
+  ['warning bold', '--semantic-background-warning-bold-default', '--semantic-text-on-warning'],
+  ['warning bold hover', '--semantic-background-warning-bold-hover', '--semantic-text-on-warning', 'shared'],
+  ['warning bold active', '--semantic-background-warning-bold-active', '--semantic-text-on-warning', 'shared'],
+  ['warning general', '--colors-general-warning-default', '--colors-general-warning-on'],
+  ['warning general hover', '--colors-general-warning-hover', '--colors-general-warning-on', 'shared'],
+  ['warning general active', '--colors-general-warning-active', '--colors-general-warning-on', 'shared'],
+  ['info bold', '--semantic-background-info-bold-default', '--semantic-text-on-info'],
+  ['info bold hover', '--semantic-background-info-bold-hover', '--semantic-text-on-info', 'shared'],
+  ['info bold active', '--semantic-background-info-bold-active', '--semantic-text-on-info', 'shared'],
+  ['info general', '--colors-general-info-default', '--colors-general-info-on'],
+  ['info general hover', '--colors-general-info-hover', '--colors-general-info-on', 'shared'],
+  ['info general active', '--colors-general-info-active', '--colors-general-info-on', 'shared'],
+  ['destructive bold', '--semantic-background-destructive-bold-default', '--semantic-text-on-destructive'],
+  ['destructive bold hover', '--semantic-background-destructive-bold-hover', '--semantic-text-on-destructive', 'shared'],
+  ['destructive bold active', '--semantic-background-destructive-bold-active', '--semantic-text-on-destructive', 'shared'],
+  ['destructive general', '--colors-general-destructive-default', '--colors-general-destructive-on'],
+  ['destructive general hover', '--colors-general-destructive-hover', '--colors-general-destructive-on', 'shared'],
+  ['destructive general active', '--colors-general-destructive-active', '--colors-general-destructive-on', 'shared'],
 ];
 export const PAIR_VARS = new Set(PAIRS.flatMap(([, fill, text]) => [fill, text]));
 
-// Status and brand fills with their text roles (text on green, orange, red, blue). kette-tokens check:pairs does not list them yet.
+// Status and brand fills with their text roles (text on green, orange, red, blue), wider than the kette-tokens list: containers, on-fill, brand and subtle fills.
 const STATUS = ['success', 'warning', 'error', 'info', 'destructive', 'brand'];
 export const STATUS_PAIRS = [
   ...[...STATUS, 'secondary'].map((s) => [`${s} on fill`, `--colors-general-${s}-default`, `--colors-general-${s}-on`]),
@@ -69,6 +93,15 @@ export const blockRange = (css, header) => {
   return start === -1 ? null : [start, css.indexOf('}', start)];
 };
 
+// All declarations of a block (name to raw value), also non-colour variables.
+export const blockDecls = (css, header) => {
+  const range = blockRange(css, header);
+  if (!range) return {};
+  const vars = {};
+  for (const m of css.slice(...range).matchAll(/(--[\w-]+):\s*([^;]+);/g)) vars[m[1]] = m[2].trim();
+  return vars;
+};
+
 // RGB triplet variables of a block.
 export const blockVars = (css, header) => {
   const range = blockRange(css, header);
@@ -89,3 +122,16 @@ export const ratio = (a, b) => {
   const [p, q] = [lum(a), lum(b)];
   return (Math.max(p, q) + 0.05) / (Math.min(p, q) + 0.05);
 };
+
+// Effective variables of the theme loaded alone, on the html element or on a paper surface inside it, for html class none/light/dark and OS light/dark (kette-tokens check:standalone).
+export const resolveAlone = (blocks, cls, os, surface) => ({
+  ...blocks.root,
+  ...(os === 'dark' && cls !== 'light' ? blocks.media : {}),
+  ...(cls === 'dark' ? blocks.dark : {}),
+  ...(surface ? blocks.paper : {}),
+});
+
+// The 12 cascade contexts of check:standalone.
+export const STANDALONE_CONTEXTS = ['none', 'light', 'dark'].flatMap((cls) =>
+  ['light', 'dark'].flatMap((os) => [false, true].map((surface) => ({ cls, os, surface, name: `html.${cls}, OS ${os}${surface ? ', paper surface' : ''}` }))),
+);
