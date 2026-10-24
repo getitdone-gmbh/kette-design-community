@@ -38,7 +38,7 @@ const badgeVariants = cva(
       tinted: {
         true: '',
       },
-      // Product preset (DesignSystemProvider `preset`). `zero` gives the plain badge the outline look and 8px padding, and the info tone the brand tint.
+      // Product preset (DesignSystemProvider `preset`). `zero` gives the plain badge the outline look and 8px padding, and the info tone the info-subtle tint (the status token, so themes that grey the status tints stay consistent).
       preset: {
         default: '',
         zero: '',
@@ -59,7 +59,7 @@ const badgeVariants = cva(
       { variant: 'destructive', tinted: true, className: 'bg-background-destructive-subtle text-text-destructive-on-subtle' },
       { preset: 'zero', className: 'px-2' },
       { preset: 'zero', variant: 'default', className: 'border-border-default bg-background text-foreground' },
-      { preset: 'zero', variant: 'info', className: 'bg-background-brand-subtle text-text-info-on-subtle' },
+      { preset: 'zero', variant: 'info', className: 'bg-background-info-subtle text-text-info-on-subtle' },
       { variant: 'product-backoffice', bordered: true, className: 'border-product-backoffice-border' },
       { variant: 'product-backoffice', readable: false, className: 'text-product-backoffice-default' },
       { variant: 'product-backoffice', readable: true, className: 'text-foreground' },

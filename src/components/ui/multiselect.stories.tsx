@@ -1337,3 +1337,35 @@ export const InvalidValues: Story = {
   parameters: { docs: { description: { story: 'A single value can be invalid without the whole field being invalid. Mark it with `invalid: true` on the option, `invalidValues` or `isValueInvalid(id)`. A selected id that is not in the options is shown as invalid with its id as label. The chip uses the destructive role and is announced as invalid.' } } },
   render: () => <InvalidValuesDemo />,
 };
+
+const SizeSmDemo = () => {
+  const [a, setA] = useState<string[]>(['design']);
+  const [b, setB] = useState<string[]>(['design', 'development', 'other']);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'other', label: 'Other' },
+  ];
+  return (
+    <MultiSelectProvider>
+      <div className="flex w-[480px] flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <MultiSelect id="sm-a" ariaLabel="Job type, small" size="sm" chipsInside options={opts} selected={a} onChange={setA} onUpdateOrder={() => {}} disableAddNew />
+          </div>
+          <Button variant="outline" size="sm">
+            Button sm
+          </Button>
+        </div>
+        <MultiSelect id="sm-b" ariaLabel="Job type, small, wrapping" size="sm" chipsInside options={opts} selected={b} onChange={setB} onUpdateOrder={() => {}} disableAddNew />
+        <MultiSelect id="sm-c" ariaLabel="Job type, default" chipsInside options={opts} selected={a} onChange={setA} onUpdateOrder={() => {}} disableAddNew />
+      </div>
+    </MultiSelectProvider>
+  );
+};
+
+// Size sm is as high as Button sm (control-sm token: 32, zero 28): one row with a compact search input and toggle. Chips inside wrap with a tight gap.
+export const SizeSm: Story = {
+  args: {} as any,
+  render: () => <SizeSmDemo />,
+};

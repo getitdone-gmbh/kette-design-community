@@ -5,24 +5,64 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 import * as React from 'react';
 
+import { MODAL_EXEMPT_ATTRIBUTE } from '../../lib/modal-inert';
 import { cn } from '../../lib/utils';
 import { useLabels, usePreset } from './labels-context';
 
-const ToastProvider = ToastPrimitives.Provider;
+// Phones (below the sm breakpoint) place toasts at the bottom edge and dismiss them by swiping down. From sm up they sit bottom right and swipe right.
+const PHONE_QUERY = '(max-width: 639px)';
 
+function usePhoneSwipeDirection(): 'down' | 'right' {
+  const [phone, setPhone] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const query = window.matchMedia(PHONE_QUERY);
+    const update = () => setPhone(query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+  return phone ? 'down' : 'right';
+}
+
+// Pass `swipeDirection` to override the responsive default.
+// The provider label is spoken before each toast. It follows the labels context (locale), a `label` prop wins.
+const ToastProvider = ({ swipeDirection, label, ...props }: React.ComponentPropsWithoutRef<typeof ToastPrimitives.Provider>) => {
+  const responsive = usePhoneSwipeDirection();
+  const l = useLabels();
+  return <ToastPrimitives.Provider swipeDirection={swipeDirection ?? responsive} label={label ?? l.toastNotification} {...props} />;
+};
+ToastProvider.displayName = 'ToastProvider';
+
+// Modal layers (Sheet, Dialog, Drawer) make the page inert but keep elements with this attribute reachable, see lib/modal-inert.
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport> & { clamp?: boolean }
->(({ className, clamp = false, ...props }, ref) => (
-  <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(
-      'fixed top-0 z-toast flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]',
-      className,
-    )}
-    {...props}
-  />
-));
+>(({ className, clamp = false, label, ...props }, ref) => {
+  const l = useLabels();
+  // Radix renders a role="region" wrapper around the list that takes no props, so the exemption is also set on it.
+  const setRef = React.useCallback(
+    (node: HTMLOListElement | null) => {
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLOListElement | null>).current = node;
+      node?.parentElement?.setAttribute(MODAL_EXEMPT_ATTRIBUTE, '');
+    },
+    [ref],
+  );
+  return (
+    <ToastPrimitives.Viewport
+      ref={setRef}
+      label={label ?? l.toastRegion}
+      {...{ [MODAL_EXEMPT_ATTRIBUTE]: '' }}
+      className={cn(
+        // Phones: bottom edge, newest toast nearest the edge, above the safe area and above the sticky footer of an open Sheet, Dialog or Drawer. From sm: bottom right as before.
+        'fixed bottom-0 z-toast flex max-h-screen w-full flex-col-reverse p-4 max-sm:inset-x-0 max-sm:bottom-[var(--toast-inset-bottom,0px)] max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:right-0 sm:flex-col md:max-w-[420px]',
+        className,
+      )}
+      {...props}
+    />
+  );
+});
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
 // TOAST-TOK-01 (component-scoped surface token gap): unlike sibling overlay/portal-level
@@ -66,7 +106,7 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 // elevated-surface border role) needs a lighter dark-mode value that clears 3:1 against
 // `background-default` dark. Not fabricated here per the "never hardcode a missing token" rule.
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-default border border-solid border-general-border-default p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
+  'group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-default border border-solid border-general-border-default p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 max-sm:data-[state=closed]:slide-out-to-bottom-full sm:data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
   {
     variants: {
       variant: {
@@ -100,11 +140,13 @@ const toastVariants = cva(
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & Omit<VariantProps<typeof toastVariants>, 'preset'> & { clamp?: boolean }
->(({ className, variant, clamp = false, ...props }, ref) => {
+>(({ className, variant, clamp = false, style, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   return (
     <ToastPrimitives.Root
       ref={ref}
+      // A toast that was already open when a modal layer opened would get pointer-events none from Radix (it sits below the modal in the layer stack).
+      style={{ pointerEvents: 'auto', ...style }}
       className={cn(
         toastVariants({ variant: variant ?? (zero ? 'inverse' : 'default'), preset: zero ? 'zero' : 'default' }),
         { '!p-6': clamp },

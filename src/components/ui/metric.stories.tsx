@@ -82,6 +82,35 @@ const FilterStripDemo = () => {
 
 export const FilterStrip: Story = { render: () => <FilterStripDemo /> };
 
+// Each tile is one real link: middle click and the context menu open it in a new tab.
+export const LinkedStrip: Story = {
+  render: () => (
+    <KpiStrip aria-label="Key figures, each opens the list">
+      <MetricItem label="Open demands" value="24" delta="+3 vs last week" deltaTone="success" href="#open" />
+      <MetricItem label="Candidates" value="118" delta="+12 vs last quarter" deltaTone="success" href="#candidates" selected />
+      <MetricItem label="Late" value="3" delta="-1 since Monday" deltaTone="destructive" href="#late" />
+      <MetricItem label="Fill rate" value="62 %" caption="Rolling 30 days" href="#fill-rate" />
+    </KpiStrip>
+  ),
+};
+
+// asChild merges the tile into your router link.
+export const LinkedStripAsChild: Story = {
+  render: () => (
+    <KpiStrip aria-label="Key figures, router links">
+      <MetricItem label="Open demands" value="24" asChild>
+        {/* eslint-disable-next-line jsx-a11y/anchor-has-content -- content is merged in by asChild */}
+        <a href="#open" />
+      </MetricItem>
+      <MetricItem label="Late" value="3" deltaTone="destructive" delta="-1 since Monday" asChild>
+        {/* eslint-disable-next-line jsx-a11y/anchor-has-content -- content is merged in by asChild */}
+        <a href="#late" />
+      </MetricItem>
+      <MetricItem label="Fill rate" value="62 %" />
+    </KpiStrip>
+  ),
+};
+
 export const Loading: Story = {
   render: () => (
     <KpiStrip aria-label="Loading KPIs">

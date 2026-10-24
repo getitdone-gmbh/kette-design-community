@@ -104,31 +104,31 @@ const buttonVariants = cva('', {
         'data-[state=open]:bg-muted',
         'active:bg-muted-strong',
       ],
-      link: ['border-transparent', 'underline-offset-4', 'hover:font-semibold'],
+      link: ['border-transparent', 'underline-offset-4'],
     },
     size: {
       // Control heights, paddings and icon sizes bind to the `--size-control-*` and `--size-icon-*` tokens, so one markup is comfortable in every theme and compact in `zero`.
-      // Heights are the control tokens: sm 32 (28 in zero), md and default 40 (32 in zero), lg 42 (36 in zero), xl 48, 2xl 60.
+      // Heights are the control tokens: sm 32 (28 in zero), md and default 40 (32 in zero), lg 42 (36 in zero), xl 48, 2xl 56 (zero 48).
       // Label type: sm 13/500 (12 via the `button-sm` token variables in zero), md and default `typography-button-md`, lg, xl and 2xl their own `typography-button-*` role.
       sm: ['leading-normal', 'h-control-sm', 'px-button-px-sm', 'gap-button-gap-sm'],
       default: ['typography-button-md', 'leading-normal', 'h-control-md', 'px-control-px-md', 'gap-2'],
       md: ['typography-button-md', 'leading-normal', 'h-control-md', 'px-control-px-md', 'gap-2'],
       lg: ['typography-button-lg', 'leading-normal', 'h-control-lg', 'px-control-px-lg', 'gap-2'],
       xl: ['typography-button-xl', 'leading-normal', 'h-control-xl', 'px-control-px-xl', 'gap-2'],
-      '2xl': ['typography-button-2xl', 'leading-normal', 'h-15', 'px-control-px-2xl', 'gap-3'],
+      '2xl': ['typography-button-2xl', 'leading-normal', 'h-control-2xl', 'px-control-px-2xl', 'gap-3'],
       clamp: ['text-clamp', 'leading-clamp', 'h-10', 'px-8'],
       'clamp-sm': ['text-clamp-small', 'leading-clamp-small', 'h-8', 'px-6'],
       link: ['text-base', 'leading-base', 'px-8'],
       'link-sm': ['text-sm', 'leading-sm', 'px-6'],
       // Icon-only squares share the height of the text size with the same name, so a row that mixes text and icon buttons lines up.
-      // Heights bind to the control tokens: icon-xs 28 (24 in zero), icon-sm 32 (28), icon 40 (32), icon-lg 42 (36), icon-xl 48 (40), icon-2xl 60 in every preset.
+      // Heights bind to the control tokens: icon-xs 28 (24 in zero), icon-sm 32 (28), icon 40 (32), icon-lg 42 (36), icon-xl 48 (40), icon-2xl 56 (zero 48).
       // icon-xs is the dense list size (row actions, tags, comments): the hit area is the token (24 at least, WCAG 2.5.8) and the glyph is the `icon-xs` token (14).
       'icon-xs': ['typography-button-sm', 'h-control-xs', 'w-control-xs', '[&>svg]:h-icon-xs', '[&>svg]:w-icon-xs'],
       'icon-sm': ['typography-button-sm', 'h-control-sm', 'w-control-sm'],
       icon: ['typography-button-md', 'h-control-md', 'w-control-md'],
       'icon-lg': ['typography-button-lg', 'h-control-lg', 'w-control-lg'],
       'icon-xl': ['typography-button-xl', 'h-control-xl', 'w-control-xl'],
-      'icon-2xl': ['typography-button-2xl', 'h-15', 'w-15'],
+      'icon-2xl': ['typography-button-2xl', 'h-control-2xl', 'w-control-2xl'],
       // Density-aware sizes: height comes from the `--size-control-*` token vars, so the same markup is
       // comfortable (32/40/42) in every theme and compact (28/32/36) in themes that ship compact density
       // (e.g. `zero`). Opt in per control (or per table) instead of changing the default sizes.
@@ -136,6 +136,24 @@ const buttonVariants = cva('', {
       'control-sm': ['leading-normal', 'h-control-sm', 'px-button-px-sm', 'gap-button-gap-sm'],
       'control-md': ['leading-normal', 'h-control-md', 'px-3', 'gap-2'],
       'control-lg': ['typography-button-md', 'leading-normal', 'h-control-lg', 'px-4', 'gap-2'],
+      // Inline text link inside running copy (use with variant="link"). Type is inherited from the surrounding text through zero-specificity `:where()` rules, so any `text-*` or `font-*` class a consumer passes wins. The box is exactly the text line (no border, no min-height, no negative margin), so it adds no line height and no 1px shift. The 24px target (WCAG 2.5.8) is a centered pseudo-element that is at most 8px taller than the line, so it does not cover neighbouring lines or controls.
+      inline: [
+        'relative',
+        'border-0',
+        'gap-1',
+        '[:where(&)]:[font-family:inherit]',
+        '[:where(&)]:[font-size:inherit]',
+        '[:where(&)]:[font-weight:inherit]',
+        '[:where(&)]:[line-height:inherit]',
+        "after:content-['']",
+        'after:absolute',
+        'after:left-1/2',
+        'after:top-1/2',
+        'after:-translate-x-1/2',
+        'after:-translate-y-1/2',
+        'after:[width:max(100%,theme(spacing.6))]',
+        'after:[height:min(theme(spacing.6),calc(1lh_+_theme(spacing.2)))]',
+      ],
       'no-size': [],
     },
     // Product preset (see DesignSystemProvider `preset`). `zero` tightens the label type, the gap and the icon-only squares to the workload.zero scale.
@@ -145,6 +163,10 @@ const buttonVariants = cva('', {
     },
   },
   compoundVariants: [
+    // Link appearance of the inline size: link colour roles, underline (not colour alone), no weight change on hover so the text never reflows.
+    { variant: 'link', size: 'inline', className: ['text-link-default', 'hover:text-link-hover', 'active:text-link-active', 'underline', 'underline-offset-4', 'hover:decoration-2'] },
+    // The other link sizes keep the semibold hover.
+    { variant: 'link', size: ['default', 'md', 'sm', 'lg', 'xl', '2xl', 'clamp', 'clamp-sm', 'link', 'link-sm', 'control-sm', 'control-md', 'control-lg', 'no-size', 'icon-xs', 'icon-sm', 'icon', 'icon-lg', 'icon-xl', 'icon-2xl'], className: 'hover:font-semibold' },
     // Label type of the small sizes: 13/500 by default; in zero the `button-sm` token variables (12px). The variables are read directly because the `typography-button-sm` role class is overridden by an `inherit` rule in the tokens preset, which made the label take the surrounding font size.
     { preset: 'default', size: ['sm', 'control-sm', 'control-md'], className: ['text-ui', 'font-medium', 'leading-normal'] },
     { preset: 'zero', size: ['sm', 'control-sm'], className: ['text-[length:var(--typo-button-sm-size)]', 'font-[number:var(--typo-button-sm-weight)]', 'leading-[var(--typo-button-sm-lh)]', 'tracking-[var(--typo-button-sm-ls)]'] },
@@ -274,6 +296,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         ref={ref}
         data-slot="button"
+        data-variant={resolvedVariant}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}

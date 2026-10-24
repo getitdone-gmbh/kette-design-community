@@ -93,11 +93,12 @@ describe('0.12.1 regressions', () => {
       expect(minContrast(`general-${variant}-hover`, `general-${variant}-on`)).toBeGreaterThanOrEqual(4.5);
     });
 
-    it('documents the failing -default pairs that were replaced (pinned zero theme, light)', () => {
+    // kette-tokens 5.23.1 fixed the -default pairs that were 3.6 and 3.4:1 (fill one step darker), so they now pass 4.5:1 as well.
+    it('the -default pairs pass 4.5:1 since kette-tokens 5.23.1 (pinned zero theme, light)', () => {
       const zero = themes.find((t) => t.name === 'theme_shadcn_zero');
       expect(zero).toBeDefined();
-      expect(ratio(zero!.light['colors-general-success-on'], zero!.light['colors-general-success-default'])).toBeCloseTo(3.6, 1);
-      expect(ratio(zero!.light['colors-general-warning-on'], zero!.light['colors-general-warning-default'])).toBeCloseTo(3.4, 1);
+      expect(ratio(zero!.light['colors-general-success-on'], zero!.light['colors-general-success-default'])).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(zero!.light['colors-general-warning-on'], zero!.light['colors-general-warning-default'])).toBeGreaterThanOrEqual(4.5);
     });
 
     it.each(['success', 'warning'] as const)('Badge %s container pair passes 4.5:1', (variant) => {

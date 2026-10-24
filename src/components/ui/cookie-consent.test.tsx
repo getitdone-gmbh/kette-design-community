@@ -1,9 +1,9 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { vi } from 'vitest';
 
-import { CookieConsent } from './cookie-consent';
+import { CookieConsent, openCookieSettings, useCookieConsent } from './cookie-consent';
 import { DesignSystemProvider } from './design-system-provider';
 
 describe('CookieConsent', () => {
@@ -441,5 +441,387 @@ describe('CookieConsent action stacking', () => {
       await user.click(screen.getByRole('button', { name: 'Accept all' }));
       expect(trigger).toHaveFocus();
     });
+  });
+});
+
+describe('CookieConsent reopen API', () => {
+  const noop = () => undefined;
+
+  const FooterLink = () => {
+    const { reopen } = useCookieConsent();
+    return (
+      <button type="button" onClick={() => reopen()}>
+        Cookie settings
+      </button>
+    );
+  };
+
+  it('reopens an uncontrolled banner (open false) from the hook, moves focus in and back out', async () => {
+    const Page = () => {
+      const [decided, setDecided] = React.useState(true);
+      return (
+        <div>
+          <FooterLink />
+          <CookieConsent open={!decided} title="Cookies" description="x" onAccept={() => setDecided(true)} onDecline={() => setDecided(true)} />
+        </div>
+      );
+    };
+    const user = userEvent.setup();
+    render(<Page />);
+    const trigger = screen.getByRole('button', { name: 'Cookie settings' });
+    await user.click(trigger);
+    expect(screen.getByRole('heading', { name: 'Cookies' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Accept all' }));
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('shows the banner without any open handling in the consumer and hides it after a decision', async () => {
+    const onAccept = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <div>
+        <FooterLink />
+        <CookieConsent open={false} title="Cookies" description="x" onAccept={onAccept} onDecline={noop} />
+      </div>,
+    );
+    expect(screen.queryByRole('region')).toBeNull();
+    const trigger = screen.getByRole('button', { name: 'Cookie settings' });
+    await user.click(trigger);
+    expect(screen.getByRole('region', { name: 'Cookies' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Accept all' }));
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('calls onReopen so a controlled consumer can set open', async () => {
+    const onReopen = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <div>
+        <FooterLink />
+        <CookieConsent open={false} title="Cookies" description="x" onReopen={onReopen} onAccept={noop} onDecline={noop} />
+      </div>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Cookie settings' }));
+    expect(onReopen).toHaveBeenCalledTimes(1);
+  });
+
+  it('works with the plain function from a non-React handler and reports whether a banner took it', async () => {
+    expect(openCookieSettings()).toBe(false);
+    render(<CookieConsent open={false} title="Cookies" description="x" onAccept={noop} onDecline={noop} />);
+    let handled = false;
+    await act(async () => {
+      handled = openCookieSettings();
+    });
+    expect(handled).toBe(true);
+    expect(screen.getByRole('region', { name: 'Cookies' })).toBeInTheDocument();
+  });
+
+  it('brings a banner that is already showing back to its first view with focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <FooterLink />
+        <CookieConsent title="Cookies" description="x" categories={[{ id: 'a', title: 'A' }]} onAccept={noop} onDecline={noop} />
+      </div>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Cookie settings' }));
+    expect(screen.getByRole('heading', { name: 'Cookies' })).toHaveFocus();
+  });
+
+  it('reopens a banner that was deferred', async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <FooterLink />
+        <CookieConsent title="Cookies" description="x" closable dismissBehavior="defer" onAccept={noop} onDecline={noop} />
+      </div>,
+    );
+    await user.click(screen.getByRole('button', { name: /close/i }));
+    expect(screen.queryByRole('region')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Cookie settings' }));
+    expect(screen.getByRole('region', { name: 'Cookies' })).toBeInTheDocument();
+  });
+});
+
+describe('CookieConsent 0.27.8', () => {
+  const noop = () => undefined;
+
+  it('returns focus inside the region of the opener when it was re-rendered, not to a same-named button elsewhere', async () => {
+    let rekey = () => {};
+    const Page = () => {
+      const [decided, setDecided] = React.useState(true);
+      const [key, setKey] = React.useState(0);
+      rekey = () => setKey((k) => k + 1);
+      return (
+        <div>
+          <header>
+            <button type="button">Cookie settings</button>
+          </header>
+          <footer>
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                openCookieSettings();
+                setDecided(false);
+              }}
+            >
+              Cookie settings
+            </button>
+          </footer>
+          <CookieConsent open={!decided} title="Cookies" description="x" onAccept={() => setDecided(true)} onDecline={() => setDecided(true)} />
+        </div>
+      );
+    };
+    const user = userEvent.setup();
+    render(<Page />);
+    const [decoy, original] = screen.getAllByRole('button', { name: 'Cookie settings' });
+    await user.click(original as HTMLElement);
+    // A new key while the banner is open replaces the opener with a new element.
+    act(() => rekey());
+    expect(original?.isConnected).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Accept all' }));
+    const buttons = screen.getAllByRole('button', { name: 'Cookie settings' });
+    expect(decoy).not.toHaveFocus();
+    expect(buttons[1]).toHaveFocus();
+  });
+
+  it('restores focus without scrolling the page', async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const Page = () => {
+      const [decided, setDecided] = React.useState(true);
+      return (
+        <div>
+          <button type="button" onClick={() => { openCookieSettings(); setDecided(false); }}>
+            Cookie settings
+          </button>
+          <CookieConsent open={!decided} title="Cookies" description="x" onAccept={() => setDecided(true)} onDecline={() => setDecided(true)} />
+        </div>
+      );
+    };
+    const user = userEvent.setup();
+    render(<Page />);
+    const trigger = screen.getByRole('button', { name: 'Cookie settings' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Accept all' }));
+    expect(trigger).toHaveFocus();
+    const restore = focus.mock.calls.filter(([options]) => options && (options as FocusOptions).preventScroll === true);
+    expect(restore.length).toBeGreaterThanOrEqual(2);
+    focus.mockRestore();
+  });
+
+  it('gives the programmatic focus targets only a keyboard outline, never the full focus ring', () => {
+    render(<CookieConsent title="Cookies" description="x" onAccept={noop} onDecline={noop} />);
+    const heading = screen.getByRole('heading', { name: 'Cookies' });
+    const region = screen.getByRole('region', { name: 'Cookies' });
+    for (const el of [heading, region]) {
+      expect(el).toHaveAttribute('tabindex', '-1');
+      expect(el).toHaveClass('outline-none', 'focus-visible:outline', 'focus-visible:outline-2');
+      expect(el.className).not.toContain('ring-focus');
+      expect(el.className).not.toContain('focus-visible:ring');
+    }
+  });
+
+  it('Escape closes the banner like the close button when it is closable (decline by default)', async () => {
+    const onDecline = vi.fn();
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" closable onAccept={noop} onDecline={onDecline} />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(onDecline).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape follows dismissBehavior="defer": closes without a decision', async () => {
+    const onDecline = vi.fn();
+    const onDismiss = vi.fn();
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" closable dismissBehavior="defer" onDismiss={onDismiss} onAccept={noop} onDecline={onDecline} />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onDecline).not.toHaveBeenCalled();
+    expect(screen.queryByRole('region')).toBeNull();
+  });
+
+  it('Escape does nothing without a close action: it never decides on its own', async () => {
+    const onDecline = vi.fn();
+    const onAccept = vi.fn();
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" onAccept={onAccept} onDecline={onDecline} />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(onDecline).not.toHaveBeenCalled();
+    expect(onAccept).not.toHaveBeenCalled();
+    expect(screen.getByRole('region', { name: 'Cookies' })).toBeInTheDocument();
+  });
+
+  it('Escape in the settings view goes back to the summary first', async () => {
+    const onDecline = vi.fn();
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" closable categories={[{ id: 'a', title: 'Analytics' }]} onAccept={noop} onDecline={onDecline} />);
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Accept all' })).toBeInTheDocument();
+    expect(onDecline).not.toHaveBeenCalled();
+  });
+
+  it('keeps the consumer onKeyDown and lets it prevent the Escape handling', async () => {
+    const onDecline = vi.fn();
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" closable onKeyDown={(e) => e.preventDefault()} onAccept={noop} onDecline={onDecline} />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(onDecline).not.toHaveBeenCalled();
+  });
+
+  it('size="sm" renders the buttons small, default keeps the 40px control', () => {
+    const { rerender } = render(<CookieConsent title="Cookies" description="x" categories={[{ id: 'a', title: 'A' }]} onAccept={noop} onDecline={noop} />);
+    expect(screen.getByRole('button', { name: 'Accept all' })).toHaveClass('h-control-md');
+    rerender(<CookieConsent title="Cookies" description="x" size="sm" categories={[{ id: 'a', title: 'A' }]} onAccept={noop} onDecline={noop} />);
+    for (const name of ['Accept all', 'Settings']) expect(screen.getByRole('button', { name })).toHaveClass('h-control-sm');
+    expect(screen.getByRole('button', { name: 'Accept all' })).not.toHaveClass('h-control-md');
+    expect(screen.getByRole('region', { name: 'Cookies' })).toHaveAttribute('data-size', 'sm');
+  });
+
+  it('size="sm" also applies to the settings view buttons', async () => {
+    const user = userEvent.setup();
+    render(<CookieConsent title="Cookies" description="x" size="sm" categories={[{ id: 'a', title: 'A' }]} onAccept={noop} onDecline={noop} />);
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('button', { name: 'Back' })).toHaveClass('h-control-sm');
+  });
+});
+
+describe('CookieConsent focus when closed without an opener (0.27.13)', () => {
+  const noop = () => undefined;
+  afterEach(() => {
+    document.body.removeAttribute('tabindex');
+    document.body.removeAttribute('style');
+  });
+  // The consumer owns the choice: any decision hides the banner, as in an app that stores it.
+  const Banner = ({ closable = true }: { closable?: boolean }) => {
+    const [open, setOpen] = React.useState(true);
+    return <CookieConsent open={open} title="Cookies" description="x" closable={closable} onAccept={() => setOpen(false)} onDecline={() => setOpen(false)} />;
+  };
+  const Page = ({ withMain = true, closable = true }: { withMain?: boolean; closable?: boolean }) => {
+    const banner = <Banner closable={closable} />;
+    return withMain ? (
+      <div>
+        <main data-testid="main">
+          <h1>Page</h1>
+          <button type="button">Page action</button>
+        </main>
+        {banner}
+      </div>
+    ) : (
+      <div>{banner}</div>
+    );
+  };
+
+  it('keeps the first visit free of any focus move', () => {
+    render(<Page />);
+    expect(screen.getByRole('region', { name: 'Cookies' })).toBeInTheDocument();
+    expect(document.body).toHaveFocus();
+  });
+
+  it('Escape moves focus to <main> instead of losing it to the body, without scrolling and without a focus ring', async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    const main = screen.getByTestId('main');
+    const focusSpy = vi.spyOn(main, 'focus');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(main).toHaveFocus();
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
+    expect(main.style.outline).toBe('none');
+  });
+
+  it('removes the temporary tabindex and outline from <main> once focus leaves it', async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    const main = screen.getByTestId('main');
+    expect(main).toHaveAttribute('tabindex', '-1');
+    // The next Tab continues at the top of the content.
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Page action' })).toHaveFocus();
+    expect(main).not.toHaveAttribute('tabindex');
+    expect(main).not.toHaveAttribute('style');
+  });
+
+  it('falls back to the first h1 and then to the body start when the page has no <main>', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <div>
+        <h1>Title</h1>
+        <Banner />
+      </div>,
+    );
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('heading', { name: 'Title' })).toHaveFocus();
+    unmount();
+    render(<Page withMain={false} />);
+    screen.getByRole('button', { name: 'Accept all' }).focus();
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(document.body);
+    // The body only holds the sequential navigation start for as long as it has focus.
+    expect(document.body).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('also covers accept and decline clicks', async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+    await user.click(screen.getByRole('button', { name: 'Decline non-essential' }));
+    expect(screen.getByTestId('main')).toHaveFocus();
+  });
+
+  it('does not move focus that is somewhere else on the page when the banner closes', async () => {
+    const user = userEvent.setup();
+    const Controlled = () => {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <div>
+          <main>
+            <button type="button" onClick={() => setOpen(false)}>
+              Hide banner
+            </button>
+            <button type="button">Elsewhere</button>
+          </main>
+          <CookieConsent open={open} title="Cookies" description="x" onAccept={noop} onDecline={noop} />
+        </div>
+      );
+    };
+    render(<Controlled />);
+    await user.click(screen.getByRole('button', { name: 'Hide banner' }));
+    expect(screen.queryByRole('region')).toBeNull();
+    // Focus stays on the control the user used, which is not lost.
+    expect(screen.getByRole('button', { name: 'Hide banner' })).toHaveFocus();
+  });
+
+  it('keeps returning focus to the trigger when there is one', async () => {
+    const user = userEvent.setup();
+    const WithTrigger = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <div>
+          <main>
+            <button type="button" onClick={() => setOpen(true)}>
+              Cookie settings
+            </button>
+          </main>
+          <CookieConsent open={open} title="Cookies" description="x" onAccept={() => setOpen(false)} onDecline={() => setOpen(false)} />
+        </div>
+      );
+    };
+    render(<WithTrigger />);
+    await user.click(screen.getByRole('button', { name: 'Cookie settings' }));
+    await user.click(screen.getByRole('button', { name: 'Accept all' }));
+    expect(screen.getByRole('button', { name: 'Cookie settings' })).toHaveFocus();
   });
 });

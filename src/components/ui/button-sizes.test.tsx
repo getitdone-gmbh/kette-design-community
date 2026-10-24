@@ -15,11 +15,10 @@ const tokenPx = (name: string) => {
   return Number.parseInt(match[1], 10);
 };
 
-// Rendered height in px: resolves the `h-control-*` class against the token value of the theme, `h-15` is the 60px 2xl step.
+// Rendered height in px: resolves the `h-control-*` class against the token value of the theme.
 const pxOf = (button: HTMLElement, axis: 'h' | 'w') => {
-  const cls = [...button.classList].find((c) => c.startsWith(`${axis}-control-`) || c === `${axis}-15`);
+  const cls = [...button.classList].find((c) => c.startsWith(`${axis}-control-`));
   if (!cls) throw new Error(`no ${axis} class on ${button.className}`);
-  if (cls.endsWith('-15')) return 60;
   return tokenPx(`--size-control-${cls.replace(`${axis}-control-`, '')}`);
 };
 
@@ -40,7 +39,7 @@ const heightOf = (size: Size, preset: 'zero', _theme: string, icon: boolean) => 
 
 // Chain rule: the workload.zero prototype decides (zero: sm 28, default 32, lg 36, dense icon 24), the default scale is the token scale.
 const EXPECTED = {
-  zero: { xs: 24, sm: 28, md: 32, lg: 36, xl: 40, '2xl': 60 },
+  zero: { xs: 24, sm: 28, md: 32, lg: 36, xl: 40, '2xl': 48 },
 } as const;
 
 const CASES: Array<['zero', string]> = [['zero', 'zero']];
@@ -122,5 +121,75 @@ describe('link variant padding', () => {
   it('ignores padded on other variants', () => {
     render(<Button padded>Save</Button>);
     expect(screen.getByRole('button', { name: 'Save' })).toHaveClass('px-control-px-md');
+  });
+});
+
+describe('inline', () => {
+  it('is a link size with no fixed height that inherits the text of its paragraph', () => {
+    render(
+      <p>
+        Read the{' '}
+        <Button variant="link" size="inline">
+          docs
+        </Button>
+      </p>,
+    );
+    const link = screen.getByRole('button', { name: 'docs' });
+    expect(link.className).not.toMatch(/(^|\s)h-/);
+    expect(link).toHaveClass('[:where(&)]:[font-size:inherit]', '[:where(&)]:[font-weight:inherit]', '[:where(&)]:[line-height:inherit]', 'p-0');
+  });
+
+  it('inherits type through zero-specificity rules, so text and font classes of the consumer win', () => {
+    render(
+      <Button variant="link" size="inline" className="text-sm font-medium">
+        docs
+      </Button>,
+    );
+    const link = screen.getByRole('button', { name: 'docs' });
+    expect(link).toHaveClass('text-sm', 'font-medium');
+    // No plain arbitrary property that could out-rank or tie with the consumer class.
+    expect(link.className).not.toMatch(/(^|\s)\[(font-size|font-weight|line-height):inherit\]/);
+  });
+
+  it('looks like a link by default: link colour roles and underline, no weight change on hover', () => {
+    render(
+      <Button variant="link" size="inline">
+        docs
+      </Button>,
+    );
+    const link = screen.getByRole('button', { name: 'docs' });
+    expect(link).toHaveClass('text-link-default', 'hover:text-link-hover', 'active:text-link-active', 'underline', 'underline-offset-4');
+    expect(link.className).not.toContain('font-semibold');
+  });
+
+  it('keeps hover:font-semibold on the other link sizes', () => {
+    render(<Button variant="link">Open</Button>);
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveClass('hover:font-semibold');
+  });
+
+  it('has no border, min-height or negative margin, so the box is the text line', () => {
+    render(
+      <Button variant="link" size="inline">
+        docs
+      </Button>,
+    );
+    const link = screen.getByRole('button', { name: 'docs' });
+    expect(link).toHaveClass('border-0');
+    expect(link).not.toHaveClass('border');
+    expect(link.className).not.toContain('min-height');
+    expect(link.className).not.toContain('margin-block');
+  });
+
+  it('gets its 24px target (WCAG 2.5.8) from a centered pseudo-element that is capped at the line plus 8px', () => {
+    render(
+      <Button variant="link" size="inline">
+        docs
+      </Button>,
+    );
+    const link = screen.getByRole('button', { name: 'docs' });
+    expect(link).toHaveClass('relative', 'after:absolute', 'after:left-1/2', 'after:top-1/2', 'after:-translate-x-1/2', 'after:-translate-y-1/2');
+    // theme(spacing.6) is 1.5rem, 24px at the root size of 16px. The height never exceeds the line (1lh) plus spacing.2 (8px).
+    expect(link.className).toContain('after:[width:max(100%,theme(spacing.6))]');
+    expect(link.className).toContain('after:[height:min(theme(spacing.6),calc(1lh_+_theme(spacing.2)))]');
   });
 });

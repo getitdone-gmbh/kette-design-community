@@ -69,7 +69,7 @@ describe('0.24.0 rendered classes', () => {
     );
     expect(getByText('a').closest('div')).toHaveClass('text-text-destructive-on-subtle');
     expect(getByText('a').closest('div')).not.toHaveClass('text-text-destructive');
-    expect(getByText('b').closest('div')).toHaveClass('bg-background-brand-subtle', 'text-text-info-on-subtle');
+    expect(getByText('b').closest('div')).toHaveClass('bg-background-info-subtle', 'text-text-info-on-subtle');
   });
 
   it('Metric selected and tones use the on-subtle roles', () => {

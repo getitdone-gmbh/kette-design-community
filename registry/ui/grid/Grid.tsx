@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { cn } from '@/lib/utils';
 import { GridItemProps, GridProps } from './grid.interface';
 
 const extractClasses = (classes: { [key: string]: string }, iterable: {}) =>
@@ -98,11 +99,13 @@ export const Grid: React.FC<GridProps> = ({
   };
 
   return (
+    // cn (tailwind-merge) so a consumer class such as `gap-6` or `max-w-none` replaces the default instead of fighting it in the CSS order.
     <div
-      className={clsx(
+      className={cn(
         'grid',
         'gap-10',
         'max-w-content',
+        'mx-auto',
         'content-stretch',
         extractClasses(gridClasses, columns),
         className,

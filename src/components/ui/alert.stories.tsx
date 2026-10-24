@@ -1,6 +1,8 @@
 'use client';
 
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
+import { within } from '@storybook/testing-library';
 
 import { AlertCircle, CheckCircle2, Info as InfoIcon, Terminal, TriangleAlert } from 'lucide-react';
 import React from 'react';
@@ -208,4 +210,40 @@ export const ActionsEndInNarrowColumn: Story = {
       </Alert>
     </div>
   ),
+};
+
+// Inline links in a severity alert take the alert text colour (the link blue was 4.57:1 on the warning tint and 4.05:1 on the destructive tint). The underline stays as the cue.
+export const InlineLinks: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      {(['info', 'success', 'warning', 'destructive'] as const).map((variant) => (
+        <Alert key={variant} variant={variant} data-testid={variant}>
+          <TriangleAlert aria-hidden="true" className="h-4 w-4" />
+          <AlertTitle>Billing address missing</AlertTitle>
+          <AlertDescription>
+            Add an address before the next invoice run.{' '}
+            <Button variant="link" size="inline">
+              Open billing settings
+            </Button>{' '}
+            or{' '}
+            <Button variant="link" size="sm">
+              contact support
+            </Button>
+            .
+          </AlertDescription>
+        </Alert>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const variant of ['info', 'success', 'warning', 'destructive']) {
+      const alert = canvas.getByTestId(variant);
+      const alertColor = getComputedStyle(alert).color;
+      for (const link of within(alert).getAllByRole('button')) {
+        expect(getComputedStyle(link).color).toBe(alertColor);
+        expect(getComputedStyle(link).textDecorationLine).toContain('underline');
+      }
+    }
+  },
 };

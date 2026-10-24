@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { findReplacement } from '../../lib/return-focus';
+import { findReplacement, focusPageStart, regionOf } from '../../lib/return-focus';
 import { cn } from '../../lib/utils';
 import type { HeadingTag } from './heading-tag';
 import { Button } from './button';
@@ -47,6 +47,8 @@ export interface CookieConsentProps extends Omit<React.HTMLAttributes<HTMLElemen
   value?: CookieConsentSelection;
   // Called on every switch change in the settings view with the full selection (both modes).
   onValueChange?: (selection: CookieConsentSelection) => void;
+  // Called when `openCookieSettings()` or `useCookieConsent().reopen()` asks for the banner. A controlled consumer sets its `open` state to true here. The banner shows itself for the request even without this handler, and hides again after a decision.
+  onReopen?: () => void;
   // Receives the chosen categories from the settings view.
   onSave?: (selection: CookieConsentSelection) => void;
   // Shows a close button. By default closing gives no consent: it calls `onDecline`, exactly like declining (see `dismissBehavior`).
@@ -73,6 +75,8 @@ export interface CookieConsentProps extends Omit<React.HTMLAttributes<HTMLElemen
   regionLabel?: string;
   // `fixed` pins the banner to the bottom of the window, `static` leaves placement to the layout.
   positioning?: 'fixed' | 'static';
+  // Size of the buttons: `default` (40px) or `sm` (32px, for dense pages and the compact card).
+  size?: 'default' | 'sm';
 }
 
 // Breathing room in px between a scrolled-to element and the banner edge, so its focus ring stays visible.
@@ -81,8 +85,8 @@ const SCROLL_PADDING_GAP = 8;
 // Links inside the running text keep an underline: their colour alone is not 3:1 against the surrounding text (WCAG 1.4.1).
 const inlineLink = '[&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:no-underline';
 
-// Shared focus ring of the library, for the elements that take programmatic focus on a reopen.
-const programmaticFocusRing = 'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default';
+// Elements that only take programmatic focus (the region and its title, tabIndex -1) are not controls, so they do not get the full focus ring of the library. Pointer users see nothing; keyboard users (:focus-visible) get a thin outline.
+const programmaticFocusRing = 'outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring-default';
 
 // A trigger is a button or link outside the banner. Only such an element holding focus proves that the user asked for the banner.
 const isTrigger = (el: Element | null, banner: HTMLElement | null): el is HTMLElement =>
@@ -109,6 +113,25 @@ const revealAboveBanner = (target: Element, banner: HTMLElement) => {
   else window.scrollBy(0, delta);
 };
 
+const REOPEN_EVENT = 'kette:cookie-consent-reopen';
+
+interface ReopenRequest {
+  opener: HTMLElement | null;
+  handled: boolean;
+}
+
+// Opens the consent banner again, for example from a "Cookie settings" link in the footer. Call it from the click handler of the opener: the focused button or link is remembered, focus moves into the banner and returns to the opener when the banner closes. Works with a controlled banner (`open`, pair it with `onReopen`) and an uncontrolled one. Returns false when no CookieConsent is mounted, so keep the component mounted (with `open={false}` while a choice is stored).
+const openCookieSettings = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const active = document.activeElement;
+  const detail: ReopenRequest = { opener: active instanceof HTMLElement && active !== document.body ? active : null, handled: false };
+  window.dispatchEvent(new CustomEvent<ReopenRequest>(REOPEN_EVENT, { detail }));
+  return detail.handled;
+};
+
+// Hook form of `openCookieSettings`, with a stable `reopen` function.
+const useCookieConsent = () => React.useMemo(() => ({ reopen: openCookieSettings }), []);
+
 const initialSelection = (categories: CookieConsentCategory[], stored?: CookieConsentSelection): CookieConsentSelection =>
   Object.fromEntries(categories.map((c) => [c.id, Boolean(c.necessary) || Boolean(stored?.[c.id])]));
 
@@ -130,6 +153,7 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       value,
       onValueChange,
       onSave,
+      onReopen,
       closable = false,
       dismissBehavior = 'decline',
       onDismiss,
@@ -145,6 +169,8 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       settingsTitle,
       regionLabel,
       positioning = 'fixed',
+      size = 'default',
+      onKeyDown,
       ...props
     },
     ref,
@@ -186,12 +212,63 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
     const viewChanged = React.useRef(false);
     React.useEffect(() => {
       if (!viewChanged.current) return;
-      if (view === 'settings') (headingRef.current ?? sectionRef.current)?.focus();
-      else settingsButtonRef.current?.focus();
+      if (view === 'settings') (headingRef.current ?? sectionRef.current)?.focus({ preventScroll: true });
+      else settingsButtonRef.current?.focus({ preventScroll: true });
     }, [view]);
-    const visible = open && !deferred;
+    // A reopen request shows the banner even when the consumer's `open` is false. A decision or `open` turning false takes it back.
+    const [requested, setRequested] = React.useState(false);
+    const visible = (open || requested) && !deferred;
+    const visibleRef = React.useRef(visible);
+    visibleRef.current = visible;
+    const onReopenRef = React.useRef(onReopen);
+    onReopenRef.current = onReopen;
+    const requestedOpener = React.useRef<HTMLElement | null>(null);
     const opener = React.useRef<HTMLElement | null>(null);
+    const openerScope = React.useRef<HTMLElement | null>(null);
+    const rememberOpener = (el: HTMLElement | null) => {
+      opener.current = el;
+      openerScope.current = regionOf(el);
+    };
+    // True while keyboard focus sits inside the banner. Only then does closing it owe the user a new place for focus.
+    const focusInside = React.useRef(false);
+    // Restores focus to the opener. The replacement is searched in the opener's region only, and the page never scrolls: nobody asked for the move.
+    // Without an opener (first visit, the banner appeared on its own) focus that was inside the banner goes to the start of the page content instead of being lost to the body (Escape, accept, decline).
+    const restoreFocus = () => {
+      const target = findReplacement(opener.current, openerScope.current);
+      opener.current = null;
+      openerScope.current = null;
+      const active = document.activeElement;
+      const lost = !active || active === document.body || !active.isConnected;
+      if (target && lost) target.focus({ preventScroll: true });
+      else if (!target && lost && focusInside.current) focusPageStart();
+      focusInside.current = false;
+    };
     const wasVisible = React.useRef(false);
+    const wasOpen = React.useRef(open);
+    React.useEffect(() => {
+      if (wasOpen.current && !open) setRequested(false);
+      wasOpen.current = open;
+    }, [open]);
+    React.useEffect(() => {
+      const onRequest = (event: Event) => {
+        const detail = (event as CustomEvent<ReopenRequest>).detail;
+        if (detail) detail.handled = true;
+        requestedOpener.current = detail?.opener ?? null;
+        setDeferred(false);
+        setRequested(true);
+        onReopenRef.current?.();
+        // Already showing: no visibility change follows, so the focus move happens here.
+        if (visibleRef.current && isTrigger(requestedOpener.current, sectionRef.current)) {
+          rememberOpener(requestedOpener.current);
+          requestedOpener.current = null;
+          viewChanged.current = false;
+          setView('summary');
+          (headingRef.current ?? sectionRef.current)?.focus({ preventScroll: true });
+        }
+      };
+      window.addEventListener(REOPEN_EVENT, onRequest);
+      return () => window.removeEventListener(REOPEN_EVENT, onRequest);
+    }, []);
     // A reopen (`open` turns true again) shows a banner that was dismissed before, so a deferred dismissal no longer hides it.
     React.useEffect(() => {
       if (open) setDeferred(false);
@@ -199,31 +276,26 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
     // The very first automatic appearance never moves focus. When the banner appears while a button or link outside it holds focus (a "Cookie settings" trigger in the footer), focus moves to the heading, or to the region without a title, and the trigger is remembered. When the banner goes away (accept, decline, save, close) focus returns to that trigger, also if it was re-rendered meanwhile.
     React.useEffect(() => {
       if (visible) {
-        const active = document.activeElement;
+        const fromRequest = requestedOpener.current;
+        requestedOpener.current = null;
+        const active = fromRequest?.isConnected ? fromRequest : document.activeElement;
         if (isTrigger(active, sectionRef.current)) {
-          opener.current = active;
+          rememberOpener(active);
           viewChanged.current = false;
           setView('summary');
-          (headingRef.current ?? sectionRef.current)?.focus();
+          (headingRef.current ?? sectionRef.current)?.focus({ preventScroll: true });
         } else {
-          opener.current = null;
+          rememberOpener(null);
         }
       } else if (wasVisible.current) {
-        const target = findReplacement(opener.current);
-        opener.current = null;
-        const active = document.activeElement;
-        if (target && (!active || active === document.body || !active.isConnected)) target.focus();
+        restoreFocus();
       }
       wasVisible.current = visible;
     }, [visible]);
     // A banner that a consumer removes from the tree (conditional rendering) also hands focus back.
     React.useEffect(
-      () => () => {
-        const target = findReplacement(opener.current);
-        opener.current = null;
-        const active = document.activeElement;
-        if (target && (!active || active === document.body || !active.isConnected)) target.focus();
-      },
+      () => () => restoreFocus(),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       [],
     );
     const reserveScrollSpace = visible && positioning === 'fixed';
@@ -264,19 +336,29 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       document.addEventListener('focusin', onFocusIn);
       return () => document.removeEventListener('focusin', onFocusIn);
     }, [reserveScrollSpace]);
-    if (!open || deferred) return null;
+    if (!visible) return null;
     const hasSettings = Boolean(categories?.length);
     const inSettings = hasSettings && view === 'settings';
     const wide = layout === 'centered-wide';
     // Both decisions share one variant so neither can be made more prominent than the other.
     const decisionVariant = acceptEmphasis ? 'primary' : 'outline';
     const heading = inSettings ? (settingsTitle ?? l.cookieSettingsTitle) : title;
+    // Every decision also ends a reopen request.
+    const decline = () => {
+      setRequested(false);
+      onDecline();
+    };
+    const accept = () => {
+      setRequested(false);
+      onAccept();
+    };
     const close = () => {
       if (dismissBehavior === 'defer') {
         setDeferred(true);
+        setRequested(false);
         onDismiss?.();
       } else {
-        onDecline();
+        decline();
       }
     };
     const openSettings = () => {
@@ -291,8 +373,37 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       viewChanged.current = true;
       setView('summary');
     };
+    // Escape closes the banner exactly like the close button, so it only does something when `closable` is set (decline by default, or the deferral with `dismissBehavior="defer"`). Without a close action the banner stays: Escape never grants or declines consent on its own. In the settings view Escape goes back to the summary first.
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+      onKeyDown?.(event);
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      if (inSettings) {
+        event.preventDefault();
+        closeSettings();
+      } else if (closable) {
+        event.preventDefault();
+        close();
+      }
+    };
+    const buttonSize = size === 'sm' ? 'sm' : 'default';
     return (
       <section
+        onKeyDown={handleKeyDown}
+        onFocus={() => {
+          focusInside.current = true;
+        }}
+        onKeyDownCapture={() => {
+          focusInside.current = true;
+        }}
+        onClickCapture={() => {
+          focusInside.current = true;
+        }}
+        onBlur={(event) => {
+          // Moving between controls of the banner keeps it. Focus that left for the page ends it. A control that was removed while it had focus (the banner closing) is not a move.
+          const next = event.relatedTarget as Node | null;
+          if (!event.currentTarget.contains(next) && (next || (event.target as Element).isConnected)) focusInside.current = false;
+        }}
+        data-size={size}
         ref={(node) => {
           sectionRef.current = node;
           if (typeof ref === 'function') ref(node);
@@ -368,23 +479,26 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
         </div>
         {inSettings ? (
           <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <Button type="button" variant="outline" onClick={closeSettings}>
+            <Button type="button" variant="outline" size={buttonSize} onClick={closeSettings}>
               {l.cookieBack}
             </Button>
-            <Button type="button" variant="outline" onClick={() => onSave?.({ ...selection })}>
+            <Button type="button" variant="outline" size={buttonSize} onClick={() => {
+                setRequested(false);
+                onSave?.({ ...selection });
+              }}>
               {l.cookieSaveSelection}
             </Button>
           </div>
         ) : (
           <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <Button type="button" variant={decisionVariant} onClick={onDecline}>
+            <Button type="button" variant={decisionVariant} size={buttonSize} onClick={decline}>
               {l.declineNonEssentialCookies}
             </Button>
-            <Button type="button" variant={decisionVariant} onClick={onAccept}>
+            <Button type="button" variant={decisionVariant} size={buttonSize} onClick={accept}>
               {l.acceptAllCookies}
             </Button>
             {onCustomize || hasSettings ? (
-              <Button ref={settingsButtonRef} type="button" variant="link" onClick={openSettings}>
+              <Button ref={settingsButtonRef} type="button" variant="link" size={buttonSize} onClick={openSettings}>
                 {l.cookieSettings}
               </Button>
             ) : null}
@@ -396,4 +510,4 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
 );
 CookieConsent.displayName = 'CookieConsent';
 
-export { CookieConsent };
+export { CookieConsent, openCookieSettings, useCookieConsent };

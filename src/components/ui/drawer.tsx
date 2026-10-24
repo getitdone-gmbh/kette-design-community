@@ -3,12 +3,19 @@
 import * as React from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
 
+import { OpenerCapture, useReturnFocusFallback } from '../../lib/return-focus';
+import { MODAL_OVERLAY_ATTRIBUTE, useModalInertRef } from '../../lib/modal-inert';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from '../../lib/sticky-inset';
 import { cn } from '../../lib/utils';
 import { usePreset } from './labels-context';
 
-const Drawer = ({ shouldScaleBackground = true, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
+// Remembers the modal flag so DrawerContent can make the page behind inert only for modal drawers.
+const DrawerModalContext = React.createContext(true);
+
+const Drawer = ({ shouldScaleBackground = true, modal = true, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
+  <DrawerModalContext.Provider value={modal}>
+    <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} modal={modal} {...props} />
+  </DrawerModalContext.Provider>
 );
 Drawer.displayName = 'Drawer';
 
@@ -22,20 +29,31 @@ const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <DrawerPrimitive.Overlay ref={ref} className={cn('fixed inset-0 z-sheet bg-overlay', className)} {...props} />
+  <DrawerPrimitive.Overlay ref={ref} {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }} className={cn('fixed inset-0 z-sheet bg-overlay', className)} {...props} />
 ));
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onCloseAutoFocus, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const returnFocus = useReturnFocusFallback(onCloseAutoFocus);
+  // A modal drawer makes everything outside its portal inert while it is open, see lib/modal-inert.
+  const inertRef = useModalInertRef<HTMLDivElement>(React.useContext(DrawerModalContext));
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      inertRef(node);
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    },
+    [inertRef, ref],
+  );
   return (
     <DrawerPortal>
       <DrawerOverlay />
       <DrawerPrimitive.Content
-        ref={ref}
+        ref={setRefs}
         {...{ [INSET_SCOPE_ATTRIBUTE]: '' }}
         className={cn(
           scrollInsetClasses,
@@ -44,8 +62,10 @@ const DrawerContent = React.forwardRef<
           zero ? 'typography-ui border-border-default shadow-elevation-raised' : 'border-hairline shadow-dialog',
           className,
         )}
+        onCloseAutoFocus={returnFocus.onCloseAutoFocus}
         {...props}
       >
+        <OpenerCapture onCapture={returnFocus.remember} />
         <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
         {children}
       </DrawerPrimitive.Content>
@@ -60,7 +80,7 @@ const DrawerHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 DrawerHeader.displayName = 'DrawerHeader';
 
 const DrawerFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={useStickyInset<HTMLDivElement>('bottom', ref)} className={cn('mt-auto flex flex-col gap-2 p-4', className)} {...props} />
+  <div ref={useStickyInset<HTMLDivElement>('bottom', ref, { docked: true })} className={cn('mt-auto flex flex-col gap-2 p-4', className)} {...props} />
 ));
 DrawerFooter.displayName = 'DrawerFooter';
 

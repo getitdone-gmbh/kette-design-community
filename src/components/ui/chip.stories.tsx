@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { DesignSystemProvider } from './design-system-provider';
 import { useState } from 'react';
 
+import { Button } from './button';
 import { Chip } from './chip';
 
 const meta = {
@@ -411,6 +412,21 @@ export const FilledSecondaryText: Story = {
       {(['info', 'success', 'warning', 'destructive'] as const).map((variant) => (
         <Chip key={variant} variant={variant} label={variant} meta="3+ yrs" />
       ))}
+    </div>
+  ),
+};
+
+// Height scale next to Button sm: `control` (filter chip, item radius) and `medium` (pill) are control-sm high (32, zero 28). `small` and `dense` are tag sizes below that.
+export const HeightScaleWithButton: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center gap-2">
+      <Chip size="control" variant="outline" label="control" onClick={() => undefined} />
+      <Chip size="medium" variant="outline" label="medium" onClick={() => undefined} />
+      <Button size="sm" variant="outline">
+        Button sm
+      </Button>
+      <Chip size="small" variant="outline" label="small" />
+      <Chip size="dense" variant="outline" label="dense" />
     </div>
   ),
 };

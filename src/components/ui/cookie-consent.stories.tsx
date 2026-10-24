@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 
 import { Button } from './button';
-import { CookieConsent, type CookieConsentProps } from './cookie-consent';
+import { CookieConsent, openCookieSettings, useCookieConsent, type CookieConsentProps } from './cookie-consent';
 import { Link } from './link';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './sheet';
 
@@ -45,6 +45,9 @@ export const CenteredWide: Story = { args: { layout: 'centered-wide', onCustomiz
 export const TitleAsParagraph: Story = { args: { titleAs: 'p' } };
 
 export const Closable: Story = { args: { closable: true } };
+
+// Size of the buttons: `default` 40px, `sm` 32px for dense pages. Escape closes a closable banner like the close button, and goes back from the settings view to the summary first.
+export const SmallButtons: Story = { args: { size: 'sm', onCustomize: () => undefined, categories: [{ id: 'a', title: 'Analytics', description: 'Anonymous usage statistics.' }] } };
 
 const categories = [
   { id: 'necessary', title: 'Necessary', description: 'Required to run the site. Always active.', necessary: true },
@@ -162,4 +165,28 @@ const ReopenFromFooterLinkDemo = (args: CookieConsentProps) => {
 // A "Cookie settings" link in the footer reopens a banner the visitor dismissed before. Focus moves to the banner title and returns to the link after accept, decline or save. The first automatic appearance never takes focus.
 export const ReopenFromFooterLink: Story = {
   render: (args) => <ReopenFromFooterLinkDemo {...args} />,
+};
+
+const ReopenApiDemo = (args: CookieConsentProps) => {
+  const { reopen } = useCookieConsent();
+  const [stored, setStored] = useState(true);
+  return (
+    <main className="flex min-h-64 flex-col justify-between gap-8 p-4">
+      <p className="typography-ui m-0">A choice is stored, so the banner is hidden. The footer button calls reopen(): focus moves into the banner and returns to the button after the decision. No state or window event in the app.</p>
+      <footer className="flex gap-4">
+        <Button type="button" variant="link" size="inline" onClick={() => reopen()}>
+          Cookie settings
+        </Button>
+        <Button type="button" variant="link" size="inline" onClick={() => openCookieSettings()}>
+          Same with the plain function
+        </Button>
+      </footer>
+      <CookieConsent {...args} open={!stored} onReopen={() => setStored(false)} onAccept={() => setStored(true)} onDecline={() => setStored(true)} />
+    </main>
+  );
+};
+
+// Public reopen API. `useCookieConsent().reopen()` or `openCookieSettings()` from a click handler reopens the mounted banner, controlled (`open` plus `onReopen`) or uncontrolled. Keep the component mounted and hide it with `open={false}` while a choice is stored.
+export const ReopenApi: Story = {
+  render: (args) => <ReopenApiDemo {...args} />,
 };

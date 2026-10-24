@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "use-collapse-empty",
+  "title": "Use Collapse Empty",
+  "description": "Helper used by the Get IT Done components.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/lib/use-collapse-empty.ts",
+      "content": "'use client';\n\nimport * as React from 'react';\n\nconst useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;\n\n// A child counts as shown when it generates a box. `display: contents` has no box of its own, so its children decide.\nfunction isShown(el: Element): boolean {\n  const display = window.getComputedStyle(el).display;\n  if (display === 'none') return false;\n  if (display === 'contents') return Array.from(el.children).some(isShown);\n  return true;\n}\n\n// True while a wrapper has no child that is shown. Children hidden with `hidden`, `max-sm:hidden` or an inline style leave an empty wrapper\n// whose parent `gap` would still add a blank row. The state is re-read when children or their classes change and when the viewport resizes\n// (responsive hiding). Put `data-[empty=true]:hidden` on the wrapper with the returned `ref` and `data-empty`.\nexport function useEmptyWrapper<T extends HTMLElement>() {\n  const ref = React.useRef<T | null>(null);\n  const [empty, setEmpty] = React.useState(false);\n  useIsomorphicLayoutEffect(() => {\n    const node = ref.current;\n    if (!node) return undefined;\n    let frame = 0;\n    const read = () => {\n      frame = 0;\n      setEmpty(!Array.from(node.children).some(isShown));\n    };\n    const schedule = () => {\n      if (frame === 0) frame = window.requestAnimationFrame(read);\n    };\n    read();\n    const observer = new MutationObserver(schedule);\n    observer.observe(node, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });\n    window.addEventListener('resize', schedule);\n    return () => {\n      observer.disconnect();\n      window.removeEventListener('resize', schedule);\n      if (frame !== 0) window.cancelAnimationFrame(frame);\n    };\n  }, []);\n  return { ref, empty };\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

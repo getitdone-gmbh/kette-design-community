@@ -59,6 +59,15 @@ import { useLabels, usePreset } from './labels-context';
 // dark against the page). This is an interim reuse of an interaction-scoped token as a static
 // on-container/border color, not a new value — the correct long-term fix is the dedicated
 // `-on-container` / `-container` pair from ALERT-TOK-01, flagged to design-tokens-maintainer.
+// Inline links (Button variant="link") inside a severity alert take the alert text colour: the link blue measured 4.57:1 on the warning tint and 4.05:1 on the destructive tint. The underline stays as the cue that the text is a link (not colour alone, WCAG 1.4.1), hover and pressed keep the colour and only thicken the underline.
+const ALERT_LINK = [
+  '[&_[data-slot=button][data-variant=link]]:text-inherit',
+  '[&_[data-slot=button][data-variant=link]:is(:hover,:active)]:text-inherit',
+  '[&_[data-slot=button][data-variant=link]]:underline',
+  '[&_[data-slot=button][data-variant=link]]:underline-offset-4',
+  '[&_[data-slot=button][data-variant=link]:hover]:decoration-2',
+];
+
 const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absolute'], {
   variants: {
     variant: {
@@ -67,19 +76,23 @@ const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absol
       info: [
         'border-general-info-hover/70 bg-general-info-default/10',
         'text-general-info-hover [&>svg]:text-general-info-hover',
+        ...ALERT_LINK,
       ],
       success: [
         'border-general-success-hover/70 bg-general-success-default/10',
         'text-general-success-hover [&>svg]:text-general-success-hover',
+        ...ALERT_LINK,
       ],
       warning: [
         'border-general-warning-hover/70 bg-general-warning-default/10',
         'text-general-warning-hover [&>svg]:text-general-warning-hover',
+        ...ALERT_LINK,
       ],
       destructive: [
         'border-general-error-hover/70 bg-general-error-default/10',
         // On-subtle text role: 5.0:1 or better on the tint in every theme and mode (the hover role fell to 3.9:1 in windows-95).
         'text-text-destructive-on-subtle [&>svg]:text-text-destructive-on-subtle',
+        ...ALERT_LINK,
       ],
     },
     // `default` is the established layout. `compact` is a single-line note: no border, severity tint

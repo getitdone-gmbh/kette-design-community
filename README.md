@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@getitdone-gmbh/kette-design-community?label=npm&color=cb3837)](https://www.npmjs.com/package/@getitdone-gmbh/kette-design-community) [![license](https://img.shields.io/npm/l/@getitdone-gmbh/kette-design-community)](LICENSE)
 
-Version 0.4.1 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
+Version 0.4.2 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
 
 We build business software with many screens, tables, forms and states. These components are the base layer of that system. We are sharing them in case they are useful to others working on similar products.
 
@@ -37,7 +37,7 @@ The CLI itself is free. Without a licence key it sets up the Community rule set 
 
 Plus the zero theme as CSS variables (typography, colours, radii, elevation, light and dark) and a Tailwind CSS 3 preset.
 
-Every component with a story in the library comes with it: 128 story files with 1031 stories, see [Storybook](#storybook).
+Every component with a story in the library comes with it: 128 story files with 1073 stories, see [Storybook](#storybook).
 
 The library and token versions each release is synced from are listed in one place, the [sync history](docs/MAINTAINING.md#sync-history). What changed per release is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -106,6 +106,29 @@ npx shadcn@latest add https://zero-design.itdone.de/r/theme.json https://zero-de
 ```
 
 Each item is `https://zero-design.itdone.de/r/<name>.json`, named after the component file (for example `data-grid`, `date-picker`, `sidebar`). The `theme` item adds `styles/getitdone/theme.css`, `styles/getitdone/animation.css`, `styles/getitdone/document-surface.css` and the Tailwind preset in `tailwind/getitdone/` (inside `src/` when your project has one). Import both CSS files in your global CSS and add the preset to `presets` in your Tailwind config, as shown above. Components pull in their helpers automatically.
+
+## Theming
+
+The public theming interface is the semantic variable layer in `theme.css`. Components read these roles, never raw palette values, so you restyle every component by setting the variables in your own CSS after the import, on `:root` for light, on `.dark` (and the `@media (prefers-color-scheme: dark)` block, if you rely on the system setting) for dark. Colour values are space-separated RGB channels (`--semantic-background-default: 255 255 255;`), so Tailwind opacity modifiers keep working.
+
+| Group | Variables | Used for |
+| --- | --- | --- |
+| Surfaces | `--semantic-surface-*` (`canvas`, `raised`, `sunken`, `overlay`, `paper`, `inverse-static`, `strip-raised`) | Page, cards, wells, overlays and the document paper |
+| Backgrounds | `--semantic-background-*` (`default`, `subtle`, `muted`, `input`, `disabled`, `inverse`, `selected-*`, `neutral-*`, and `brand`, `info`, `success`, `warning`, `destructive` with `subtle` and `bold` steps and their hover and active states) | Fills of controls, rows, badges and status areas |
+| Text | `--semantic-text-*` (`default`, `subtle`, `subtlest`, `muted`, `disabled`, `placeholder`, `inverse`, `brand`, `selected`, status texts, `on-*` texts for bold fills, `*-on-subtle` texts for tinted fills) | Every text colour, each paired with the fill it sits on |
+| Icons | `--semantic-icon-*` | Icon colours, including status and `on-brand` |
+| Borders | `--semantic-border-*` (`default`, `subtle`, `muted`, `bold`, `control`, `control-hover`, `input`, `focus`, `selected`, `disabled`, `brand`, status borders) | Hairlines, control borders and selection |
+| Focus rings | `--semantic-ring-*` (`default`, `destructive`) | The shared keyboard focus ring |
+| Links | `--semantic-link-*` | Link text and its hover, active and visited states |
+| Charts | `--semantic-chart-*` (`1` to `8`, `brand-*`, status series, each with `-on`) | Chart series and the text on them |
+| Overlays and interaction | `--semantic-overlay-*`, `--semantic-interaction-*` | Scrims and hover or pressed washes |
+| Status scales | `--semantic-primary-*`, `--semantic-success-*`, `--semantic-warning-*`, `--semantic-error-*`, `--semantic-info-*`, `--semantic-gray-*` | Ramp steps behind the status roles |
+
+Alongside the colour roles, the theme sets typography (`--typo-*`, `--font-*`), sizes (`--size-*`, for example `--size-control-sm`), spacing (`--space-*`, `--grid-*`), radii (`--borderRadius-*`), elevation (`--elevation-*`, `--shadow-*`), motion (`--motion-*`), opacity (`--opacity-*`) and layers (`--z-*`). The `--colors-*` variables are the component layer underneath (`--colors-button-*`, `--colors-general-*` and so on). They follow the semantic roles; override them only to change a single component.
+
+Keep every fill and the text on it together: when you change a `--semantic-background-*-bold-*` fill, change its `--semantic-text-on-*` text in the same block, and keep 4.5:1 between them in light and dark. The tests in `src/lib/theme-pairs.test.ts` show the pairs this package checks.
+
+A theme generator command, `kette theme`, is planned for the Kette CLI and will write these variables for you once it is released.
 
 ## The rest of the system
 

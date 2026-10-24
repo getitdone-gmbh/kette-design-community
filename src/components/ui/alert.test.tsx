@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 
+import { Button } from './button';
 import { Alert, AlertActions, AlertClose, AlertDescription, AlertTitle } from './alert';
 
 describe('Alert component', () => {
@@ -277,5 +278,31 @@ describe('AlertActions', () => {
     expect(root).toHaveClass('@xl:[&>*:not(svg)]:col-start-1');
     expect(root).not.toHaveClass('@xl:[&>*]:col-start-1');
     expect(root).toHaveClass('@xl:[&>[data-slot=alert-actions]]:col-start-2');
+  });
+});
+
+describe('Alert inline links', () => {
+  const linkRule = '[&_[data-slot=button][data-variant=link]]:text-inherit';
+  it.each(['info', 'success', 'warning', 'destructive'] as const)('%s alert: a link button takes the alert text colour and stays underlined', (variant) => {
+    render(
+      <Alert variant={variant}>
+        <AlertDescription>
+          Read the{' '}
+          <Button variant="link" size="inline">
+            billing terms
+          </Button>
+        </AlertDescription>
+      </Alert>,
+    );
+    const alert = screen.getByRole(variant === 'warning' || variant === 'destructive' ? 'alert' : 'status');
+    expect(alert).toHaveClass(linkRule, '[&_[data-slot=button][data-variant=link]]:underline', '[&_[data-slot=button][data-variant=link]]:underline-offset-4');
+    const link = screen.getByRole('button', { name: 'billing terms' });
+    expect(link).toHaveAttribute('data-slot', 'button');
+    expect(link).toHaveAttribute('data-variant', 'link');
+  });
+
+  it('leaves the neutral variants alone (the link keeps its own colour)', () => {
+    render(<Alert variant="decent">x</Alert>);
+    expect(screen.getByRole('status')).not.toHaveClass(linkRule);
   });
 });

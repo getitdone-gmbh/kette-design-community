@@ -1,7 +1,7 @@
 {
   "name": "@getitdone-gmbh/kette-design-community",
-  "version": "0.4.1",
-  "description": "Free React components of the Get IT Done design system for complex software: primitives plus general components such as sidebar, data grid, date picker, multiselect, file upload, charts and kanban. shadcn/ui and Radix UI based, Tailwind CSS, TypeScript, light and dark theme included.",
+  "version": "0.4.2",
+  "description": "Free, composable and accessible React components for complex business software, and a solid base to build your own. shadcn/ui + Radix UI, Tailwind CSS, TypeScript.",
   "license": "MIT",
   "author": "Get IT Done GmbH",
   "homepage": "https://components.itdone.de",
@@ -65,7 +65,8 @@
     "storybook": "storybook dev -p 9009",
     "build-storybook": "storybook build",
     "registry:build": "node scripts/build-registry.mjs && shadcn build -o public/r",
-    "sync:stories": "node scripts/sync-stories.mjs"
+    "sync:stories": "node scripts/sync-stories.mjs",
+    "theme:prune": "node scripts/prune-theme-refs.mjs"
   },
   "peerDependencies": {
     "react": "^18.2.0 || ^19.0.0",
@@ -116,8 +117,10 @@
     "@storybook/addon-a11y": "7.6.13",
     "@storybook/addon-essentials": "7.6.13",
     "@storybook/blocks": "7.6.13",
+    "@storybook/jest": "^0.2.3",
     "@storybook/react": "7.6.13",
     "@storybook/react-vite": "7.6.13",
+    "@storybook/testing-library": "^0.2.2",
     "@testing-library/dom": "^9.3.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.3.1",

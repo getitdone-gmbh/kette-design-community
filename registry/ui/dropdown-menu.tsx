@@ -10,6 +10,14 @@ import { usePreset } from '@/components/ui/labels-context';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
+// Row density of the open menu: `touch` makes rows 44px high (touch-target-lg token) below the sm breakpoint, `auto` on coarse pointers (touch screens) at any width.
+type DropdownMenuDensity = 'default' | 'touch' | 'auto';
+
+const DropdownMenuDensityContext = React.createContext<DropdownMenuDensity>('default');
+
+const densityRowClass = (density: DropdownMenuDensity) =>
+  density === 'touch' ? 'max-sm:min-h-[var(--size-touch-target-lg)]' : density === 'auto' ? '[@media(pointer:coarse)]:min-h-[var(--size-touch-target-lg)]' : undefined;
+
 /**
  * Plain re-export — Radix's `Menu.Group` already spreads arbitrary div props (incl.
  * `aria-labelledby`) onto its `role="group"` node (verified directly in
@@ -52,11 +60,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
   }
 >(({ className, inset, children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const density = React.useContext(DropdownMenuDensityContext);
   return (
     <DropdownMenuPrimitive.SubTrigger
       ref={ref}
       className={cn(
         zero ? menuItemZero : menuItem,
+        densityRowClass(density),
         'data-[state=open]:bg-muted',
         inset && 'pl-8',
         className,
@@ -101,14 +111,18 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    // `touch`: rows are 44px high below the sm breakpoint (WCAG 2.5.5 AAA, always above the 24px minimum of 2.5.8). Use it for menus opened from a mobile trigger, for example the More menu of a page header. `auto`: 44px rows on coarse pointers at any width. Default keeps the dense rows.
+    density?: DropdownMenuDensity;
+  }
+>(({ className, sideOffset = 4, density = 'default', children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}
+        data-density={density === 'default' ? undefined : density}
         className={cn(
           'z-dropdown min-w-[8rem] overflow-hidden p-1',
           overlaySurface,
@@ -118,7 +132,9 @@ const DropdownMenuContent = React.forwardRef<
           className,
         )}
         {...props}
-      />
+      >
+        <DropdownMenuDensityContext.Provider value={density}>{children}</DropdownMenuDensityContext.Provider>
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
 });
@@ -133,11 +149,13 @@ const DropdownMenuItem = React.forwardRef<
   }
 >(({ className, inset, variant = 'default', ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const density = React.useContext(DropdownMenuDensityContext);
   return (
     <DropdownMenuPrimitive.Item
       ref={ref}
       className={cn(
         zero ? menuItemZero : menuItem,
+        densityRowClass(density),
         'cursor-pointer',
         variant === 'destructive' && menuItemDestructive,
         inset && 'pl-8',
@@ -154,11 +172,13 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
 >(({ className, children, checked, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const density = React.useContext(DropdownMenuDensityContext);
   return (
     <DropdownMenuPrimitive.CheckboxItem
       ref={ref}
       className={cn(
         zero ? menuItemZero : menuItem,
+        densityRowClass(density),
         'pl-8',
         className,
       )}
@@ -181,11 +201,13 @@ const DropdownMenuRadioItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
 >(({ className, children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const density = React.useContext(DropdownMenuDensityContext);
   return (
     <DropdownMenuPrimitive.RadioItem
       ref={ref}
       className={cn(
         zero ? menuItemZero : menuItem,
+        densityRowClass(density),
         'pl-8',
         className,
       )}
@@ -275,6 +297,7 @@ const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTML
 DropdownMenuShortcut.displayName = 'DropdownMenuShortcut';
 
 export {
+  type DropdownMenuDensity,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,

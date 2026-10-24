@@ -11,6 +11,11 @@ import { useLabels, usePreset } from '@/components/ui/labels-context';
 // True below a Card. Children that pad themselves (Accordion) read it to align with the card padding instead of adding their own inset.
 export const InsideCardContext = React.createContext(false);
 
+export type CardDensity = 'default' | 'compact';
+
+// Set by Card. CardHeader, CardContent and CardFooter read it so one prop tightens the whole card.
+const CardDensityContext = React.createContext<CardDensity>('default');
+
 
 // Every resting-state color here is the dedicated `card/*` token family (Design Tokens library,
 // already bound in Figma as `colors/card/background/default`, `colors/card/foreground/default`,
@@ -110,6 +115,10 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asChild?: boolean;
   // Visual preset. Default keeps the established tinted hover; surface raises border and shadow on hover.
   variant?: 'default' | 'surface';
+  // Inner padding. `compact` is 20px (space-5) on header, content and footer instead of 24px. The zero preset is already 20px, so it renders the same there.
+  density?: CardDensity;
+  // Makes the card a size container (`@container`), so children can switch layout by the card width instead of the viewport (for example `ListItem responsive`). Off by default: a size container no longer sizes itself from its content width.
+  container?: boolean;
   /**
    * Marks this card as the chosen option among a set of alternatives (e.g. a plan/tile picker).
    * Independent of `onClick`/`interactive` — a purely informational Card can still indicate
@@ -149,7 +158,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, selected, today, disabled, invalid, onClick, onKeyDown, href, asChild = false, children, ...props }, ref) => {
+  ({ className, variant, density = 'default', container = false, selected, today, disabled, invalid, onClick, onKeyDown, href, asChild = false, children, ...props }, ref) => {
     // Interactivity is derived from the presence of a real handler (mirrors Chip) rather than a
     // separate boolean prop, so there is exactly one way to opt a Card into being a keyboard-
     // operable "clickable card" and it can never be turned on without something to activate.
@@ -187,6 +196,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
     return (
       <InsideCardContext.Provider value={true}>
+      <CardDensityContext.Provider value={density}>
       <Comp
         ref={ref}
         role={asButton ? 'button' : undefined}
@@ -200,9 +210,10 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         data-selected={selected || undefined}
         aria-current={today ? 'date' : isLink && selected ? 'true' : undefined}
         data-today={today || undefined}
+        data-density={density === 'compact' ? 'compact' : undefined}
         onClick={onClick ? handleClick : undefined}
         onKeyDown={handleKeyDown}
-        className={cn(cardVariants({ interactive, variant }), zero && 'shadow-elevation-surface border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle', isLink && 'block no-underline text-inherit', className)}
+        className={cn(cardVariants({ interactive, variant }), zero && 'shadow-elevation-surface border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle', isLink && 'block no-underline text-inherit', container && '@container', className)}
         {...props}
       >
         {asChild ? (
@@ -214,6 +225,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
           </>
         )}
       </Comp>
+      </CardDensityContext.Provider>
       </InsideCardContext.Provider>
     );
   },
@@ -234,10 +246,11 @@ export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, actions, leading, accent, divider, children, ...props }, ref) => {
     const zero = usePreset() === 'zero';
-    const pad = zero ? 'px-5 pt-4 pb-3' : 'p-6';
+    const compact = React.useContext(CardDensityContext) === 'compact';
+    const pad = zero ? 'px-5 pt-4 pb-3' : compact ? 'p-5' : 'p-6';
     const decorations = cn(
       accent && 'rounded-t-surface border-t-4 border-solid border-border-brand',
-      divider && cn('border-b border-solid border-border', zero ? 'pb-3' : 'pb-6'),
+      divider && cn('border-b border-solid border-border', zero ? 'pb-3' : compact ? 'pb-5' : 'pb-6'),
     );
     if (!actions && !leading) {
       return (
@@ -249,8 +262,11 @@ const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div ref={ref} className={cn('flex items-start gap-3', pad, decorations, className)} {...props}>
         {leading ? <div className="shrink-0">{leading}</div> : null}
-        <div className="flex min-w-0 flex-1 flex-col space-y-[6px]">{children}</div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        {/* The actions share the first grid row with the title. A negative block margin of 8px lets actions up to title height plus 16px (a 40px control next to a 24px title) sit centered on the title without changing the row; taller actions (a button with a hint line) grow the row and the title centers with them. Nothing is clipped. */}
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-[6px] [&>:first-child:not([data-slot=card-actions])]:self-center [&>:not([data-slot=card-actions])]:col-start-1">
+          {children}
+          {actions ? <div data-slot="card-actions" className="col-start-2 row-start-1 -my-2 flex items-center justify-self-end gap-2 self-center">{actions}</div> : null}
+        </div>
       </div>
     );
   },
@@ -291,7 +307,8 @@ CardDescription.displayName = 'CardDescription';
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const zero = usePreset() === 'zero';
-    return <div ref={ref} className={cn(zero ? 'px-5 pb-5 pt-0' : 'p-6 pt-0', '[&>p]:last-of-type:mb-0', className)} {...props} />;
+    const compact = React.useContext(CardDensityContext) === 'compact';
+    return <div ref={ref} className={cn(zero ? 'px-5 pb-5 pt-0' : compact ? 'p-5 pt-0' : 'p-6 pt-0', '[&>p]:last-of-type:mb-0', className)} {...props} />;
   },
 );
 CardContent.displayName = 'CardContent';
@@ -306,12 +323,13 @@ const footerAlign = { start: 'justify-start', end: 'justify-end', between: 'just
 
 const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(({ className, divider, align, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const compact = React.useContext(CardDensityContext) === 'compact';
   return (
   <div
     ref={ref}
     className={cn(
       'flex items-center',
-      zero ? 'px-5 pb-5' : 'p-6',
+      zero ? 'px-5 pb-5' : compact ? 'p-5' : 'p-6',
       'pt-0',
       divider && 'gap-4 border-t border-solid border-border pt-4',
       align && footerAlign[align],

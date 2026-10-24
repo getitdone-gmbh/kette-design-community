@@ -70,7 +70,7 @@ describe('Button component', () => {
       ['icon', 'h-control-md', 'w-control-md'],
       ['icon-lg', 'h-control-lg', 'w-control-lg'],
       ['icon-xl', 'h-control-xl', 'w-control-xl'],
-      ['icon-2xl', 'h-15', 'w-15'],
+      ['icon-2xl', 'h-control-2xl', 'w-control-2xl'],
     ] as const)('renders %s at the correct square dimensions', (size, h, w) => {
       render(
         <Button size={size} aria-label="Go back">

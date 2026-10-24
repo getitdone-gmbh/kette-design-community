@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 
 import { contrast, loadThemes } from '../../lib/token-contrast';
+import { DesignSystemProvider } from './design-system-provider';
 import { Badge } from './badge';
 
 // The text sits in a label slot, so the badge root is its closest div.
@@ -61,6 +62,32 @@ describe('Badge component', () => {
   it('outline variant has an input-colored border and transparent fill', () => {
     render(<Badge variant="outline">Outline</Badge>);
     expect(badgeEl('Outline')).toHaveClass('border-input', 'text-foreground');
+  });
+});
+
+describe('Badge info tone in the zero preset', () => {
+  it('uses the status token background-info-subtle, not the brand tint, so themes that grey the status tints stay consistent', () => {
+    render(
+      <DesignSystemProvider preset="zero">
+        <Badge variant="info">Info</Badge>
+      </DesignSystemProvider>,
+    );
+    const el = badgeEl('Info');
+    expect(el).toHaveClass('bg-background-info-subtle', 'text-text-info-on-subtle');
+    expect(el).not.toHaveClass('bg-background-brand-subtle');
+  });
+
+  it('every status tone maps to its own status tokens', () => {
+    render(
+      <DesignSystemProvider preset="zero">
+        <Badge variant="success">success</Badge>
+        <Badge variant="warning">warning</Badge>
+        <Badge variant="destructive" tinted>destructive</Badge>
+      </DesignSystemProvider>,
+    );
+    expect(badgeEl('success')).toHaveClass('bg-general-success-container');
+    expect(badgeEl('warning')).toHaveClass('bg-general-warning-container');
+    expect(badgeEl('destructive')).toHaveClass('bg-background-destructive-subtle');
   });
 });
 

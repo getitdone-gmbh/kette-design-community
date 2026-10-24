@@ -1,4 +1,7 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
+import * as React from 'react';
 import { DesignSystemProvider } from './design-system-provider';
 
 import { Button } from './button';
@@ -127,4 +130,53 @@ export const StickyHeaderReverseTab: Story = {
       </Sheet>
     ),
   ],
+};
+
+// Close order in a real browser: the page is free (no inert) while the sheet still slides out, and `onAfterClose` runs only when the sheet, the scrim, the inert state and the scroll lock are gone and focus is back on the opener.
+const AfterCloseDemo = () => {
+  const [log, setLog] = React.useState('waiting');
+  return (
+    <div>
+      <p data-testid="log">{log}</p>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button>Open Sheet</Button>
+        </SheetTrigger>
+        <SheetContent
+          onAfterClose={() => {
+            const scrim = document.querySelectorAll('[data-modal-overlay]').length;
+            const inert = document.querySelectorAll('[inert]').length;
+            const focus = document.activeElement?.textContent ?? 'none';
+            setLog(`after close: scrim ${scrim}, inert ${inert}, focus ${focus}`);
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Edit month</SheetTitle>
+            <SheetDescription>Close the sheet and watch the log.</SheetDescription>
+          </SheetHeader>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}>
+              Close
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+};
+
+export const OnAfterClose: Story = {
+  args: {} as any,
+  render: () => <AfterCloseDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Sheet' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await waitFor(() => expect(canvasElement.closest('[inert]')).not.toBeNull());
+    await userEvent.keyboard('{Escape}');
+    // The page is free while the sheet is still in the DOM (exit animation).
+    await waitFor(() => expect(canvasElement.closest('[inert]')).toBeNull());
+    await waitFor(() => expect(canvas.getByTestId('log').textContent).toBe('after close: scrim 0, inert 0, focus Open Sheet'));
+    expect(dialog.isConnected).toBe(false);
+  },
 };

@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
 
 import { Button } from './button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './sheet';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -145,6 +148,74 @@ export const WithDestructiveItem: Story = {
             Delete
             <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
           </DropdownMenuItem>
+        </DropdownMenuContent>
+      </>
+    ),
+  },
+};
+
+const OpensOverlayDemo = () => {
+  const [dialog, setDialog] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  return (
+    <div className="flex flex-col gap-4 p-6">
+      <p className="typography-ui m-0">Open the menu, choose an item and close the overlay with Escape: focus goes back to the Actions button, not to the page.</p>
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">Actions</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuItem onSelect={() => setDialog(true)}>Rename</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSheet(true)}>Details</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Dialog open={dialog} onOpenChange={setDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename</DialogTitle>
+            <DialogDescription>The menu item that opened this dialog is gone. Focus returns to the menu trigger when you close it.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Sheet open={sheet} onOpenChange={setSheet}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Details</SheetTitle>
+            <SheetDescription>Same fallback for Sheet, Drawer and ConfirmDialog.</SheetDescription>
+          </SheetHeader>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+};
+
+/** A menu item that opens a Dialog, Sheet, Drawer or ConfirmDialog. The item unmounts with the menu, so on close focus returns to the menu trigger (WCAG 2.4.3). A sub menu item returns to the outermost trigger. */
+export const OpensOverlay: Story = {
+  render: () => <OpensOverlayDemo />,
+  args: {} as any,
+};
+
+/** `density="touch"` makes every row 44px high below the sm breakpoint (touch-target-lg token, WCAG 2.5.5). Use it for menus opened from a mobile trigger. `density="auto"` does the same on coarse pointers (touch screens) at any width. Default keeps the dense rows. Resize the viewport to see it. */
+export const TouchDensity: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  args: {
+    children: (
+      <>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">Touch menu</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" density="touch">
+          <DropdownMenuItem>Rename</DropdownMenuItem>
+          <DropdownMenuCheckboxItem checked>Show archived</DropdownMenuCheckboxItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </>
     ),
