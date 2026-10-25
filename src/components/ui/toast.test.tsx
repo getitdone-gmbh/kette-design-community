@@ -235,17 +235,16 @@ describe('Toast component', () => {
     expect(icon).toHaveClass('lucide');
   });
 
-  // --- persistently-visible resting dismiss affordance (MAT-TOAST-02 / TOAST-A11Y-06) ---
-  // Dialog defaults its close control to `opacity-disabled` (60%), Sheet to `opacity-70` — both
-  // visible at rest without requiring hover. ToastClose previously started at `opacity-0`, invisible
-  // for the full auto-dismiss window on touch/no-hover contexts.
-  it('keeps the dismiss control visible at rest instead of opacity-0 (MAT-TOAST-02 / TOAST-A11Y-06)', () => {
-    renderToast();
+  // --- persistently-visible resting dismiss affordance at full strength (MAT-TOAST-02 / TOAST-A11Y-06 / TOAST-A11Y-08) ---
+  it.each(['default', 'destructive', 'inverse'] as const)('shows the %s dismiss control at rest with full colour, no opacity blend (WCAG 1.4.11)', (variant) => {
+    renderToast({ variant });
     const close = screen.getByTestId('toast-close');
-    expect(close).toHaveClass('opacity-70');
-    expect(close.className).not.toMatch(/(^|\s)opacity-0(\s|$)/);
-    // still reaches full opacity on hover/focus-visible/group-hover
-    expect(close).toHaveClass('hover:opacity-100', 'focus-visible:opacity-100', 'group-hover:opacity-100');
+    expect(close.className).not.toMatch(/(^|\s)opacity-/);
+  });
+
+  it('colours the dismiss control per variant from text tokens that clear 3:1 on their own surface', () => {
+    renderToast();
+    expect(screen.getByTestId('toast-close')).toHaveClass('text-text-subtle', 'hover:text-text-default');
   });
 
   // --- ToastAction non-text boundary contrast (TOAST-A11Y-05) ---

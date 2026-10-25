@@ -46,16 +46,9 @@ const cardVariants = cva(
     // the dimmed/inert look is driven by `aria-disabled`/`data-disabled` rather than the
     // (inapplicable) `disabled:` pseudo-class. Independent of `interactive`: a purely informational
     // Card can still be shown as "unavailable".
-    //
-    // CARD-A11Y-03 fix: `opacity-disabled` is not a defined Tailwind utility anywhere in this
-    // design system (no `disabled` key in the opacity scale of kette-tokens' preset, built
-    // theme, or this repo's tailwind.config.cjs — confirmed by direct inspection), so it silently
-    // compiled to no CSS rule and the Disabled story rendered pixel-identical to Default. Using the
-    // real `opacity-50` utility here (same interim fallback already used by Tabs/NavigationMenu in
-    // this repo) until design-tokens-maintainer ships a proper `opacity.disabled` scale entry that
-    // every other `opacity-disabled` caller in this library can also migrate to.
-    'aria-disabled:pointer-events-none aria-disabled:opacity-50',
-    'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
+    // Disabled dimming uses the `opacity-disabled` utility of the tokens (--opacity-disabled).
+    'aria-disabled:pointer-events-none aria-disabled:opacity-disabled',
+    'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-disabled',
     // Invalid — e.g. a form-section Card reporting a validation error. Mirrors
     // `SelectTrigger`'s `aria-[invalid=true]:border-error` (select.tsx) so the boundary-only
     // (no background refill) treatment stays one convention across form-adjacent containers.

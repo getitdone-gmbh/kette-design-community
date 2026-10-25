@@ -2,6 +2,37 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.4.3
+
+Synced from kette-design-enterprise 0.27.15 and kette-tokens 5.23.2 (library changelogs 0.27.14 and 0.27.15, token changelog 5.23.2). Only the changes to components and theme parts that are in this package are listed.
+
+### Components
+
+- **`FormLabel`, `FormMessage`**: the error state uses the destructive text colour (`text-text-destructive`) instead of the raw error colour. With the self-contained theme of this release the raw colour (`239 68 68`) would have been 3.76:1 on white; the text role is 6.47:1 in light mode and on the paper surface, 7.29:1 in dark mode. Borders and icons keep the error colour.
+- **`Toast`**: the close button uses the full text colour of its variant at rest instead of 70 percent opacity (was about 2.7:1 on the default and 2.9:1 on the destructive toast in light mode, under the 3:1 minimum of WCAG 1.4.11; now 4.6:1 or more in every variant and mode).
+- **`useToastInset`, `reportToastInset`**: new public API (with the type `UseToastInsetOptions`). A fixed bar at the bottom of the screen tells the phone toast where it starts, so the toast rides above it instead of covering its buttons. A fixed `CookieConsent` banner uses it; a static banner reports nothing. In the shadcn registry `cookie-consent` now depends on `toast-inset`.
+- **`Card`** (both versions) and the disabled **`Label`**: disabled dimming uses the `opacity-disabled` utility (`--opacity-disabled`) instead of `opacity-50` and `opacity-70`.
+- **`PageHeader`**: when the actions wrap onto a second row, the primary action stays on the last actions row, aligned to the bottom, and the actions group can shrink (`min-w-0`), so wide tabs next to it no longer push the page sideways between 640 and 712px.
+- **`Avatar`**: comment clean-up only (the interactive Avatar already uses the shared ring token).
+- Tests: `form.test.tsx`, `toast-inset.test.tsx` (without the FooterOneLiner case), `compiled-classes-02714.test.tsx`, the updated `card`, `Card`, `toast` and `avatar` tests.
+- Not taken: FooterOneLiner (not in this package), the library contrast test pins for the neutral theme and the full theme set (this package ships the zero theme only; its adapted tests already assert 4.5:1 and 3:1 floors).
+
+
+### Theme and Tailwind preset
+
+- `styles/theme.css` is self-contained. 0.4.2 lacked 58 colour roles and the typography role `button` in the light `:root`, because the zero theme does not define them itself and relied on the generic kette-tokens `theme.css`, which this package does not ship. kette-tokens 5.23.2 completes them from its reference theme. Most visible fix: `--colors-background-accent`, `--colors-background-destructive`, `--colors-foreground-accent`, `--colors-foreground-destructive` and `--colors-error` were undefined in light mode, so `border-error` and `ring-error` (Card, Select, Single Select, Multiselect error states) and `bg-background-accent` drew nothing in light mode. They now have their light values, and the paper scope carries them too.
+- New in `:root`: 63 names (58 colour roles such as `--colors-avatar-*`, `--colors-checkbox-*`, `--colors-navigation-*`, `--colors-switch-*`, `--colors-textarea-*`, plus `--typo-button-*` and the class `.typography-button`). New in `.dark` and the dark media block: 47 names with dark values. New in the paper scope: 52 names with light values (the 47 plus the four accent and destructive pair variables and `--colors-error`, which inside a paper surface on a dark page is now the light red instead of the dark red). No variable was removed or renamed, no existing value changed. `styles/document-surface.css` gains the 47 names.
+- `tailwind/tailwind.theme.cjs` copied again from the token package: `npm run theme:prune` now removes nothing, so the 49 colours removed in 0.4.2 (for example `avatar-background-default`, `switch-background-activated`) are back, each with a declared variable. `tailwind/tailwind.preset.cjs` and `tailwind/preset.cjs` are unchanged.
+- Tests: `scripts/theme-pairs.mjs` lists the 51 pairs of kette-tokens `color-pairs.js` (was 27, the status on-colour pairs of 5.23.1 are now part of it). `src/lib/theme-vars.test.ts` loads `styles/theme.css` alone (port of the kette-tokens `check:standalone` gate): every variable the Tailwind config references without a fallback and every pair variable is declared in `:root`, every pair variable in `.dark`, the dark media block and the paper scope, and all of them resolve in the 12 cascade contexts (html class none, light, dark x OS light, dark x page, paper surface). `src/lib/theme-pairs.test.ts` checks all 51 pairs at 4.5:1 in those 12 contexts. Against the 0.4.2 theme the new tests report 25 failures.
+
+### Docs
+
+- README Theming: the `kette theme` command of the free Kette CLI replaces the placeholder (options, drop-in import, install).
+
+### Stories
+
+- Synced from the v0.27.15 tag: 129 story files with 1080 stories (new: Form `Error` and `ErrorOnPaper`, Page Header `WrappedActions640`, `-700`, `-900`, `-1024`, Toast `PhoneAboveCookieBanner`), same 9 skipped.
+
 ## 0.4.2
 
 Synced from kette-design-enterprise 0.27.13 and kette-tokens 5.23.1 (library changelogs 0.27.3 to 0.27.13, token changelogs 5.19.0 to 5.23.1). Only the changes to components and theme parts that are in this package are listed. The package description is new.

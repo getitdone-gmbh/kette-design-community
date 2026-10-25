@@ -85,7 +85,7 @@ const EmptyAwareDiv = ({ className, ...props }: React.HTMLAttributes<HTMLDivElem
   return <div ref={ref} data-empty={empty || undefined} className={className} {...props} />;
 };
 
-// Actions of the header. From sm up `primaryAction` sits beside the actions in one group that does not wrap: the actions wrap among themselves, the primary action stays at the end of the group and never drops alone onto its own row. Below sm the group dissolves and the primary action moves behind the tabs slot (title, tabs, primary action).
+// Actions of the header. From sm up `primaryAction` sits beside the actions in one group that does not wrap: the actions wrap among themselves, the primary action stays at the end of the group on the last actions row (items-end) and never drops alone onto its own row. The group may shrink (min-w-0) so wide tabs or actions never push the page sideways. Below sm the group dissolves and the primary action moves behind the tabs slot (title, tabs, primary action).
 const HeaderActions = ({ gap, overflowing, actions, primaryAction }: { gap: string; overflowing: boolean; actions?: React.ReactNode; primaryAction?: React.ReactNode }) => {
   if (!primaryAction) {
     return (
@@ -99,7 +99,7 @@ const HeaderActions = ({ gap, overflowing, actions, primaryAction }: { gap: stri
   );
   if (!actions) return primary;
   return (
-    <EmptyAwareDiv data-slot="header-actions" className={cn('flex items-center max-sm:contents sm:flex-nowrap sm:data-[empty=true]:hidden', gap)}>
+    <EmptyAwareDiv data-slot="header-actions" className={cn('flex min-w-0 items-end max-sm:contents sm:flex-nowrap sm:data-[empty=true]:hidden', gap)}>
       <EmptyAwareDiv data-slot="actions" className={cn('flex min-w-0 flex-wrap items-center', gap, 'max-sm:[&>*]:flex-1 data-[empty=true]:hidden', overflowing && 'max-sm:hidden')}>
         {actions}
       </EmptyAwareDiv>

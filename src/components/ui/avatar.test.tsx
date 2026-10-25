@@ -124,12 +124,7 @@ describe('Avatar component', () => {
       expect(onClick).toHaveBeenCalledTimes(3);
     });
 
-    // AVATAR-A11Y-04: the shared `ring-ring-default` token has no working dark-mode override in
-    // the currently published token package, so this interactively-focusable Avatar reuses the
-    // already dark-mode-safe `general-ring-default` token as an interim mitigation (see the
-    // KNOWN TOKEN GAP note above `Avatar` in avatar.tsx). Revert this assertion to
-    // `focus-visible:ring-ring-default` once design-tokens-maintainer republishes a working dark
-    // override for the bare `ring-default` token.
+    // Tokens 5.23.0 alias `ring-default` in dark mode (also in the coloured themes), so the interactive Avatar uses the same ring token as Button and Chip.
     it('carries the shared focus-visible ring recipe', () => {
       render(
         <Avatar onClick={() => {}} data-testid="avatar">

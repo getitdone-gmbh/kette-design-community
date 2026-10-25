@@ -139,3 +139,4 @@ export type { CardProps as CardDefaultProps } from './components/ui/card/card.in
 export type { Labels, DesignSystemLocale, LabelProp, LabelOverrides } from './components/ui/labels';
 export { useScrollRegion } from './components/ui/use-scroll-region';
 export { cn } from './lib/utils';
+export { reportToastInset, useToastInset, type UseToastInsetOptions } from './lib/toast-inset';

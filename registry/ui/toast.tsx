@@ -195,12 +195,7 @@ const ToastAction = React.forwardRef<
 ));
 ToastAction.displayName = ToastPrimitives.Action.displayName;
 
-// TOAST-A11Y-06: resting opacity was `opacity-0` — on touch/no-hover contexts (no `:hover` to
-// trigger `group-hover:opacity-100`) there was zero visible dismiss affordance for the full
-// TOAST_REMOVE_DELAY auto-dismiss window (use-toast.ts). Sibling dismissible overlays instead stay
-// persistently visible at rest: Dialog's close defaults to `opacity-disabled` (60%, dialog.tsx),
-// Sheet's defaults to `opacity-70` (sheet.tsx). Toast now matches Sheet's `opacity-70` baseline;
-// `hover:`/`focus-visible:`/`group-hover:` still raise it to full opacity.
+// TOAST-A11Y-06 / TOAST-A11Y-08: the close button is persistently visible (touch has no hover) and at rest it uses the full text colour of its variant, never an opacity blend. A 70% blend dropped the icon to about 2.7:1 (default, light) and 2.9:1 (destructive, light), under the 3:1 floor of WCAG 1.4.11. At full strength it is 4.6:1 or more in every variant and mode.
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
@@ -212,11 +207,10 @@ const ToastClose = React.forwardRef<
     ref={ref}
     aria-label={ariaLabel}
     className={cn(
-      'absolute right-1 top-1 rounded-default p-1 text-text-subtle opacity-70 transition-opacity',
-      'hover:text-text-default hover:opacity-100',
-      'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-ring-default focus-visible:ring-offset-focus',
-      'group-hover:opacity-100',
-      'group-[.inverse]:static group-[.inverse]:text-background group-[.inverse]:opacity-100 group-[.inverse]:focus-visible:ring-background group-[.inverse]:focus-visible:ring-offset-0',
+      'absolute right-1 top-1 rounded-default p-1 text-text-subtle transition-colors',
+      'hover:text-text-default',
+      'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-ring-default focus-visible:ring-offset-focus',
+      'group-[.inverse]:static group-[.inverse]:text-background group-[.inverse]:hover:text-background group-[.inverse]:focus-visible:ring-background group-[.inverse]:focus-visible:ring-offset-0',
       'group-[.destructive]:text-general-error-on',
       'group-[.destructive]:hover:text-general-error-on',
       'group-[.destructive]:focus-visible:text-general-error-on',

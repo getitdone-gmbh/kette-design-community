@@ -104,7 +104,7 @@ describe('Card component', () => {
       const card = screen.getByText('Content');
       expect(card).toHaveAttribute('aria-disabled', 'true');
       expect(card).toHaveAttribute('data-disabled', 'true');
-      expect(card).toHaveClass('aria-disabled:opacity-50', 'aria-disabled:pointer-events-none');
+      expect(card).toHaveClass('aria-disabled:opacity-disabled', 'aria-disabled:pointer-events-none');
     });
 
     it('suppresses interactivity even when onClick is passed', () => {

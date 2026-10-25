@@ -108,14 +108,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           // Card/Chip/AlertClose) the dimmed/inert look is driven by `aria-disabled`/`data-disabled`
           // rather than the (inapplicable) `disabled:` pseudo-class. Independent of `interactive`: a
           // purely informational Card can still be shown as "unavailable" (MAT-CARD-04).
-          //
-          // CARD-A11Y-03 fix: `opacity-disabled` is not a defined Tailwind utility anywhere in this
-          // design system (no `disabled` key in the opacity scale of kette-tokens' preset,
-          // built theme, or this repo's tailwind.config.cjs), so it silently compiled to no CSS rule.
-          // Using the real `opacity-50` utility (same interim fallback used in card.tsx/Tabs/
-          // NavigationMenu) until design-tokens-maintainer ships a proper `opacity.disabled` scale.
-          'aria-disabled:pointer-events-none aria-disabled:opacity-50',
-          'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
+          // Disabled dimming uses the `opacity-disabled` utility of the tokens (--opacity-disabled).
+          'aria-disabled:pointer-events-none aria-disabled:opacity-disabled',
+          'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-disabled',
           // Invalid — e.g. a form-section Card reporting a validation error. Mirrors the composable
           // Card's `aria-[invalid=true]:border-error` so the boundary-only (no background refill)
           // treatment stays one convention across form-adjacent containers (MAT-CARD-04).
