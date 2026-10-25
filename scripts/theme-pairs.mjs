@@ -1,6 +1,6 @@
 // Fill/text pair lists and the colour maths shared by src/lib/theme-pairs.test.ts and src/lib/theme-vars.test.ts.
 
-// Pairs that must travel together, the 51 pairs of kette-tokens scripts/color-pairs.js (check:pairs, check:standalone, 5.23.2). 'shared' marks a fill that reuses the text of another pair.
+// Pairs that must travel together, the 55 pairs of kette-tokens scripts/color-pairs.js (check:pairs, check:standalone, 5.24.0). 'shared' marks a fill that reuses the text of another pair.
 export const PAIRS = [
   ['button default', '--colors-button-background-default', '--colors-button-foreground-default'],
   ['button hover', '--colors-button-background-hover', '--colors-button-foreground-hover'],
@@ -26,6 +26,10 @@ export const PAIRS = [
   ['utility card', '--colors-utility-card', '--colors-utility-card-foreground'],
   ['utility popover', '--colors-utility-popover', '--colors-utility-popover-foreground'],
   ['utility muted', '--colors-utility-muted', '--colors-utility-muted-foreground'],
+  ['page text', '--colors-background', '--colors-utility-foreground'],
+  ['page muted text', '--colors-background', '--colors-utility-muted-foreground'],
+  ['button outline', '--colors-button-background-outline-default', '--colors-button-foreground-outline-default'],
+  ['button ghost', '--colors-button-background-ghost-default', '--colors-button-foreground-ghost-default'],
   ['sidebar', '--colors-sidebar-background', '--colors-sidebar-foreground'],
   ['sidebar muted', '--colors-sidebar-background', '--colors-sidebar-muted-foreground', 'shared'],
   ['sidebar accent', '--colors-sidebar-accent', '--colors-sidebar-accent-foreground'],

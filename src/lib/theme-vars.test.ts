@@ -30,7 +30,7 @@ describe('tailwind/tailwind.theme.cjs', () => {
   });
 });
 
-// styles/theme.css is shipped alone (no generic kette-tokens theme.css underneath), so it must be self-contained: port of kette-tokens check:standalone (5.23.2) for this theme.
+// styles/theme.css is shipped alone (no generic kette-tokens theme.css underneath), so it must be self-contained: port of kette-tokens check:standalone (5.24.0) for this theme.
 describe('styles/theme.css alone', () => {
   type Decls = Record<string, string>;
   const css = read('styles/theme.css');
@@ -48,9 +48,9 @@ describe('styles/theme.css alone', () => {
     ['paper scope', blocks.paper],
   ];
 
-  it('finds the Tailwind references and the 78 variables of the 51 pairs', () => {
+  it('finds the Tailwind references and the 84 variables of the 55 pairs', () => {
     expect(refs.size).toBeGreaterThan(800);
-    expect(pairVars.length).toBe(78);
+    expect(pairVars.length).toBe(84);
   });
 
   it('declares every Tailwind-referenced variable in :root', () => {

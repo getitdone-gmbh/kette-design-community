@@ -131,17 +131,25 @@ const scopeTabs = (
   </div>
 );
 
-// Phone order follows the prototype: title, scope controls (tabs slot), then the main action. Only CSS reorders, the DOM order stays the same.
-export const PrimaryActionAfterTabsOnPhone: Story = {
-  args: { ...PrimaryActionOnPhone.args, tabs: scopeTabs },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+// Tab order equals visual order. The DOM order is title, actions, primary action, tabs, and the layout shows the same order at 390 and 1024 pixels without any CSS reordering. The test runner presses Tab with a real keyboard at both widths (parameter keyboardOrder) and compares the focus sequence with the on-screen reading order.
+export const PrimaryActionKeyboardOrder: Story = {
+  args: {
+    ...PrimaryActionOnPhone.args,
+    actions: (
+      <>
+        <Button variant="outline" size="sm" icon={<Download />}>Export</Button>
+        <Button variant="outline" size="sm">Import</Button>
+      </>
+    ),
+    tabs: scopeTabs,
+  },
+  parameters: { keyboardOrder: { widths: [390, 1024] } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The reorder applies below the sm breakpoint of the viewport. The test runner also visits the story at desktop width.
-    if (window.matchMedia('(min-width: 640px)').matches) return;
-    const tabs = canvas.getByRole('tablist');
-    const primary = canvas.getByRole('button', { name: 'New invoice' });
-    await waitFor(() => expect(primary.getBoundingClientRect().top).toBeGreaterThanOrEqual(tabs.getBoundingClientRect().bottom));
+    // DOM order of the focusable elements, whatever the viewport shows.
+    const names = Array.from(canvasElement.querySelectorAll<HTMLElement>('button')).map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim());
+    expect(names.indexOf('New invoice')).toBeLessThan(names.indexOf('All invoices'));
+    expect(canvas.getByRole('tablist')).toBeInTheDocument();
   },
 };
 
@@ -162,18 +170,12 @@ export const PrimaryActionStaysWithActions: Story = {
     primaryAction: <Button variant="primary" size="sm" icon={<Plus />}>New invoice</Button>,
   },
   decorators: [(Story) => <div style={{ width: 640 }}><Story /></div>],
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    // Below the sm breakpoint of the viewport the group dissolves on purpose (primary action behind the tabs), so only desktop width is checked.
-    if (!window.matchMedia('(min-width: 640px)').matches) return;
-    // Beside the actions, not below them: every action ends before the primary action starts.
-    await waitFor(() => {
-      const primary = canvas.getByRole('button', { name: 'New invoice' }).getBoundingClientRect();
-      expect(primary.width).toBeGreaterThan(0);
-      for (const name of ['Export', 'Import', 'Reminders', 'Bulk edit']) {
-        expect(canvas.getByRole('button', { name }).getBoundingClientRect().right).toBeLessThanOrEqual(primary.left + 1);
-      }
-    });
+  // Measured by the test runner at desktop width: beside the actions, not below them, every action ends before the primary action starts. Below the sm breakpoint the group dissolves on purpose (primary action follows the title, before the tabs).
+  parameters: {
+    layoutInvariants: {
+      widths: [1440],
+      leftOf: [{ each: ['button:Export', 'button:Import', 'button:Reminders', 'button:Bulk edit'], of: 'button:New invoice' }],
+    },
   },
 };
 
@@ -229,28 +231,81 @@ const reportHeaderStory = (width: number, count: number): Story => {
     primaryAction: <Button variant="primary" size="sm" icon={<Plus />}>New report</Button>,
   },
   decorators: [(Story) => <div data-testid="frame" style={{ width, maxWidth: '100%' }}><Story /></div>],
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    // Below the sm breakpoint of the viewport the group dissolves on purpose, so only desktop width is checked.
-    if (!window.matchMedia('(min-width: 640px)').matches) return;
-    await waitFor(() => {
-      const frame = canvas.getByTestId('frame');
-      // No horizontal overflow of the frame or the page.
-      expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth);
-      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-      // The primary action shares the row of the last action (same bottom edge) instead of floating between rows.
-      const primary = canvas.getByRole('button', { name: 'New report' }).getBoundingClientRect();
-      const last = canvas.getByRole('button', { name: reportActions[reportActions.length - 1] }).getBoundingClientRect();
-      expect(primary.width).toBeGreaterThan(0);
-      // The actions really wrap (the last one sits lower than the first), so the check above is meaningful.
-      const first = canvas.getByRole('button', { name: reportActions[0] }).getBoundingClientRect();
-      expect(last.top).toBeGreaterThan(first.top);
-      expect(Math.abs(primary.bottom - last.bottom)).toBeLessThanOrEqual(1);
-    });
+  // Measured by the test runner at desktop width (the group dissolves below the sm breakpoint on purpose): no overflow of the frame or the page, the actions really wrap (the last sits lower than the first) and the primary action shares the row of the last action.
+  parameters: {
+    layoutInvariants: {
+      widths: [1440],
+      noOverflow: ['[data-testid="frame"]'],
+      lowerThan: [{ el: `button:${reportActions[reportActions.length - 1]}`, than: `button:${reportActions[0]}` }],
+      sameBottom: [{ a: 'button:New report', b: `button:${reportActions[reportActions.length - 1]}` }],
+    },
   },
-};
+  };
 };
 export const WrappedActions640: Story = reportHeaderStory(640, 8);
 export const WrappedActions700: Story = reportHeaderStory(700, 8);
 export const WrappedActions900: Story = reportHeaderStory(900, 11);
 export const WrappedActions1024: Story = reportHeaderStory(1024, 12);
+
+// Shift planning example: the title block keeps a minimum width, so when the actions would fit on one row only by squeezing the title, they wrap below it instead. The frame widths are the content widths seen at 1033 to 1191 pixels with the sidebar collapsed.
+// Every action is 120px wide, and the count leaves less than the title minimum next to them, which is what used to squeeze the title to a few pixels.
+// The test runner measures it at 1440 pixels (parameter layoutInvariants): the heading and the subtitle are at least 240px wide and the actions start below the title.
+const TITLE_MIN = 240;
+const shiftPlanningLabels = ['Copy week', 'Publish plan', 'Swap shifts', 'Import rota', 'Export plan', 'Send reminder', 'Print plan', 'Share link', 'Archive week', 'Lock week'];
+const shiftPlanningStory = (width: number): Story => {
+  const count = Math.floor((width - 60 + 8) / 128);
+  return {
+    args: {
+      variant: 'zero',
+      title: 'Shift planning for the production teams in Frankfurt and Munich',
+      subtitle: 'Plan, publish and swap shifts for the coming weeks.',
+      actions: (
+        <>
+          {shiftPlanningLabels.slice(0, count).map((label) => (
+            <Button key={label} variant="outline" size="sm" style={{ width: 120 }}>{label}</Button>
+          ))}
+        </>
+      ),
+    },
+    decorators: [(Story) => <div data-testid="frame" style={{ width, maxWidth: '100%' }}><Story /></div>],
+    parameters: {
+      layoutInvariants: {
+        widths: [1440],
+        minWidth: [
+          { selector: '#storybook-root h1', px: TITLE_MIN },
+          { selector: '#storybook-root header p', px: TITLE_MIN },
+        ],
+        below: [{ selector: '#storybook-root header button', of: '#storybook-root header p' }],
+      },
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      expect(canvas.getByRole('heading', { level: 1 })).toBeInTheDocument();
+      expect(canvas.getAllByRole('button')).toHaveLength(count);
+    },
+  };
+};
+export const TitleKeepsMinWidth1033: Story = shiftPlanningStory(1033);
+export const TitleKeepsMinWidth1100: Story = shiftPlanningStory(1100);
+export const TitleKeepsMinWidth1191: Story = shiftPlanningStory(1191);
+
+// On a phone a header with many actions and no `overflow` prop keeps every label on one line. The actions wrap onto more rows instead (the test runner measures the labels at 390 pixels).
+export const ManyActionsOnPhone: Story = {
+  args: {
+    variant: 'zero',
+    title: 'Shift planning',
+    subtitle: 'Plan and publish the next weeks.',
+    actions: (
+      <>
+        {['Export report', 'Import data', 'Copy last week', 'Publish plan', 'Send reminder', 'Swap shifts', 'Print plan'].map((label) => (
+          <Button key={label} variant="outline" size="sm">{label}</Button>
+        ))}
+      </>
+    ),
+  },
+  parameters: { viewport: { defaultViewport: 'mobile1' }, layoutInvariants: { widths: [390] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByRole('button', { name: 'Copy last week' })).toHaveClass('whitespace-nowrap');
+  },
+};

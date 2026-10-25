@@ -2,6 +2,34 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.4.4
+
+Synced from kette-design-enterprise 0.27.18 and kette-tokens 5.24.0 (library changelogs 0.27.16 to 0.27.18, token changelogs 5.23.3 to 5.24.0). Only the changes to components and theme parts that are in this package are listed.
+
+### Components
+
+- **`Button`**: a label stays on one line (`whitespace-nowrap`), so two-word labels no longer wrap and spill out of small buttons on phones. The `link` variant is running text and keeps wrapping. Pass `className="whitespace-normal"` if you really want a wrapping label.
+- **`PageHeader`**: on phones the primary action sits directly under the title block and above the tabs slot, so the Tab order equals the reading order (WCAG 2.4.3, 1.3.2). The title block keeps a minimum width of 240px (capped at the row width); when the actions do not fit beside it they wrap below the title instead of squeezing it.
+- **`FormMessage`**: a validation error renders as `role="alert"` and is announced once when it appears (WCAG 4.1.3). Helper text without an error gets no role.
+- **`Toast`**: after a toast that held focus is dismissed, focus returns to the element that had it before focus entered the toast, and is no longer left on the empty toast list. The comment about the close icon contrast now lists the measured values (4.34:1 in the default light toast of the zero theme, which passes the 3:1 floor for icons).
+- **`useToastInset`**: follows the element. A bar that appears late, is swapped, hidden or removed reports or releases its inset; it re-measures on resize, orientation change, visibility change and scrolling. The signature `useToastInset(ref, { enabled? })` is unchanged.
+- Tests: `button.test.tsx`, `form.test.tsx`, `page-header.test.tsx`, `toast.test.tsx`, `toast-inset.test.tsx` (without the FooterOneLiner case). `sidebar-nav.test.tsx` uses the shared cast instead of a sample persona.
+- Not taken: the Untitled UI aliases and icon components (not in this package), the `layoutInvariants` runner parameter and the test-runner checks (this package has no Storybook test runner; the stories still carry the parameter), FooterOneLiner and the visual baselines.
+
+### Theme and Tailwind preset
+
+- `styles/theme.css` from kette-tokens 5.24.0. Only the link colour changed so that every link holds 4.5:1 on every surface: light default `37 99 235` -> `29 78 216`, hover and active `29 78 216` -> `30 64 175`; dark default `59 130 246` -> `147 197 253`, hover and active `96 165 250` -> `191 219 254`. `--semantic-link-visited` follows the default. The `.dark` block, the OS dark block and the paper scope carry the same steps. No variable was added or removed.
+- `tailwind/tailwind.theme.cjs` and `tailwind/tailwind.preset.cjs` copied again (`link-default`, `link-hover`, `link-active`, `link-visited` follow the theme). `tailwind/preset.cjs` is unchanged. `npm run theme:prune` removes nothing. `styles/document-surface.css` regenerated.
+- Tests: `scripts/theme-pairs.mjs` lists the 55 pairs of kette-tokens `color-pairs.js` (was 51): page text and page muted text on `--colors-background`, outline button and ghost button. `src/lib/theme-vars.test.ts` expects the 84 pair variables. All pairs hold 4.5:1 or more in the 4 mode contexts of the pair test and the 12 cascade contexts of the standalone test (lowest measured ratio 4.62:1, `utility destructive` in light mode).
+
+### Registry
+
+- `public/r` rebuilt (153 files): `button`, `form`, `page-header`, `toast`, `toast-inset` and `theme` changed.
+
+### Sellability
+
+- No consumer, customer or tool-vendor names in the repository, the package or the registry. The sample persona e-mail in `sidebar-nav.test.tsx` and in `scripts/sync-stories.mjs` is neutral. Git history is unchanged.
+
 ## 0.4.3
 
 Synced from kette-design-enterprise 0.27.15 and kette-tokens 5.23.2 (library changelogs 0.27.14 and 0.27.15, token changelog 5.23.2). Only the changes to components and theme parts that are in this package are listed.

@@ -68,8 +68,8 @@ describe('fill/text pairs (kette-tokens check:pairs)', () => {
     expect(low(vars, pairs)).toEqual([]);
   });
 
-  it('checks all 51 pairs of kette-tokens', () => {
-    expect(pairs.length).toBe(51);
+  it('checks all 55 pairs of kette-tokens', () => {
+    expect(pairs.length).toBe(55);
   });
 
   it('pins every pair variable in :root, both dark blocks and the paper scope', () => {

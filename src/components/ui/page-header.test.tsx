@@ -126,30 +126,31 @@ describe('PageHeader title role', () => {
       expect(actions.parentElement).toBe(group);
     });
 
-    it('follows the prototype order on a phone: title, tabs, then the primary action', () => {
+    it('keeps DOM order equal to visual order: title, actions, primary action, tabs, no CSS order', () => {
       render(
         <PageHeader
           title="Invoices"
-          tabs={<div role="tablist" aria-label="Scope" />}
+          tabs={<div role="tablist" aria-label="Scope"><button type="button" role="tab">All</button></div>}
           primaryAction={<button type="button">New invoice</button>}
           actions={<button type="button">Export</button>}
         />,
       );
       const slot = document.querySelector('[data-slot="primary-action"]') as HTMLElement;
       const group = document.querySelector('[data-slot="header-actions"]') as HTMLElement;
-      // Below sm the title row and the group dissolve, the primary action becomes an item of the header column and is ordered last, behind the tabs.
-      expect(slot).toHaveClass('max-sm:order-last');
+      expect(slot.className).not.toMatch(/order-/);
+      // Below sm the title row and the group dissolve, the primary action is an item of the header column in DOM order.
       expect(group).toHaveClass('max-sm:contents');
       expect(group.parentElement).toHaveClass('max-sm:contents');
       const column = group.parentElement?.parentElement as HTMLElement;
-      expect(column).toContainElement(screen.getByRole('tablist'));
       expect(column).toHaveClass('flex-col');
+      const order = Array.from(column.querySelectorAll('button')).map((el) => el.textContent);
+      expect(order).toEqual(['Export', 'New invoice', 'All']);
     });
 
-    it('banner layout dissolves the title row below sm so the primary action can follow the tabs', () => {
+    it('banner layout dissolves the title row below sm without reordering the primary action', () => {
       render(<PageHeader variant="banner" title="Ada" tabs={<div role="tablist" aria-label="Scope" />} primaryAction={<button type="button">Follow</button>} />);
       const slot = document.querySelector('[data-slot="primary-action"]') as HTMLElement;
-      expect(slot).toHaveClass('max-sm:order-last');
+      expect(slot.className).not.toMatch(/order-/);
       expect(slot.parentElement).toHaveClass('max-sm:contents');
     });
 
@@ -227,6 +228,21 @@ describe('PageHeader title role', () => {
       const group = document.querySelector('[data-slot="header-actions"]') as HTMLElement;
       await waitFor(() => expect(group.querySelector('[data-slot="actions"]')).toHaveAttribute('data-empty', 'true'));
       await waitFor(() => expect(group.querySelector('[data-slot="primary-action"]')).toHaveAttribute('data-empty', 'true'));
+    });
+  });
+  describe('title block minimum width', () => {
+    it('gives the title block a minimum width so the actions wrap before the title is squeezed', () => {
+      render(<PageHeader title="Shift planning" subtitle="Plan the week" actions={<button type="button">Export</button>} />);
+      const titleBlock = screen.getByRole('heading', { level: 1 }).closest('div.min-w-0.flex-1') as HTMLElement;
+      expect(titleBlock.className).toContain('sm:min-w-[min(100%,var(--size-column-240,240px))]');
+      // The row can wrap, which is what lets the actions drop below the title.
+      expect(titleBlock.parentElement).toHaveClass('sm:flex-wrap');
+    });
+
+    it('keeps the order title, actions, primary action in the DOM', () => {
+      render(<PageHeader title="Shift planning" actions={<button type="button">Export</button>} primaryAction={<button type="button">New plan</button>} />);
+      const names = Array.from(document.querySelectorAll('button')).map((b) => b.textContent);
+      expect(names).toEqual(['Export', 'New plan']);
     });
   });
 });

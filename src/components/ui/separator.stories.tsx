@@ -19,7 +19,7 @@ export const Horizontal: Story = {
   render: (args) => (
     <div className="w-[320px] space-y-3 p-6 text-sm text-foreground">
       <div>
-        <div className="font-medium">Workbase</div>
+        <div className="font-medium">Workspace</div>
         <div className="text-muted-foreground">An open-source CRM and work platform.</div>
       </div>
       <Separator {...args} />

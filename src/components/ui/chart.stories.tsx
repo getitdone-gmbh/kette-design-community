@@ -212,7 +212,7 @@ export const HBarsStacked: StoryObj<typeof HBarList> = {
   render: () => <HBarList aria-label="Top skills" layout="stacked" items={[{ id: 'a', label: 'Figma', value: 3, valueLabel: '3 proj.' }, { id: 'b', label: 'Design systems', value: 2, valueLabel: '2 proj.' }]} />,
   play: assertBarsHaveHeight,
 };
-// Workbase analytics shape: stacked layout with segmented rows.
+// Analytics dashboard shape: stacked layout with segmented rows.
 export const HBarsStackedSegmented: StoryObj<typeof HBarList> = {
   render: () => (
     <div className="max-w-md">

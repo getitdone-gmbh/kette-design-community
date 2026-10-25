@@ -10,6 +10,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, D
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
 import { Toast, ToastAction, ToastClose, ToastDescription, ToastProvider, ToastViewport } from './toast';
 import { Toaster } from './toaster';
+import { TOAST_INSET_PROPERTY, useToastInset } from '../../lib/toast-inset';
 import { useToast } from './use-toast';
 
 const meta = {
@@ -432,5 +433,113 @@ export const PhoneAboveCookieBanner: Story = {
     }
     // The dismiss control of the destructive toast stays reachable.
     expect(toastEl.getBoundingClientRect().top).toBeGreaterThan(0);
+  },
+};
+
+const FocusReturnDemo = () => {
+  const { toast } = useToast();
+  return (
+    <main>
+      <Button variant="outline" onClick={() => toast({ title: 'Saved', description: 'Your changes are stored.', duration: 600000 })}>
+        Save
+      </Button>
+    </main>
+  );
+};
+
+// Focus after a dismissal goes back to the element that had it before the toast, never to the toast list. Escape and the close button are both covered; a swipe ends in the same hand-over.
+export const FocusReturnsAfterDismiss: Story = {
+  name: 'Focus returns after dismissal',
+  render: () => <FocusReturnDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const save = canvas.getByRole('button', { name: 'Save' });
+    const body = within(document.body);
+    await userEvent.click(save);
+    const toastEl = (await body.findByRole('button', { name: /dismiss|close/i })).closest('li') as HTMLElement;
+    // Move focus from the trigger into the toast (the toaster renders before the page, so a plain Tab would go forward past it), then dismiss with Escape.
+    toastEl.focus();
+    await waitFor(() => expect(toastEl.contains(document.activeElement)).toBe(true));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.body.contains(toastEl)).toBe(false));
+    await waitFor(() => expect(save).toHaveFocus());
+    // Again with the close button.
+    await userEvent.click(save);
+    const close = await body.findByRole('button', { name: /dismiss|close/i });
+    const second = close.closest('li') as HTMLElement;
+    close.focus();
+    await waitFor(() => expect(second.contains(document.activeElement)).toBe(true));
+    await userEvent.click(close);
+    await waitFor(() => expect(document.body.contains(second)).toBe(false));
+    await waitFor(() => expect(save).toHaveFocus());
+    expect(document.activeElement?.closest('ol')).toBeNull();
+  },
+};
+
+const LateBottomBar = () => {
+  const [mounted, setMounted] = React.useState(false);
+  return (
+    <main>
+      <Button variant="outline" onClick={() => setMounted((value) => !value)}>
+        {mounted ? 'Remove bar' : 'Add bar'}
+      </Button>
+      <BarHost mounted={mounted} />
+    </main>
+  );
+};
+
+// The bar renders null first and appears later, as a mobile bottom navigation does while the session loads.
+const BarHost = ({ mounted }: { mounted: boolean }) => {
+  const barRef = React.useRef<HTMLDivElement>(null);
+  useToastInset(barRef);
+  return mounted ? (
+    <div ref={barRef} role="toolbar" aria-label="Bottom bar" className="fixed inset-x-0 bottom-0 flex h-16 items-center justify-center border-t border-solid border-general-border-default bg-surface-canvas">
+      <Button size="sm">Decide</Button>
+    </div>
+  ) : null;
+};
+
+// useToastInset follows the element: a bar that mounts late reports its height, and removing it releases the inset.
+export const InsetFromLateBottomBar: Story = {
+  name: 'Inset from a bar that mounts late',
+  render: () => <LateBottomBar />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const inset = () => document.documentElement.style.getPropertyValue(TOAST_INSET_PROPERTY);
+    expect(inset()).toBe('');
+    await userEvent.click(canvas.getByRole('button', { name: 'Add bar' }));
+    await waitFor(() => expect(parseInt(inset(), 10)).toBeGreaterThan(0));
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove bar' }));
+    await waitFor(() => expect(inset()).toBe(''));
+  },
+};
+
+const StickyBarBelowFold = () => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  useToastInset(ref);
+  return (
+    <main>
+      <div style={{ height: 2000 }}>Long content above the bar.</div>
+      <div ref={ref} role="toolbar" aria-label="Sticky bar" className="sticky flex h-16 items-center justify-center border-t border-solid border-general-border-default bg-surface-canvas">
+        <Button size="sm">Decide</Button>
+      </div>
+    </main>
+  );
+};
+
+// A sticky bar with no offset sits in the flow below the fold and reports nothing. Scrolling it to the bottom edge makes it report its height, scrolling away releases the inset.
+export const InsetFromStickyBarAfterScrolling: Story = {
+  name: 'Inset from a bar that reaches the bottom by scrolling',
+  parameters: { layout: 'fullscreen' },
+  render: () => <StickyBarBelowFold />,
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('toolbar', { name: 'Sticky bar' });
+    const inset = () => document.documentElement.style.getPropertyValue(TOAST_INSET_PROPERTY);
+    window.scrollTo(0, 0);
+    await waitFor(() => expect(inset()).toBe(''));
+    window.scrollTo(0, bar.offsetTop + bar.offsetHeight - window.innerHeight);
+    await waitFor(() => expect(parseInt(inset(), 10)).toBeGreaterThan(0));
+    window.scrollTo(0, 0);
+    await waitFor(() => expect(inset()).toBe(''));
   },
 };

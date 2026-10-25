@@ -445,11 +445,11 @@
   --semantic-interaction-active-alpha: 0.0784;
   --semantic-interaction-hover: 0 0 0;
   --semantic-interaction-hover-alpha: 0.0392;
-  --semantic-link-active: 29 78 216;
-  --semantic-link-default: 37 99 235;
+  --semantic-link-active: 30 64 175;
+  --semantic-link-default: 29 78 216;
   --semantic-link-disabled: 203 213 225;
-  --semantic-link-hover: 29 78 216;
-  --semantic-link-visited: 37 99 235;
+  --semantic-link-hover: 30 64 175;
+  --semantic-link-visited: 29 78 216;
   --semantic-overlay-scrim: 15 23 42;
   --semantic-overlay-scrim-alpha: 0.2784;
   --semantic-overlay-skeleton-default: 226 232 240;

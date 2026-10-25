@@ -132,8 +132,15 @@ const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<
       return null;
     }
 
+    // The element only exists while there is something to say, so a validation error is announced once when it is inserted (role alert, WCAG 4.1.3). Re-renders with the same text do not announce again. Plain helper children carry no role.
     return (
-      <p ref={ref} id={formMessageId} className={cn('text-sm text-text-destructive', className)} {...props}>
+      <p
+        ref={ref}
+        id={formMessageId}
+        role={error ? 'alert' : undefined}
+        className={cn('text-sm text-text-destructive', className)}
+        {...props}
+      >
         {body}
       </p>
     );
