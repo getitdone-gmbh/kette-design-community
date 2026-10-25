@@ -1,9 +1,10 @@
 import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
-import { waitFor, within } from '@storybook/testing-library';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { Button } from './button';
 import { DocumentSurface } from './document-surface';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from './form';
 import { Input } from './input';
@@ -87,4 +88,51 @@ export const ErrorOnPaper: Story = {
     </DocumentSurface>
   ),
   play: playError,
+};
+
+// Validation timing like react-hook-form on submit: the field is valid first, then the error appears. The message is inserted as an alert, so a screen reader announces it once (WCAG 4.1.3), and the input points to it through aria-describedby with aria-invalid.
+const SubmitField = () => {
+  const form = useForm({ defaultValues: { email: '' } });
+  return (
+    <Form {...form}>
+      <form
+        className="flex w-full max-w-sm flex-col gap-4"
+        noValidate
+        onSubmit={form.handleSubmit(() => undefined)}
+      >
+        <FormField
+          control={form.control}
+          name="email"
+          rules={{ required: 'Enter your email address.' }}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" {...field} />
+              </FormControl>
+              <FormDescription>We only use it to send the invoice.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Send</Button>
+      </form>
+    </Form>
+  );
+};
+
+export const ErrorAnnounced: Story = {
+  render: () => <SubmitField />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText('Email');
+    expect(canvas.queryByRole('alert')).toBeNull();
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    await userEvent.click(canvas.getByRole('button', { name: 'Send' }));
+    const alert = await canvas.findByRole('alert');
+    expect(alert).toHaveTextContent('Enter your email address.');
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(input.getAttribute('aria-describedby')).toContain(alert.id);
+    expect(canvas.getAllByRole('alert')).toHaveLength(1);
+  },
 };

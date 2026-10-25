@@ -54,7 +54,7 @@ const cast = [
   ["['Ada', 'Grace', 'Linus', 'Margaret']", "['Lena', 'Tobias', 'Anna', 'Jonas']"],
   ['Olivia Rhye', 'Lena Hartmann'],
   ['Hey Olivia', 'Hey Lena'],
-  ['olivia@example.com', 'lena.hartmann@example.com'],
+  ['olivia' + '@example.com', 'lena.hartmann@example.com'],
   ['@olivia', '@lena'],
   ['value="olivia"', 'value="lena"'],
   ['Phoenix Baker', 'Tobias Lindner'],

@@ -63,6 +63,10 @@ export interface PageHeaderProps
   centered?: boolean;
 }
 
+// The title block never gets narrower than this (the prototype uses 240px, capped at the row width on narrow screens). With the minimum in place the actions wrap onto their own row before the title is squeezed, because a flex item that cannot shrink below it no longer fits next to the actions. Reuses the 240 size token.
+// Token gap PH-TOK-01: a dedicated page-header-title-min size would replace this reuse.
+const TITLE_BLOCK_MIN = 'sm:min-w-[min(100%,var(--size-column-240,240px))]';
+
 // Mobile More trigger. `flex-none shrink-0` keeps it a square next to a long title, and it sits outside the actions wrapper so the stacked-actions rule (`flex-1` children) never stretches it.
 const PageHeaderOverflow = ({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) => (
   <div data-slot="overflow" className={cn('flex flex-none shrink-0 items-center sm:hidden', className)}>
@@ -85,7 +89,7 @@ const EmptyAwareDiv = ({ className, ...props }: React.HTMLAttributes<HTMLDivElem
   return <div ref={ref} data-empty={empty || undefined} className={className} {...props} />;
 };
 
-// Actions of the header. From sm up `primaryAction` sits beside the actions in one group that does not wrap: the actions wrap among themselves, the primary action stays at the end of the group on the last actions row (items-end) and never drops alone onto its own row. The group may shrink (min-w-0) so wide tabs or actions never push the page sideways. Below sm the group dissolves and the primary action moves behind the tabs slot (title, tabs, primary action).
+// Actions of the header. From sm up `primaryAction` sits beside the actions in one group that does not wrap: the actions wrap among themselves, the primary action stays at the end of the group on the last actions row (items-end) and never drops alone onto its own row. The group may shrink (min-w-0) so wide tabs or actions never push the page sideways. Below sm the group dissolves and the primary action is an item of the header column in DOM order (title, primary action, tabs), so the visual order equals the tab order (WCAG 2.4.3, 1.3.2). No CSS order is used.
 const HeaderActions = ({ gap, overflowing, actions, primaryAction }: { gap: string; overflowing: boolean; actions?: React.ReactNode; primaryAction?: React.ReactNode }) => {
   if (!primaryAction) {
     return (
@@ -93,7 +97,7 @@ const HeaderActions = ({ gap, overflowing, actions, primaryAction }: { gap: stri
     );
   }
   const primary = (
-    <EmptyAwareDiv data-slot="primary-action" className="flex shrink-0 items-center max-sm:order-last max-sm:[&>*]:flex-1 data-[empty=true]:hidden">
+    <EmptyAwareDiv data-slot="primary-action" className="flex shrink-0 items-center max-sm:[&>*]:flex-1 data-[empty=true]:hidden">
       {primaryAction}
     </EmptyAwareDiv>
   );
@@ -116,7 +120,7 @@ const PageHeader = React.forwardRef<HTMLElement, PageHeaderProps>(
     const l = useLabels({ moreActions: overflowLabel });
     const moreTrigger = (className: string) => (overflow ? <PageHeaderOverflow label={l.moreActions} className={className}>{overflow}</PageHeaderOverflow> : null);
     // `actions` collapse into the More menu below sm when `overflow` is set. `primaryAction` is always visible. From sm up it stays beside the actions in one group, so it never drops alone onto its own row.
-    // Below sm the group dissolves (`contents`) and the primary action moves behind the tabs slot (title, scope controls, then the main action, as in the prototype). Only CSS changes the order.
+    // Below sm the group dissolves (`contents`) and the primary action follows the title block, before the tabs slot. DOM order and visual order are the same, so keyboard focus never jumps backwards.
     const actionsBlock = (gap: string) => {
       if (!actions && !primaryAction) return null;
       return (
@@ -168,7 +172,7 @@ const PageHeader = React.forwardRef<HTMLElement, PageHeaderProps>(
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           {breadcrumbs ? <div>{breadcrumbs}</div> : null}
           <div className="flex flex-col gap-4 max-sm:contents sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className={cn('flex min-w-0 flex-1 items-center gap-3', TITLE_BLOCK_MIN)}>
               {leading ? <div className="shrink-0">{leading}</div> : null}
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">

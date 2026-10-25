@@ -272,6 +272,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(
           'inline-flex',
+          // A label never wraps inside a button. A group of buttons wraps (or collapses) instead. The link variant is running text (an author name in a teaser) and may wrap.
+          { 'whitespace-nowrap': resolvedVariant !== 'link' },
           { relative: Boolean(status) },
           'items-center',
           'justify-center',

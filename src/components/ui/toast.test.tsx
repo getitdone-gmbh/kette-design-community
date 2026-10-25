@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import * as React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { DesignSystemProvider } from './design-system-provider';
@@ -360,5 +361,116 @@ describe('Toast built-in texts follow the labels context', () => {
     rerender(<DesignSystemProvider locale="de" labels={{ toastRegion: 'Hinweise ({hotkey})', dismiss: 'Weg' }}>{full()}</DesignSystemProvider>);
     expect(screen.getByRole('region', { name: 'Hinweise (F8)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Weg' })).toBeInTheDocument();
+  });
+});
+
+describe('Toast focus after dismissal', () => {
+  // jsdom has no pointer capture, which Radix Toast reads on pointer events.
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.setPointerCapture ??= () => undefined;
+    Element.prototype.releasePointerCapture ??= () => undefined;
+  });
+
+  const Harness = ({ withTrigger = true }: { withTrigger?: boolean }) => {
+    const [open, setOpen] = React.useState(true);
+    return (
+      <>
+        {withTrigger ? (
+          <button type="button" data-testid="trigger">
+            Save
+          </button>
+        ) : null}
+        <button type="button" data-testid="reopen" onClick={() => setOpen(true)}>
+          Show again
+        </button>
+        <button type="button" data-testid="programmatic" onClick={() => setOpen(false)}>
+          Close from outside
+        </button>
+        <ToastProvider>
+          <Toast data-testid="toast" open={open} onOpenChange={setOpen}>
+            <ToastTitle>Saved</ToastTitle>
+            <ToastAction altText="Undo">Undo</ToastAction>
+            <ToastClose data-testid="toast-close" />
+          </Toast>
+          <ToastViewport />
+        </ToastProvider>
+      </>
+    );
+  };
+
+  const list = () => screen.getByRole('region', { name: /notifications/i }).querySelector('ol') as HTMLElement;
+
+  it('returns focus to the element that had it before the toast when the close button is used', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const trigger = screen.getByTestId('trigger');
+    trigger.focus();
+    await user.click(screen.getByTestId('toast-close'));
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+    expect(document.activeElement).not.toBe(list());
+  });
+
+  it('returns focus to the previous element when Escape closes a focused toast', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const trigger = screen.getByTestId('trigger');
+    trigger.focus();
+    screen.getByTestId('toast').focus();
+    expect(screen.getByTestId('toast')).toHaveFocus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it('returns focus after the hotkey put focus on the list and Escape closes the toast', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const trigger = screen.getByTestId('trigger');
+    trigger.focus();
+    fireEvent.keyDown(document, { key: 'F8', code: 'F8' });
+    expect(list()).toHaveFocus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it('keeps focus where it was when focus never entered the toast', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const reopen = screen.getByTestId('reopen');
+    reopen.focus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(reopen).toHaveFocus();
+  });
+
+  it('does not leave focus on the toast list when the previous element is gone', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Harness />);
+    const trigger = screen.getByTestId('trigger');
+    trigger.focus();
+    screen.getByTestId('toast').focus();
+    rerender(<Harness withTrigger={false} />);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(document.activeElement).not.toBe(list());
+  });
+
+  it('uses the element focused at the time the toast was entered, also for a later toast', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const reopen = screen.getByTestId('reopen');
+    screen.getByTestId('trigger').focus();
+    await user.click(screen.getByTestId('toast-close'));
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    await user.click(reopen);
+    await waitFor(() => expect(screen.getByTestId('toast')).toBeInTheDocument());
+    // reopen was focused by the click, so that is where focus returns after the next dismissal
+    screen.getByTestId('toast').focus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByTestId('toast')).not.toBeInTheDocument());
+    expect(reopen).toHaveFocus();
   });
 });

@@ -34,21 +34,61 @@ const ToastProvider = ({ swipeDirection, label, ...props }: React.ComponentProps
 };
 ToastProvider.displayName = 'ToastProvider';
 
+// Radix hands focus to the toast list when a toast that holds focus is dismissed (close button, swipe, Escape, timer). The list is only a container, so focus would sit on an empty region and keyboard users lose their place.
+// This remembers the element that had focus before focus entered the toast region (tabbing in, the F8 hotkey, a click on a toast control) and gives focus back to it when Radix moves it to the list. A toast that never held focus is dismissed without any focus change, so focus stays where it was.
+function useRestoreFocusAfterDismiss(listRef: React.RefObject<HTMLOListElement | null>) {
+  React.useEffect(() => {
+    const list = listRef.current;
+    const region = list?.parentElement;
+    if (!list || !region) return undefined;
+    let returnTo: HTMLElement | null = null;
+    const restore = () => {
+      const target = returnTo;
+      returnTo = null;
+      if (target?.isConnected) target.focus({ preventScroll: true });
+      // The target is gone or not focusable right now (inert page under a modal): do not leave focus on the empty list.
+      if (document.activeElement === list) list.blur();
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      const from = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+      if (from && region.contains(from)) {
+        // Focus moved from inside a toast to the list itself: that is the dismissal hand-over.
+        if (event.target === list) restore();
+        return;
+      }
+      returnTo = from && from !== document.body ? from : null;
+    };
+    // After the F8 hotkey the list itself holds focus. Escape there closes the toasts without Radix moving focus, so hand it back here.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && event.target === list) restore();
+    };
+    region.addEventListener('focusin', onFocusIn);
+    list.addEventListener('keydown', onKeyDown);
+    return () => {
+      region.removeEventListener('focusin', onFocusIn);
+      list.removeEventListener('keydown', onKeyDown);
+    };
+  }, [listRef]);
+}
+
 // Modal layers (Sheet, Dialog, Drawer) make the page inert but keep elements with this attribute reachable, see lib/modal-inert.
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport> & { clamp?: boolean }
 >(({ className, clamp = false, label, ...props }, ref) => {
   const l = useLabels();
+  const listRef = React.useRef<HTMLOListElement | null>(null);
   // Radix renders a role="region" wrapper around the list that takes no props, so the exemption is also set on it.
   const setRef = React.useCallback(
     (node: HTMLOListElement | null) => {
+      listRef.current = node;
       if (typeof ref === 'function') ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLOListElement | null>).current = node;
       node?.parentElement?.setAttribute(MODAL_EXEMPT_ATTRIBUTE, '');
     },
     [ref],
   );
+  useRestoreFocusAfterDismiss(listRef);
   return (
     <ToastPrimitives.Viewport
       ref={setRef}
@@ -195,7 +235,8 @@ const ToastAction = React.forwardRef<
 ));
 ToastAction.displayName = ToastPrimitives.Action.displayName;
 
-// TOAST-A11Y-06 / TOAST-A11Y-08: the close button is persistently visible (touch has no hover) and at rest it uses the full text colour of its variant, never an opacity blend. A 70% blend dropped the icon to about 2.7:1 (default, light) and 2.9:1 (destructive, light), under the 3:1 floor of WCAG 1.4.11. At full strength it is 4.6:1 or more in every variant and mode.
+// TOAST-A11Y-06 / TOAST-A11Y-08: the close button is persistently visible (touch has no hover) and at rest it uses the full text colour of its variant, never an opacity blend. A 70% blend dropped the icon to about 2.7:1 (default, light) and 2.9:1 (destructive, light), under the 3:1 floor of WCAG 1.4.11 for UI components and icons.
+// Measured in the browser (neutral theme / zero theme): default 4.76:1 / 4.34:1 in light and 7.87:1 / 8.19:1 in dark, destructive 4.62:1 / 4.62:1 in light and 4.74:1 / 4.74:1 in dark, inverse 17.85:1 in light and 19.28:1 in dark. The default variant in light on the zero theme is the weakest at 4.34:1: it passes the 3:1 floor for icons, but it is not 4.5:1 or more everywhere.
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>

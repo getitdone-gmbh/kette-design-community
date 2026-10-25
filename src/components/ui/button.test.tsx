@@ -9,6 +9,23 @@ describe('Button component', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 
+  it('never wraps its label, a group of buttons wraps instead', () => {
+    render(<Button size="sm">Export report</Button>);
+    expect(screen.getByRole('button', { name: 'Export report' })).toHaveClass('whitespace-nowrap');
+  });
+
+  it('lets the link variant wrap like running text', () => {
+    render(<Button variant="link">Lena Hartmann</Button>);
+    expect(screen.getByRole('button', { name: 'Lena Hartmann' })).not.toHaveClass('whitespace-nowrap');
+  });
+
+  it('lets a consumer opt back into wrapping with a className', () => {
+    render(<Button className="whitespace-normal">Export report</Button>);
+    const button = screen.getByRole('button', { name: 'Export report' });
+    expect(button).toHaveClass('whitespace-normal');
+    expect(button).not.toHaveClass('whitespace-nowrap');
+  });
+
   it('renders as a native button element by default', () => {
     render(<Button>Save</Button>);
     expect(screen.getByRole('button')).toBeInstanceOf(HTMLButtonElement);

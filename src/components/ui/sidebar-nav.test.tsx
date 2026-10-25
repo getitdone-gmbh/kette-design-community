@@ -204,8 +204,8 @@ describe('Sidebar tiers', () => {
   });
 
   it('account row shows name, secondary and action', () => {
-    render(<SidebarAccount avatar={<span>OR</span>} name="Olivia Rhye" secondary="olivia@example.com" action={<button aria-label="Log out" />} />);
-    expect(screen.getByText('Olivia Rhye')).toBeInTheDocument();
+    render(<SidebarAccount avatar={<span>OR</span>} name="Lena Hartmann" secondary="lena.hartmann@example.com" action={<button aria-label="Log out" />} />);
+    expect(screen.getByText('Lena Hartmann')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
   });
 
