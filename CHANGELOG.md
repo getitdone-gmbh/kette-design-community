@@ -2,6 +2,10 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.4.5
+
+No component or theme changes, same sources as 0.4.4 (kette-design-enterprise 0.27.18, kette-tokens 5.24.0). First release published by the release workflow: npmjs.com with provenance, GitHub Packages and a GitHub release from one tag.
+
 ## 0.4.4
 
 Synced from kette-design-enterprise 0.27.18 and kette-tokens 5.24.0 (library changelogs 0.27.16 to 0.27.18, token changelogs 5.23.3 to 5.24.0). Only the changes to components and theme parts that are in this package are listed.
