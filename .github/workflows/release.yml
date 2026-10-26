@@ -1,0 +1,92 @@
+name: Release
+
+# Tag vX.Y.Z: publish to npmjs.com (trusted publishing, provenance), GitHub Packages and a GitHub release; pull requests only run the checks.
+on:
+  push:
+    tags: ['v*.*.*']
+  pull_request:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # npm trusted publishing works only on GitHub-hosted runners, so this public repo stays on ubuntu-latest.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm pack --dry-run
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Tag matches package.json
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish to npmjs.com
+        run: |
+          name=$(node -p "require('./package.json').name")
+          if npm view "$name@${{ steps.version.outputs.version }}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "$name@${{ steps.version.outputs.version }} is already on npmjs.com, skipping"
+          else
+            npm publish --registry=https://registry.npmjs.org --provenance --access public
+          fi
+
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc-gpr"
+          name=$(node -p "require('./package.json').name")
+          if npm view "$name@${{ steps.version.outputs.version }}" version --registry=https://npm.pkg.github.com --userconfig "$RUNNER_TEMP/.npmrc-gpr" >/dev/null 2>&1; then
+            echo "$name@${{ steps.version.outputs.version }} is already on GitHub Packages, skipping"
+          else
+            npm pkg set publishConfig.registry=https://npm.pkg.github.com
+            npm publish --registry=https://npm.pkg.github.com --userconfig "$RUNNER_TEMP/.npmrc-gpr" --ignore-scripts
+            git checkout -- package.json
+          fi
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${{ steps.version.outputs.version }}
+          awk -v v="$version" '$0 == "## " v {on=1; next} /^## / && on {exit} on' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME exists, skipping"
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          fi
