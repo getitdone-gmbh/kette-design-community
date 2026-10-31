@@ -18,15 +18,24 @@ const buttonVariants = cva('', {
     // base classes). Filled variants carry a 1px border in their own fill color and no shadow.
     variant: {
       default: [
-        'border-button-background-default',
+        // Theme expression (kette-tokens 5.26.0): gradient and bevel per state, drawn over the variant's own elevation (--button-elevation); the defaults change nothing.,
+        '[--button-elevation:0_0_transparent]',
+        'bg-[image:var(--image-button-default-rest)]', 'shadow-[shadow:var(--bevel-button-default-rest),var(--button-elevation)]',
+        'hover:bg-[image:var(--image-button-default-hover)]', 'hover:shadow-[shadow:var(--bevel-button-default-hover),var(--button-elevation)]',
+        'data-[state=open]:bg-[image:var(--image-button-default-open)]', 'data-[state=open]:shadow-[shadow:var(--bevel-button-default-open),var(--button-elevation)]',
+        'active:bg-[image:var(--image-button-default-active)]', 'active:shadow-[shadow:var(--bevel-button-default-active),var(--button-elevation)]',
+        'disabled:bg-[image:var(--image-button-default-disabled)]', 'disabled:shadow-[shadow:var(--bevel-button-default-disabled),var(--button-elevation)]',
+        // Filled type voice of the theme: font, case, added tracking and text shadow (neutral: the primary font, no case, 0em, none).,
+        '![font-family:var(--font-button-filled),sans-serif]', '[text-transform:var(--case-button-filled)]', '[--tracking-extra:var(--tracking-button-filled)]', '[text-shadow:var(--text-shadow-button-filled)]',
+        'border-[color:var(--frame-button-default-rest)]',
         'text-button-foreground-default',
         'bg-button-background-default',
         'hover:text-button-foreground-hover',
         'hover:bg-button-background-hover',
-        'hover:border-button-background-hover',
+        'hover:border-[color:var(--frame-button-default-hover)]',
         'data-[state=open]:text-button-foreground-hover',
         'data-[state=open]:bg-button-background-hover',
-        'data-[state=open]:border-button-background-hover',
+        'data-[state=open]:border-[color:var(--frame-button-default-hover)]',
         'active:bg-button-background-hover',
         // Disabled keeps the neutral disabled border role, never the brand fill colour or a hover stroke.
         'disabled:border-border-disabled',
@@ -35,48 +44,71 @@ const buttonVariants = cva('', {
       // themeable `semantic/primary` role. Fill AND border use the primary token; hover darkens
       // both, active goes one step further (`background-brand-bold-active`).
       primary: [
-        'border-button-background-primary-default',
+        // Theme expression (kette-tokens 5.26.0): gradient and bevel per state, drawn over the variant's own elevation (--button-elevation); the defaults change nothing.,
+        '[--button-elevation:0_0_transparent]',
+        'bg-[image:var(--image-button-primary-rest)]', 'shadow-[shadow:var(--bevel-button-primary-rest),var(--button-elevation)]',
+        'hover:bg-[image:var(--image-button-primary-hover)]', 'hover:shadow-[shadow:var(--bevel-button-primary-hover),var(--button-elevation)]',
+        'data-[state=open]:bg-[image:var(--image-button-primary-open)]', 'data-[state=open]:shadow-[shadow:var(--bevel-button-primary-open),var(--button-elevation)]',
+        'active:bg-[image:var(--image-button-primary-active)]', 'active:shadow-[shadow:var(--bevel-button-primary-active),var(--button-elevation)]',
+        'disabled:bg-[image:var(--image-button-primary-disabled)]', 'disabled:shadow-[shadow:var(--bevel-button-primary-disabled),var(--button-elevation)]',
+        // Filled type voice of the theme: font, case, added tracking and text shadow (neutral: the primary font, no case, 0em, none).,
+        '![font-family:var(--font-button-filled),sans-serif]', '[text-transform:var(--case-button-filled)]', '[--tracking-extra:var(--tracking-button-filled)]', '[text-shadow:var(--text-shadow-button-filled)]',
+        'border-[color:var(--frame-button-primary-rest)]',
         'text-button-foreground-primary-default',
         'bg-button-background-primary-default',
         'hover:bg-button-background-primary-hover',
-        'hover:border-button-background-primary-hover',
+        'hover:border-[color:var(--frame-button-primary-hover)]',
         'data-[state=open]:bg-button-background-primary-hover',
-        'data-[state=open]:border-button-background-primary-hover',
+        'data-[state=open]:border-[color:var(--frame-button-primary-hover)]',
         'active:bg-background-brand-bold-active',
         'active:border-background-brand-bold-active',
         'disabled:border-border-disabled',
       ],
-      // general-error family: the only destructive fill with a dark-mode-tuned `-on` text and
-      // hover step, so text stays >= 4.5:1 in every theme and mode (rest, hover, open, active).
+      // Bold destructive roles (DR-030-05): the darker red fill with a light label and a darker hover, AA in every theme and mode (rest, hover, open, active). The general-error family was a light red with near-black text in discord dark.
       destructive: [
-        'border-general-error-default',
-        'text-general-error-on',
-        'bg-general-error-default',
-        'hover:bg-general-error-hover',
-        'hover:border-general-error-hover',
-        'data-[state=open]:bg-general-error-hover',
-        'data-[state=open]:border-general-error-hover',
-        'active:bg-general-error-hover',
-        'active:border-general-error-hover',
+        // Theme expression (kette-tokens 5.26.0): gradient and bevel per state, drawn over the variant's own elevation (--button-elevation); the defaults change nothing.,
+        '[--button-elevation:0_0_transparent]',
+        'bg-[image:var(--image-button-destructive-rest)]', 'shadow-[shadow:var(--bevel-button-destructive-rest),var(--button-elevation)]',
+        'hover:bg-[image:var(--image-button-destructive-hover)]', 'hover:shadow-[shadow:var(--bevel-button-destructive-hover),var(--button-elevation)]',
+        'data-[state=open]:bg-[image:var(--image-button-destructive-open)]', 'data-[state=open]:shadow-[shadow:var(--bevel-button-destructive-open),var(--button-elevation)]',
+        'active:bg-[image:var(--image-button-destructive-active)]', 'active:shadow-[shadow:var(--bevel-button-destructive-active),var(--button-elevation)]',
+        'disabled:bg-[image:var(--image-button-destructive-disabled)]', 'disabled:shadow-[shadow:var(--bevel-button-destructive-disabled),var(--button-elevation)]',
+        // Filled type voice of the theme: font, case, added tracking and text shadow (neutral: the primary font, no case, 0em, none).,
+        '![font-family:var(--font-button-filled),sans-serif]', '[text-transform:var(--case-button-filled)]', '[--tracking-extra:var(--tracking-button-filled)]', '[text-shadow:var(--text-shadow-button-filled)]',
+        'border-background-destructive-bold-default',
+        'text-text-on-destructive',
+        'bg-background-destructive-bold-default',
+        'hover:bg-background-destructive-bold-hover',
+        'hover:border-background-destructive-bold-hover',
+        'data-[state=open]:bg-background-destructive-bold-hover',
+        'data-[state=open]:border-background-destructive-bold-hover',
+        'active:bg-background-destructive-bold-active',
+        'active:border-background-destructive-bold-active',
       ],
       // Outline: neutral `input` stroke, page background, `shadow-xs`. Hover darkens the BORDER
       // (no background tint); pressed fills `bg-muted`.
       outline: [
+        // Theme expression (kette-tokens 5.26.0): gradient and bevel per state, drawn over the variant's own elevation (--button-elevation); the defaults change nothing.,
+        '[--button-elevation:theme(boxShadow.xs)]',
+        'bg-[image:var(--image-button-outline-rest)]', 'shadow-[shadow:var(--bevel-button-outline-rest),var(--button-elevation)]',
+        'hover:bg-[image:var(--image-button-outline-hover)]', 'hover:shadow-[shadow:var(--bevel-button-outline-hover),var(--button-elevation)]',
+        'data-[state=open]:bg-[image:var(--image-button-outline-open)]', 'data-[state=open]:shadow-[shadow:var(--bevel-button-outline-open),var(--button-elevation)]',
+        'active:bg-[image:var(--image-button-outline-active)]', 'active:shadow-[shadow:var(--bevel-button-outline-active),var(--button-elevation)]',
+        'disabled:bg-[image:var(--image-button-outline-disabled)]', 'disabled:shadow-[shadow:var(--bevel-button-outline-disabled),var(--button-elevation)]',
         'border-input',
         'bg-background',
         'text-foreground',
-        'shadow-xs',
         'hover:border-border-bold',
         'data-[state=open]:border-border-bold',
         'active:bg-muted',
         // Disabled keeps the neutral disabled border role, never a hover or open stroke.
         'disabled:border-border-disabled',
       ],
-      // Outline with destructive intent: error-coloured text and stroke on the page background, error tint with on-container text on hover/press (AA in light and dark).
+      // Outline with destructive intent: destructive text and border roles (AA on the page background in every theme, the fill token fell to 2.58:1 in discord dark), error tint with on-container text on hover/press (AA in light and dark).
       'outline-destructive': [
-        'border-general-error-default',
+        'border-border-destructive',
         'bg-background',
-        'text-general-error-default',
+        'text-text-destructive',
         'shadow-xs',
         'hover:bg-general-error-container',
         'hover:text-general-error-on-container',
@@ -87,6 +119,13 @@ const buttonVariants = cva('', {
       ],
       // Secondary: soft neutral fill, distinct from ghost (ghost is transparent at rest).
       secondary: [
+        // Theme expression (kette-tokens 5.26.0): gradient and bevel per state, drawn over the variant's own elevation (--button-elevation); the defaults change nothing.,
+        '[--button-elevation:0_0_transparent]',
+        'bg-[image:var(--image-button-secondary-rest)]', 'shadow-[shadow:var(--bevel-button-secondary-rest),var(--button-elevation)]',
+        'hover:bg-[image:var(--image-button-secondary-hover)]', 'hover:shadow-[shadow:var(--bevel-button-secondary-hover),var(--button-elevation)]',
+        'data-[state=open]:bg-[image:var(--image-button-secondary-open)]', 'data-[state=open]:shadow-[shadow:var(--bevel-button-secondary-open),var(--button-elevation)]',
+        'active:bg-[image:var(--image-button-secondary-active)]', 'active:shadow-[shadow:var(--bevel-button-secondary-active),var(--button-elevation)]',
+        'disabled:bg-[image:var(--image-button-secondary-disabled)]', 'disabled:shadow-[shadow:var(--bevel-button-secondary-disabled),var(--button-elevation)]',
         'border-transparent',
         'bg-muted',
         'text-foreground',
@@ -172,7 +211,7 @@ const buttonVariants = cva('', {
     { preset: 'zero', size: ['sm', 'control-sm'], className: ['text-[length:var(--typo-button-sm-size)]', 'font-[number:var(--typo-button-sm-weight)]', 'leading-[var(--typo-button-sm-lh)]', 'tracking-[var(--typo-button-sm-ls)]'] },
     { preset: 'zero', size: 'control-md', className: ['text-ui', 'font-medium', 'leading-normal', 'gap-gap-control'] },
     { preset: 'zero', size: ['default', 'md', 'lg', 'xl', 'control-lg'], className: 'gap-gap-control' },
-    { preset: 'zero', variant: ['default', 'primary', 'destructive'], className: 'shadow-elevation-surface' },
+    { preset: 'zero', variant: ['default', 'primary', 'destructive'], className: '[--button-elevation:var(--elevation-surface,0_0_transparent)]' },
     // Outline in zero: hover tints the surface and the border keeps the default role (also in dark).
     {
       preset: 'zero',
@@ -195,7 +234,7 @@ const FILLED_VARIANTS = new Set(['default', 'primary', 'destructive']);
 const FILLED_COUNT: Record<string, string> = {
   default: 'bg-button-foreground-default/5 ring-button-foreground-default/30',
   primary: 'bg-button-foreground-primary-default/5 ring-button-foreground-primary-default/30',
-  destructive: 'bg-general-error-on/5 ring-general-error-on/30',
+  destructive: 'bg-text-on-destructive/5 ring-text-on-destructive/30',
 };
 
 // Round count pill outside zero: 20px high, at least 20px wide (min-width via theme(), because consumer Tailwind 3.3 has no min-w-5 utility), centred, so one digit is a circle and longer text grows into a pill.
@@ -299,6 +338,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         data-slot="button"
         data-variant={resolvedVariant}
+        data-size={size ?? undefined}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}

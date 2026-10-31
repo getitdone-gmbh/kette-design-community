@@ -11,7 +11,8 @@ const schema = new Schema({
 });`;
 
 const meta = {
-  title: 'Primitives/CodeSnippet',
+  id: 'primitives-codesnippet',
+  title: 'Primitives · Display/CodeSnippet',
   component: CodeSnippet,
   tags: ['autodocs'],
   args: { code: sample, language: 'TypeScript example' },

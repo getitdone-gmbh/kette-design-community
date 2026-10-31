@@ -4,7 +4,8 @@ import { Section } from './section';
 import { SectionProps } from './section.interface';
 
 const meta = {
-  title: 'Primitives/Section',
+  id: 'primitives-section',
+  title: 'Primitives · Layout/Section',
   component: Section,
   tags: ['autodocs'],
   argTypes: {

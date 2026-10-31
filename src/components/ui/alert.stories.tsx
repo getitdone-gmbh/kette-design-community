@@ -10,7 +10,8 @@ import { Button } from './button';
 import { Alert, AlertActions, AlertClose, AlertDescription, AlertTitle } from './alert';
 
 const meta = {
-  title: 'Primitives/Alert',
+  id: 'primitives-alert',
+  title: 'Primitives · Display/Alert',
   component: Alert,
   tags: ['autodocs'],
   argTypes: {
@@ -19,7 +20,11 @@ const meta = {
       control: {
         type: 'radio',
       },
+      description: 'Tone of the message: neutral, success, warning, error or information.',
+      table: { defaultValue: { summary: 'default' } },
     },
+    size: { description: 'Padding and type size; compact is the default in the zero preset.' },
+    actionsPlacement: { description: 'Where the action buttons sit: at the end of the text or below it.' },
   },
 } satisfies Meta<typeof Alert>;
 

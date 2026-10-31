@@ -4,7 +4,8 @@ import { Briefcase, Building2, Clock, FileText, Phone, Users } from 'lucide-reac
 import { ObjectIcon } from './object-icon';
 
 const meta = {
-  title: 'Primitives/Object icon',
+  id: 'primitives-object-icon',
+  title: 'Primitives · Display/Object icon',
   component: ObjectIcon,
   tags: ['autodocs'],
   argTypes: {

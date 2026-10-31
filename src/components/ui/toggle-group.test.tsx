@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 
@@ -278,5 +279,39 @@ describe('ToggleGroup segmented variant', () => {
     const item = screen.getByRole('radio', { name: 'Grid' });
     expect(item).toHaveClass('h-8');
     expect(item).not.toHaveClass('h-9');
+  });
+});
+
+describe('ToggleGroup segmented width (0.28)', () => {
+  const Group = ({ fullWidth }: { fullWidth?: boolean }) => (
+    <div className="flex flex-col">
+      <ToggleGroup type="single" variant="segmented" aria-label="Period" fullWidth={fullWidth}>
+        <ToggleGroupItem value="a">Day</ToggleGroupItem>
+        <ToggleGroupItem value="b">Week</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  );
+
+  it('fits its content by default, also in a flex-col parent', () => {
+    render(<Group />);
+    const track = screen.getByRole('radiogroup', { name: 'Period' });
+    expect(track).toHaveClass('w-fit');
+    expect(track).not.toHaveClass('w-full');
+  });
+
+  it('fullWidth stretches the track and shares the width between the items', () => {
+    render(<Group fullWidth />);
+    expect(screen.getByRole('radiogroup', { name: 'Period' })).toHaveClass('w-full');
+    expect(screen.getByRole('radio', { name: 'Day' })).toHaveClass('flex-1');
+    expect(screen.getByRole('radio', { name: 'Week' })).toHaveClass('flex-1');
+  });
+
+  it('leaves the other variants without a width class', () => {
+    render(
+      <ToggleGroup type="single" aria-label="Plain">
+        <ToggleGroupItem value="a">A</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('radiogroup', { name: 'Plain' })).not.toHaveClass('w-fit');
   });
 });

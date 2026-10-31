@@ -1,10 +1,13 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
 import { useState } from 'react';
 import { Bell, Clock, HelpCircle, History, Sparkles, X } from 'lucide-react';
 
 import { AutosaveStatus } from './autosave-status';
 import { Avatar, AvatarFallback, AvatarGroup } from './avatar';
 import { Button } from './button';
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from './navigation-menu';
 import { ObjectIcon } from './object-icon';
 import { SidebarObjectIcon } from './sidebar';
 import {
@@ -85,7 +88,7 @@ export const App: Story = {
         <TopBarIconButton label="Help" status="success" statusLabel="Connected" data-topbar-secondary="">
           <HelpCircle />
         </TopBarIconButton>
-        <Button variant="outline" size="control-md" icon={<Sparkles />}>
+        <Button variant="outline" size="control-md" icon={<Sparkles />} data-topbar-action="">
           Ask workload.zero
         </Button>
       </TopBarEnd>
@@ -258,7 +261,6 @@ export const DualTier: Story = {
 };
 
 export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
   render: () => (
     <TopBar variant="mobile">
       <span className="typography-title-sm">Get IT Done</span>
@@ -464,4 +466,138 @@ export const ZeroPreset: Story = {
       </DesignSystemProvider>
     ),
   ],
+};
+
+// A long middle crumb at 320 and 390: every level truncates with an ellipsis, the current page keeps its room and the primary action keeps only its icon below sm. Below sm the parents are display none (not focusable).
+export const BreadcrumbLongMiddle: Story = {
+  render: () => (
+    <TopBar>
+      <TopBarStart>
+        <TopBarBreadcrumb
+          icon={<SidebarObjectIcon product="vacancy"><Sparkles /></SidebarObjectIcon>}
+          items={[{ label: 'vacancy', href: '#' }, { label: 'Quarterly reconciliation of open demands and partner contracts', href: '#' }, { label: 'Demands' }]}
+          context="NWH, AGILE"
+        />
+      </TopBarStart>
+      <TopBarEnd>
+        <TopBarIconButton label="Notifications" count={5}>
+          <Bell />
+        </TopBarIconButton>
+        <Button variant="outline" size="control-md" icon={<Sparkles />} data-topbar-action="">
+          Ask workload.zero
+        </Button>
+      </TopBarEnd>
+    </TopBar>
+  ),
+};
+
+// The same long trail with a status chip and a menu trigger in the end slot at 320 and 390: below sm the parent shows as a back link (arrow plus label), the chip and the title truncate with an ellipsis and the trigger keeps only its icon (label as tooltip). Nothing overlaps.
+export const BreadcrumbWithStatusAndMenu: Story = {
+  render: () => (
+    <TopBar>
+      <TopBarStart>
+        <TopBarBreadcrumb
+          icon={<SidebarObjectIcon product="vacancy"><Sparkles /></SidebarObjectIcon>}
+          items={[{ label: 'vacancy', href: '#' }, { label: 'Quarterly reconciliation of open demands', href: '#' }, { label: 'Demand with a very long working title' }]}
+        />
+      </TopBarStart>
+      <TopBarEnd>
+        <AutosaveStatus state="dirty" label="Unsaved changes in this demand" />
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger data-topbar-action="" icon={<Sparkles />}>
+                Products
+              </NavigationMenuTrigger>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+      </TopBarEnd>
+    </TopBar>
+  ),
+};
+
+// DR-0300-02: a top bar narrower than 448px (here fixed at 360, whatever the viewport) keeps the chip icon only. The query runs against the container named `topbar`.
+export const StatusChipIconOnlyInNarrowBar: Story = {
+  render: () => (
+    <div style={{ width: 360 }}>
+      <TopBar>
+        <TopBarStart>
+          <TopBarBreadcrumb items={[{ label: 'Demands' }]} />
+        </TopBarStart>
+        <TopBarEnd>
+          <AutosaveStatus state="saved" />
+        </TopBarEnd>
+      </TopBar>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const status = canvasElement.querySelector('[role="status"]') as HTMLElement;
+    expect((status.querySelector('[data-status-label]') as HTMLElement).getBoundingClientRect().width).toBeLessThanOrEqual(1);
+    expect(within(canvasElement).getByRole('button', { name: 'Saved' })).toBeVisible();
+  },
+};
+
+// Status chip in a narrow top bar (under 448px, a container query on the bar, not the viewport): only the icon is drawn, the label stays the accessible name, and the chip is a button (44px hit area under touch) that opens the status text (UX-030-01). Error and offline add an alert and a Retry.
+export const StatusChipIconOnPhone: Story = {
+  parameters: { layoutInvariants: { widths: [390], noFragment: ['[role="status"] [data-status-label]'] } },
+  render: () => (
+    <TopBar>
+      <TopBarStart>
+        <TopBarBreadcrumb items={[{ label: 'vacancy', href: '#' }, { label: 'Demands' }]} />
+      </TopBarStart>
+      <TopBarEnd>
+        <AutosaveStatus state="error" onRetry={() => undefined} />
+      </TopBarEnd>
+    </TopBar>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = canvasElement.querySelector('[role="status"]') as HTMLElement;
+    // The text is always in the live region, whatever the width shows.
+    expect(status).toHaveTextContent('Save failed');
+    expect(status).toHaveAttribute('title', 'Save failed');
+    expect(canvas.getByRole('alert')).toHaveTextContent('Save failed');
+    const narrow = (canvasElement.querySelector('header') as HTMLElement).getBoundingClientRect().width < 448;
+    if (!narrow) {
+      // display:none removes the trigger from the accessibility tree, so no role query finds it (not even with hidden: true, a hidden element has no name): look it up by its data hook and check that it is not drawn and is not exposed.
+      const hiddenTrigger = canvasElement.querySelector('[data-status-trigger]') as HTMLElement;
+      expect(getComputedStyle(hiddenTrigger).display).toBe('none');
+      expect(canvas.queryByRole('button', { name: 'Save failed' })).toBeNull();
+      expect(canvas.getByRole('button', { name: 'Try again' })).toBeVisible();
+      return;
+    }
+    const trigger = canvas.getByRole('button', { name: 'Save failed' });
+    // Icon only: no label drawn, the chip itself is a focusable button that opens the text and Retry.
+    expect((status.querySelector('[data-status-label]') as HTMLElement).getBoundingClientRect().width).toBeLessThanOrEqual(1);
+    expect(trigger).toBeVisible();
+    expect(trigger.getBoundingClientRect().height).toBeGreaterThanOrEqual(status.getBoundingClientRect().height);
+    trigger.focus();
+    expect(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    await waitFor(() => expect(body.getAllByRole('button', { name: 'Try again' }).some((b) => b.closest('[role="dialog"]'))).toBe(true));
+  },
+};
+
+// A section jump from the mobile menu: the drawer closes, waits until the scroll lock is gone, scrolls and focuses the section.
+export const GuestMobileMenuSectionJump: Story = {
+  render: () => (
+    <div>
+      <TopBar variant="guest" className="sticky top-0 z-sticky">
+        <TopBarStart>
+          <TopBarBrand name="workload.zero" size="md" />
+        </TopBarStart>
+        <TopBarEnd>
+          <TopBarMobileMenu alwaysVisible items={[{ label: 'Jobs', href: '#jobs' }, { label: 'Pricing', href: '#pricing' }]} />
+        </TopBarEnd>
+      </TopBar>
+      <section id="jobs" aria-label="Jobs" className="h-screen scroll-mt-14">
+        <h2>Jobs</h2>
+      </section>
+      <section id="pricing" aria-label="Pricing" className="h-screen scroll-mt-14">
+        <h2>Pricing</h2>
+      </section>
+    </div>
+  ),
 };

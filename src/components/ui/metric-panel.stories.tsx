@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { MetricPanel } from './metric-panel';
 
 const meta = {
-  title: 'Data display/Metric panel',
+  id: 'data-display-metric-panel',
+  title: 'Patterns · Data/Metric panel',
   component: MetricPanel,
   tags: ['autodocs'],
   args: { label: 'Net result per month', value: '4.200 EUR', description: 'After tax and fees, based on 140 billable hours.' },

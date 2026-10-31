@@ -4,7 +4,8 @@ import { CreditCard, Server, Zap } from 'lucide-react';
 import { CheckboxGroup, CheckboxGroupItem } from './checkbox-group';
 
 const meta = {
-  title: 'Primitives/CheckboxGroup',
+  id: 'primitives-checkboxgroup',
+  title: 'Primitives · Inputs/CheckboxGroup',
   component: CheckboxGroup,
   tags: ['autodocs'],
   parameters: { actions: { argTypesRegex: '^on(?!ValueChange)[A-Z].*' } },

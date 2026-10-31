@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { Home, Layers, Settings } from 'lucide-react';
 import { useState } from 'react';

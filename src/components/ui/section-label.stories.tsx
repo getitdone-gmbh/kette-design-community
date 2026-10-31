@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { SectionLabel } from './section-label';
 
 const meta = {
-  title: 'Layout/Section label',
+  id: 'layout-section-label',
+  title: 'Patterns · Interface/Section label',
   component: SectionLabel,
   tags: ['autodocs'],
   args: { index: '01', overline: 'Process', title: 'How we work', description: 'Three short steps from the first call to the first release.' },

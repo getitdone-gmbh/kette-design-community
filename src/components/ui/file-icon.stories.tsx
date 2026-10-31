@@ -4,7 +4,8 @@ import { FileIcon } from './file-icon';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Data display/File icon',
+  id: 'data-display-file-icon',
+  title: 'Patterns · Data/File icon',
   component: FileIcon,
   tags: ['autodocs'],
   args: { name: 'contract.pdf', size: 'md' },

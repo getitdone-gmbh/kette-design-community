@@ -16,7 +16,8 @@ import {
 } from './drawer';
 
 const meta = {
-  title: 'Primitives/Drawer',
+  id: 'primitives-drawer',
+  title: 'Primitives · Overlays/Drawer',
   component: Drawer,
   tags: ['autodocs'],
   argTypes: {},

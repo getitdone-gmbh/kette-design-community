@@ -42,7 +42,7 @@ describe('ConfirmDialog', () => {
 
   it('uses the destructive confirm button by default and the primary one on request', () => {
     const { unmount } = render(<ConfirmDialog open title="T" onConfirm={() => undefined} />);
-    expect(screen.getByRole('button', { name: 'Confirm' }).className).toContain('bg-general-error-default');
+    expect(screen.getByRole('button', { name: 'Confirm' }).className).toContain('bg-background-destructive-bold-default');
     unmount();
     render(<ConfirmDialog open title="T" tone="primary" onConfirm={() => undefined} />);
     expect(screen.getByRole('button', { name: 'Confirm' }).className).toContain('bg-button-background-primary-default');

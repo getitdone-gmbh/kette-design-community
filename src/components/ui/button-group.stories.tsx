@@ -6,9 +6,13 @@ import { Button } from './button';
 import { ButtonGroup, ButtonGroupItem } from './button-group';
 
 const meta = {
-  title: 'Primitives/ButtonGroup',
+  id: 'primitives-buttongroup',
+  title: 'Primitives · Actions/ButtonGroup',
   component: ButtonGroup,
   tags: ['autodocs'],
+  argTypes: {
+    size: { description: 'Height of the segments; sm matches Button size sm.', table: { defaultValue: { summary: 'default' } } },
+  },
 } satisfies Meta<typeof ButtonGroup>;
 
 export default meta;
@@ -62,6 +66,27 @@ export const WithDisabled: Story = {
       <ButtonGroupItem disabled>Next</ButtonGroupItem>
     </ButtonGroup>
   ),
+};
+
+// Gated: aria-disabled keeps the segment hoverable and focusable. A click calls onGatedClick, never onClick.
+const GatedSegment = () => {
+  const [message, setMessage] = useState('');
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <ButtonGroup aria-label="Range">
+        <ButtonGroupItem>Previous</ButtonGroupItem>
+        <ButtonGroupItem aria-disabled="true" aria-describedby="range-reason" onGatedClick={() => setMessage('Not available yet.')}>
+          Next
+        </ButtonGroupItem>
+      </ButtonGroup>
+      <p id="range-reason" className="typography-text-small text-text-subtle">Next needs a saved draft.</p>
+      <p role="status" className="typography-text-small text-text-subtle">{message}</p>
+    </div>
+  );
+};
+
+export const WithGated: Story = {
+  render: () => <GatedSegment />,
 };
 
 // Size sm is exactly as high as Button size="sm" (control-sm token: 32, zero 28). Use it for prev, today, next and view switches next to small buttons.

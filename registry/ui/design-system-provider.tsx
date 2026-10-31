@@ -17,7 +17,7 @@ export interface DesignSystemProviderProps {
   locale?: DesignSystemLocale;
   // Overrides single built-in texts for every component below the provider.
   labels?: Partial<Labels>;
-  // Product look for the component defaults below the provider. `zero` is the workload.zero look. Inherits from the parent provider, defaults to `default`.
+  // Product look for the component defaults below the provider. `zero` is the workload.zero look. Inherits from the parent provider and defaults to `zero` in this package (the theme it ships is the zero theme). Pass `preset="default"` for the former look of the components.
   preset?: DesignSystemPreset;
   children?: React.ReactNode;
 }

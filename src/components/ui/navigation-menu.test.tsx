@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MenuListItem, NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from './navigation-menu';
 
@@ -186,5 +186,45 @@ describe('NavigationMenu height cap', () => {
     expect(anchor().style.getPropertyValue('--navigation-menu-available-height')).toBe('338px');
     expect(viewport().className).toContain('max-h-[var(--navigation-menu-available-height)]');
     expect(viewport().className).toContain('overflow-y-auto');
+  });
+});
+
+describe('NavigationMenuTrigger in a top bar action slot', () => {
+  beforeEach(() => mockGeometry(100, 300));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows a leading icon and gives the label as tooltip with data-topbar-action', () => {
+    render(
+      <NavigationMenu>
+        <NavigationMenuList>
+          <NavigationMenuItem>
+            <NavigationMenuTrigger data-topbar-action="" icon={<svg data-testid="lead" />}>
+              Products
+            </NavigationMenuTrigger>
+          </NavigationMenuItem>
+        </NavigationMenuList>
+      </NavigationMenu>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Products' });
+    expect(trigger).toHaveAttribute('title', 'Products');
+    expect(trigger).toContainElement(screen.getByTestId('lead'));
+    expect(trigger.querySelector('[data-chevron]')).not.toBeNull();
+    expect(screen.getByTestId('lead').parentElement).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('adds no title without the marker', () => {
+    render(
+      <NavigationMenu>
+        <NavigationMenuList>
+          <NavigationMenuItem>
+            <NavigationMenuTrigger>Products</NavigationMenuTrigger>
+          </NavigationMenuItem>
+        </NavigationMenuList>
+      </NavigationMenu>,
+    );
+    expect(screen.getByRole('button', { name: 'Products' })).not.toHaveAttribute('title');
   });
 });

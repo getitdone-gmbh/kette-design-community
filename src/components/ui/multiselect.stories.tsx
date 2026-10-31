@@ -18,7 +18,8 @@ const enum Support {
 }
 
 const meta: Meta<MultiSelectProps> = {
-  title: 'Primitives/MultiSelect',
+  id: 'primitives-multiselect',
+  title: 'Primitives · Inputs/MultiSelect',
   component: MultiSelect,
   tags: ['autodocs'],
   argTypes: {

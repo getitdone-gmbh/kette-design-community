@@ -10,7 +10,8 @@ const items = [
 ];
 
 const meta = {
-  title: 'Navigation/Table of contents',
+  id: 'navigation-table-of-contents',
+  title: 'Patterns · Interface/Table of contents',
   component: TableOfContents,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

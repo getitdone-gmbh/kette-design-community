@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { ButtonGroup, ButtonGroupItem } from './button-group';
@@ -89,5 +90,40 @@ describe('ButtonGroup', () => {
     expect(screen.getByRole('button', { name: 'A' })).toHaveClass('focus-visible:ring-inset', 'focus-visible:ring-focus');
     await userEvent.tab();
     expect(screen.getByRole('button', { name: 'B' })).toHaveFocus();
+  });
+});
+
+describe('ButtonGroupItem aria-disabled gating (0.28.1)', () => {
+  it('stays hoverable, calls onGatedClick only and does not bubble', async () => {
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn();
+    const onParentClick = vi.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- test wrapper
+      <div onClick={onParentClick}>
+        <ButtonGroup aria-label="View">
+          <ButtonGroupItem aria-disabled="true" onClick={onClick} onGatedClick={onGatedClick}>
+            Board
+          </ButtonGroupItem>
+        </ButtonGroup>
+      </div>,
+    );
+    const item = screen.getByRole('button', { name: 'Board' });
+    expect(item.className).not.toMatch(/aria-disabled:pointer-events-none/);
+    await userEvent.click(item);
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('still acts when enabled', async () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonGroup aria-label="View">
+        <ButtonGroupItem onClick={onClick}>Board</ButtonGroupItem>
+      </ButtonGroup>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Board' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

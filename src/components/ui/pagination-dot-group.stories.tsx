@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { PaginationDotGroup } from './pagination-dot-group';
 
 const meta = {
-  title: 'Patterns/PaginationDotGroup',
+  id: 'patterns-paginationdotgroup',
+  title: 'Patterns · Data/PaginationDotGroup',
   component: PaginationDotGroup,
   tags: ['autodocs'],
   args: { count: 5, current: 1, size: 'md', indicator: 'dot', framed: false },

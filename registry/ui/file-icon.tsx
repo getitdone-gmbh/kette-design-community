@@ -127,7 +127,7 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
             <b
               className={cn(
                 'typography-file-tag absolute -left-1 bottom-1 max-w-8 truncate rounded-hairline px-micro',
-                error ? 'bg-background-destructive-bold-default text-text-inverse' : extension === 'pdf' ? pdfTag : documentTag[resolved],
+                error ? 'bg-background-destructive-bold-default text-text-on-destructive' : extension === 'pdf' ? pdfTag : documentTag[resolved],
               )}
             >
               {extension.slice(0, 4)}

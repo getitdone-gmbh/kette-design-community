@@ -1,5 +1,7 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
+import { waitFor, within } from '@storybook/testing-library';
+import { useState, type ReactNode } from 'react';
 
 import { Avatar, AvatarFallback } from './avatar';
 import { Checkbox } from './checkbox';
@@ -26,9 +28,22 @@ import {
 } from './table';
 
 const meta = {
-  title: 'Primitives/Table',
+  id: 'primitives-table',
+  title: 'Primitives · Display/Table',
   component: Table,
   tags: ['autodocs'],
+  argTypes: {
+    density: { control: { type: 'select' }, options: ['default', 'zero'], description: 'Row and header height.' },
+    striped: { control: { type: 'boolean' }, description: 'Alternating row fill.' },
+    stickyHeader: { control: { type: 'boolean' }, description: 'Keeps the header visible while the rows scroll.' },
+    stickyMode: { description: 'What the header sticks to: its own scroll area, the parent or the page.' },
+    stickyOffset: { description: 'Distance from the top where the header sticks in page mode.' },
+    headerTone: { description: 'Header band colour: surface or muted.' },
+    rowHover: { description: 'Row hover colour.' },
+    maxHeight: { description: 'Height cap of the scroll area; the table scrolls inside itself above it.' },
+    elevated: { control: { type: 'boolean' }, description: 'Shadow around the table.' },
+    scrollLabel: { description: 'Accessible name of the scroll area when the table overflows.' },
+  },
 } satisfies Meta<typeof Table>;
 
 export default meta;
@@ -1088,4 +1103,200 @@ export const MaxHeight: Story = {
       </TableBody>
     </Table>
   ),
+};
+
+// A wide table in a narrow container (320px): the scroll container is a tab stop and its focus ring is an inset outline that sits above the cells.
+export const NarrowScrollRegionFocus: Story = {
+  render: () => (
+    <div className="w-80">
+      <Table scrollLabel="Time entries">
+        <TableCaption>Time entries</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Project</TableHead>
+            <TableHead>Task</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Hours</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 4 }, (_, i) => (
+            <TableRow key={i}>
+              <TableCell className="whitespace-nowrap">Project {i + 1}</TableCell>
+              <TableCell className="whitespace-nowrap">Implementation and review</TableCell>
+              <TableCell className="whitespace-nowrap">2026-10-0{i + 1}</TableCell>
+              <TableCell>7.5</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ),
+};
+
+// DR-0290-01: under a fixed app top bar (z-30) the focus ring of a tall scroll region must not paint into the bar when the region is scrolled underneath it. The test runner tabs into the region at 390x844, scrolls its top 30px below the viewport top and counts ring pixels inside the bar (limit 20, target 0).
+export const FocusRingUnderFixedBar: Story = {
+  parameters: {
+    layout: 'fullscreen',
+    viewport: { defaultViewport: 'mobile1' },
+    focusRingUnderBar: { width: 390, height: 844, bar: '[data-testid="app-bar"]', region: '[role="region"]' },
+  },
+  render: () => (
+    <div>
+      <header data-testid="app-bar" className="typography-ui fixed inset-x-0 top-0 z-30 flex h-topbar items-center border-0 border-b border-solid border-border bg-background px-4">
+        App bar
+      </header>
+      <main className="px-4 pb-8 pt-[calc(var(--size-topbar)+1rem)]">
+        <Table scrollLabel="Suppression list">
+          <TableCaption>Suppression list</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Received</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 30 }, (_, i) => (
+              <TableRow key={i}>
+                <TableCell className="whitespace-nowrap">{`contact${i + 1}@example-${i + 1}.example`}</TableCell>
+                <TableCell className="whitespace-nowrap">Unsubscribe request</TableCell>
+                <TableCell className="whitespace-nowrap">Reply</TableCell>
+                <TableCell className="whitespace-nowrap">2026-10-01</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </main>
+    </div>
+  ),
+};
+
+// RA-LIB-05: a wide table in a narrow area (320px, eight 160px columns) with nothing to show. The empty state is centred in the visible scroll area, not in the full table width, so it stays on screen and also stays centred while the table is scrolled sideways.
+const emptyColumns = ['Name', 'Role', 'Team', 'Location', 'Start', 'Manager', 'Status', 'Updated'];
+const emptyMiddle = (canvasElement: HTMLElement) => {
+  const region = canvasElement.querySelector('[data-slot="table-empty-frame"]')?.closest('div[class*="overflow-x-auto"]') as HTMLElement;
+  const text = within(canvasElement).getByText('No people found');
+  const box = text.getBoundingClientRect();
+  const visible = region.getBoundingClientRect();
+  // The scroll container has a 1px border on each side.
+  return { text: box.left + box.width / 2, area: visible.left + 1 + region.clientWidth / 2, region };
+};
+export const EmptyCentredInScrollArea: Story = {
+  parameters: { layout: 'padded' },
+  render: () => (
+    <div className="w-80">
+      <Table scrollLabel="People">
+        <TableCaption>People</TableCaption>
+        <TableHeader>
+          <TableRow>
+            {emptyColumns.map((name) => (
+              <TableHead key={name} className="min-w-[160px]">{name}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableEmpty columns={emptyColumns.length} title="No people found" description="Change the filters to see more." />
+        </TableBody>
+      </Table>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const { text, area, region } = emptyMiddle(canvasElement);
+      expect(region.scrollWidth).toBeGreaterThan(region.clientWidth);
+      expect(Math.abs(text - area)).toBeLessThanOrEqual(2);
+    });
+    // Scrolled to the far end it is still in the middle of what is visible.
+    const { region } = emptyMiddle(canvasElement);
+    region.scrollLeft = region.scrollWidth;
+    await waitFor(() => {
+      const { text, area } = emptyMiddle(canvasElement);
+      expect(Math.abs(text - area)).toBeLessThanOrEqual(2);
+    });
+  },
+};
+
+// The plain message variant takes the same frame.
+export const EmptyMessageCentredInScrollArea: Story = {
+  parameters: { layout: 'padded' },
+  render: () => (
+    <div className="w-80">
+      <Table scrollLabel="People">
+        <TableCaption>People</TableCaption>
+        <TableHeader>
+          <TableRow>
+            {emptyColumns.map((name) => (
+              <TableHead key={name} className="min-w-[160px]">{name}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableEmpty columns={emptyColumns.length} message="No people found" />
+        </TableBody>
+      </Table>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const { text, area } = emptyMiddle(canvasElement);
+      expect(Math.abs(text - area)).toBeLessThanOrEqual(2);
+    });
+  },
+};
+
+// UX-030-02: the error and lazy-loading state rows take the same sticky frame as the empty state, so the message and the button stay on screen in a wide table in a narrow area.
+const wideStateTable = (body: ReactNode) => (
+  <div className="w-80">
+    <Table scrollLabel="People">
+      <TableCaption>People</TableCaption>
+      <TableHeader>
+        <TableRow>
+          {emptyColumns.map((name) => (
+            <TableHead key={name} className="min-w-[160px]">{name}</TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>{body}</TableBody>
+    </Table>
+  </div>
+);
+const insideScrollArea = (canvasElement: HTMLElement, el: HTMLElement) => {
+  const region = canvasElement.querySelector('[data-slot="table-empty-frame"]')?.closest('div[class*="overflow-x-auto"]') as HTMLElement;
+  const area = region.getBoundingClientRect();
+  const box = el.getBoundingClientRect();
+  return { region, left: box.left >= area.left - 1, right: box.right <= area.right + 1 };
+};
+
+export const ErrorCentredInScrollArea: Story = {
+  parameters: { layout: 'padded' },
+  render: () => wideStateTable(<TableError columns={emptyColumns.length} title="List not loaded" onRetry={() => undefined} />),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      const { region, left, right } = insideScrollArea(canvasElement, canvas.getByRole('button', { name: 'Try again' }));
+      expect(region.scrollWidth).toBeGreaterThan(region.clientWidth);
+      expect(left && right).toBe(true);
+    });
+    const { region } = insideScrollArea(canvasElement, canvas.getByText('List not loaded'));
+    region.scrollLeft = region.scrollWidth;
+    await waitFor(() => {
+      const { left, right } = insideScrollArea(canvasElement, canvas.getByText('List not loaded'));
+      expect(left && right).toBe(true);
+    });
+  },
+};
+
+export const LoadingMoreCentredInScrollArea: Story = {
+  parameters: { layout: 'padded' },
+  render: () => wideStateTable(<TableLoadingMore columns={emptyColumns.length} onLoadMore={() => undefined} />),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      const { region, left, right } = insideScrollArea(canvasElement, canvas.getByRole('button', { name: 'Load more' }));
+      expect(region.scrollWidth).toBeGreaterThan(region.clientWidth);
+      expect(left && right).toBe(true);
+    });
+  },
 };

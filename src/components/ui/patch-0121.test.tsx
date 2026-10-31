@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -51,7 +52,7 @@ const ratio = (a: Rgb, b: Rgb) => {
 };
 
 // Maps a Tailwind color utility name (after bg- or text-) to its CSS variable.
-const toVar = (name: string) => (name.startsWith('general-') ? `colors-${name}` : `colors-utility-${name}`);
+const toVar = (name: string) => (name.startsWith('general-') ? `colors-${name}` : name.startsWith('background-destructive-bold') || name === 'text-on-destructive' ? `semantic-${name}` : `colors-utility-${name}`);
 
 const minContrast = (bgToken: string, fgToken: string) => {
   let min = Infinity;
@@ -117,13 +118,13 @@ describe('0.12.1 regressions', () => {
     it('Button destructive passes 4.5:1 at rest, hover, open and active', () => {
       render(<Button variant="destructive">Delete</Button>);
       const cls = screen.getByRole('button').className;
-      expect(cls).toContain('text-general-error-on');
-      for (const bg of ['general-error-default', 'general-error-hover']) {
-        expect(minContrast(bg, 'general-error-on')).toBeGreaterThanOrEqual(4.5);
+      expect(cls).toContain('text-text-on-destructive');
+      for (const bg of ['background-destructive-bold-default', 'background-destructive-bold-hover', 'background-destructive-bold-active']) {
+        expect(minContrast(bg, 'text-on-destructive')).toBeGreaterThanOrEqual(4.5);
       }
-      expect(cls).toContain('hover:bg-general-error-hover');
-      expect(cls).toContain('active:bg-general-error-hover');
-      expect(cls).toContain('data-[state=open]:bg-general-error-hover');
+      expect(cls).toContain('hover:bg-background-destructive-bold-hover');
+      expect(cls).toContain('active:bg-background-destructive-bold-active');
+      expect(cls).toContain('data-[state=open]:bg-background-destructive-bold-hover');
     });
   });
 

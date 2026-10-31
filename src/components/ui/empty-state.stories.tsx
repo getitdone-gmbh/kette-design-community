@@ -6,7 +6,8 @@ import { Illustration } from './illustration';
 import { Search } from 'lucide-react';
 
 const meta = {
-  title: 'Patterns/Empty state',
+  id: 'patterns-empty-state',
+  title: 'Patterns · Data/Empty state',
   component: EmptyState,
   tags: ['autodocs'],
   args: { title: 'No companies yet', description: 'Add your first company or import a list.' },

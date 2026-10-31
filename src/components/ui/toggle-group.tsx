@@ -48,16 +48,19 @@ const toggleGroupVariants = cva(
   },
 );
 
-type ToggleGroupContextValue = Omit<VariantProps<typeof toggleGroupVariants>, 'preset'>;
+type ToggleGroupContextValue = Omit<VariantProps<typeof toggleGroupVariants>, 'preset'> & { fullWidth?: boolean };
 
 // Group-level defaults for `variant`/`size` (shadcn pattern). Items read these and may override them.
 const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({});
 
 const ToggleGroup = React.forwardRef<
   React.ElementRef<typeof ToggleGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> & Omit<VariantProps<typeof toggleGroupVariants>, 'preset'>
-
->(({ className, variant, size, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> &
+    Omit<VariantProps<typeof toggleGroupVariants>, 'preset'> & {
+      /** Segmented only. Stretches the track to the full width of its parent and shares the width between the items. Default is the content width (`fit-content`), also inside a `flex-col` parent. */
+      fullWidth?: boolean;
+    }
+>(({ className, variant, size, fullWidth = false, children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   // Standard controlled/uncontrolled dual-mode: forward value/defaultValue/onValueChange
   // straight through to Radix, which already implements this correctly via
@@ -70,14 +73,14 @@ const ToggleGroup = React.forwardRef<
     // groups render exactly as before.
     <ToggleGroupPrimitive.Root
       {...props}
-      className={cn(variant === 'segmented' && 'inline-flex items-center gap-0 rounded-control bg-muted', variant === 'segmented' && (zero ? 'p-micro' : 'p-[3px]'),
+      className={cn(variant === 'segmented' && 'inline-flex items-center gap-0 rounded-control bg-muted', variant === 'segmented' && (fullWidth ? 'w-full' : 'w-fit'), variant === 'segmented' && (zero ? 'p-micro' : 'p-[3px]'),
         // Sized track outside zero: total height equals the Button height (sm 32, md and lg 40). Without size the 38px legacy track stays.
         variant === 'segmented' && !zero && size && size !== 'default' && (size === 'sm' ? 'h-control-sm' : 'h-control-md'),
         className,
       )}
       ref={ref}
     >
-      <ToggleGroupContext.Provider value={{ variant, size }}>{children}</ToggleGroupContext.Provider>
+      <ToggleGroupContext.Provider value={{ variant, size, fullWidth }}>{children}</ToggleGroupContext.Provider>
     </ToggleGroupPrimitive.Root>
   );
 });
@@ -111,6 +114,7 @@ const ToggleGroupItem = React.forwardRef<
       }}
       className={cn(
         toggleGroupVariants({ variant: variant ?? context.variant, size: size ?? context.size, preset: zero ? 'zero' : 'default', className }),
+        context.fullWidth && (variant ?? context.variant) === 'segmented' && 'flex-1',
         'data-[unreachable=true]:pointer-events-none data-[unreachable=true]:opacity-disabled',
       )}
       ref={ref}

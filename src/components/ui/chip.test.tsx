@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 
@@ -601,5 +602,14 @@ describe('Chip in narrow containers', () => {
     expect(container.querySelector('[data-chip-count]')).toHaveClass('shrink-0');
     expect(screen.getByText('3+ yrs')).toHaveClass('shrink-0');
     expect(container.querySelector('[data-chip-dot]')).toHaveClass('shrink-0');
+  });
+});
+
+describe('Chip disabled click guard (0.28.1)', () => {
+  it('never calls onClick while disabled, even when the click is dispatched directly', () => {
+    const onClick = vi.fn();
+    render(<Chip label="Design" disabled onClick={onClick} />);
+    fireEvent.click(screen.getByText('Design'));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

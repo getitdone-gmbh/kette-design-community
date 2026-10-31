@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "first-focusable",
+  "title": "First Focusable",
+  "description": "Helper used by the Get IT Done components.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/lib/first-focusable.ts",
+      "content": "// Focuses the first element inside `root` that a keyboard user can focus, in DOM order. Links count. `skip` is left out (for example the close button of a sheet). Returns false when nothing could take focus, so the caller keeps the default.\nconst FOCUSABLE =\n  'a[href], area[href], button, input:not([type=\"hidden\"]), select, textarea, summary, [contenteditable]:not([contenteditable=\"false\"]), [tabindex]';\n\n// A hidden element (display none, visibility hidden) cannot take focus, so it must not be picked.\nfunction isRendered(el: HTMLElement, root: HTMLElement): boolean {\n  if (getComputedStyle(el).visibility === 'hidden') return false;\n  for (let node: HTMLElement | null = el; node && node !== root.parentElement; node = node.parentElement) {\n    if (getComputedStyle(node).display === 'none') return false;\n  }\n  return true;\n}\n\n// Focuses the last focusable element inside `root`. Used when Shift+Tab leaves a container that only holds programmatic focus.\nexport function focusLast(root: HTMLElement): boolean {\n  const candidates = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).reverse();\n  for (const el of candidates) {\n    if (el.tabIndex < 0 || (el as HTMLButtonElement).disabled) continue;\n    if (el.closest('[hidden], [inert], fieldset:disabled') || !isRendered(el, root)) continue;\n    el.focus({ preventScroll: true });\n    if (document.activeElement === el) return true;\n  }\n  return false;\n}\n\nexport function focusFirst(root: HTMLElement, skip?: Element | null): boolean {\n  const candidates = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));\n  for (const el of candidates) {\n    if (el === skip || skip?.contains(el)) continue;\n    if (el.tabIndex < 0 || (el as HTMLButtonElement).disabled) continue;\n    if (el.closest('[hidden], [inert], fieldset:disabled') || !isRendered(el, root)) continue;\n    el.focus({ preventScroll: true });\n    if (document.activeElement === el) return true;\n  }\n  return false;\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { Button } from './button';
@@ -14,6 +16,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetMeta,
+  SheetNavLink,
   SheetPath,
   SheetSection,
   SheetTitle,
@@ -171,7 +174,8 @@ describe('Sheet zero anatomy and states', () => {
   it('error state shows an alert with a retry that works', async () => {
     const onRetry = vi.fn();
     render(<Zero state="error" onRetry={onRetry} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Could not load this content');
+    // The footer status chip adds its own assertive announcement for the error state.
+    expect(screen.getAllByRole('alert').some((el) => el.textContent?.includes('Could not load this content'))).toBe(true);
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalled();
   });
@@ -342,5 +346,464 @@ describe('Sheet close button size', () => {
       </DesignSystemProvider>,
     );
     expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('h-10', 'w-10');
+  });
+});
+
+describe('Sheet initial focus and tab order (0.28)', () => {
+  it('puts the close button first in the DOM and the tab order', async () => {
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Menu</SheetTitle>
+          <SheetDescription>Navigation</SheetDescription>
+          <a href="#one">One</a>
+          <button type="button">Two</button>
+        </SheetContent>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole('dialog');
+    const close = dialog.querySelector('[data-slot="sheet-close"]');
+    expect(dialog.querySelector('button, a[href]')).toBe(close);
+    expect(close).toHaveClass('z-chrome');
+  });
+
+  it('focuses the first link on open, links included', async () => {
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Menu</SheetTitle>
+          <SheetDescription>Navigation</SheetDescription>
+          <a href="#one">One</a>
+          <button type="button">Two</button>
+        </SheetContent>
+      </Sheet>,
+    );
+    await waitFor(() => expect(screen.getByRole('link', { name: 'One' })).toHaveFocus());
+  });
+
+  it('keeps an element that took focus itself and lets the consumer prevent the default', async () => {
+    const { unmount } = render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Edit</SheetTitle>
+          <SheetDescription>Form</SheetDescription>
+          <a href="#one">One</a>
+          <input aria-label="Name" autoFocus />
+        </SheetContent>
+      </Sheet>,
+    );
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveFocus());
+    unmount();
+    render(
+      <Sheet open>
+        <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
+          <SheetTitle>Menu</SheetTitle>
+          <SheetDescription>Navigation</SheetDescription>
+          <a href="#one">One</a>
+        </SheetContent>
+      </Sheet>,
+    );
+    await Promise.resolve();
+    expect(screen.getByRole('link', { name: 'One' })).not.toHaveFocus();
+  });
+
+  it('skips hidden elements and focuses the first visible one inside the dialog', async () => {
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Menu</SheetTitle>
+          <SheetDescription>Navigation</SheetDescription>
+          <a href="#gone" style={{ display: 'none' }}>
+            Gone
+          </a>
+          <div style={{ display: 'none' }}>
+            <button type="button">Nested gone</button>
+          </div>
+          <a href="#shown" style={{ visibility: 'hidden' }}>
+            Invisible
+          </a>
+          <a href="#one">One</a>
+        </SheetContent>
+      </Sheet>,
+    );
+    await waitFor(() => expect(screen.getByRole('link', { name: 'One' })).toHaveFocus());
+  });
+
+  it('falls back to the close button when nothing else can take focus', async () => {
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Info</SheetTitle>
+          <SheetDescription>Read only</SheetDescription>
+        </SheetContent>
+      </Sheet>,
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus());
+  });
+
+  it('tabs from the close button to the first link and wraps back from the last element', async () => {
+    const user = userEvent.setup();
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Menu</SheetTitle>
+          <SheetDescription>Navigation</SheetDescription>
+          <a href="#one">One</a>
+          <a href="#two">Two</a>
+        </SheetContent>
+      </Sheet>,
+    );
+    await waitFor(() => expect(screen.getByRole('link', { name: 'One' })).toHaveFocus());
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+    await user.tab();
+    await user.tab();
+    expect(screen.getByRole('link', { name: 'Two' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+  });
+});
+
+describe('SheetNavLink (0.28)', () => {
+  const Menu = ({ onNavigate }: { onNavigate?: (info: { href: string; target: HTMLElement | null }) => void }) => {
+    const [open, setOpen] = React.useState(true);
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Menu
+        </button>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetContent>
+            <SheetTitle>Navigation</SheetTitle>
+            <SheetDescription>Sections</SheetDescription>
+            <SheetNavLink href="#pricing" onNavigate={onNavigate}>
+              Pricing
+            </SheetNavLink>
+            <SheetNavLink href="/other">Other page</SheetNavLink>
+          </SheetContent>
+        </Sheet>
+        <section id="pricing" aria-label="Pricing section">
+          Pricing
+        </section>
+      </>
+    );
+  };
+
+  it('closes the sheet, then scrolls to the section and focuses it', async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(<Menu />);
+    await user.click(screen.getByRole('link', { name: 'Pricing' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const section = screen.getByLabelText('Pricing section');
+    await waitFor(() => expect(section).toHaveFocus());
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(window.location.hash).toBe('#pricing');
+    // The section keeps no stray tab stop after focus leaves.
+    section.blur();
+    expect(section).not.toHaveAttribute('tabindex');
+  });
+
+  it('runs onNavigate after the sheet is gone instead of the default jump', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    render(<Menu onNavigate={onNavigate} />);
+    await user.click(screen.getByRole('link', { name: 'Pricing' }));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledTimes(1));
+    expect(onNavigate).toHaveBeenCalledWith({ href: '#pricing', target: screen.getByLabelText('Pricing section') });
+  });
+
+  it('leaves other hrefs and modified clicks alone and keeps the sheet open', async () => {
+    const user = userEvent.setup();
+    render(<Menu />);
+    const other = screen.getByRole('link', { name: 'Other page' });
+    other.addEventListener('click', (event) => event.preventDefault());
+    await user.click(other);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.keyboard('{Control>}');
+    await user.click(screen.getByRole('link', { name: 'Pricing' }));
+    await user.keyboard('{/Control}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('leaves a link to a missing element or a malformed hash alone and keeps the sheet open', async () => {
+    const user = userEvent.setup();
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Navigation</SheetTitle>
+          <SheetDescription>Sections</SheetDescription>
+          <SheetNavLink href="#missing">Missing</SheetNavLink>
+          <SheetNavLink href="#%E0">Broken</SheetNavLink>
+        </SheetContent>
+      </Sheet>,
+    );
+    const stop = (event: Event) => event.preventDefault();
+    const missing = screen.getByRole('link', { name: 'Missing' });
+    const broken = screen.getByRole('link', { name: 'Broken' });
+    missing.addEventListener('click', stop);
+    broken.addEventListener('click', stop);
+    await user.click(missing);
+    await user.click(broken);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('has a left aligned label, a visible underline and the control height', () => {
+    render(
+      <SheetNavLink href="#x">
+        Go
+      </SheetNavLink>,
+    );
+    const link = screen.getByRole('link', { name: 'Go' });
+    expect(link).toHaveClass('justify-start', 'h-control-md', 'underline');
+  });
+
+  it('drops the jump when the parent keeps the sheet open', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(
+      <>
+        <Sheet open onOpenChange={() => {}}>
+          <SheetContent>
+            <SheetTitle>Navigation</SheetTitle>
+            <SheetDescription>Sections</SheetDescription>
+            <SheetNavLink href="#x" onNavigate={onNavigate}>
+              Go
+            </SheetNavLink>
+          </SheetContent>
+        </Sheet>
+      </>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await user.keyboard('{Escape}');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('jumps immediately outside a sheet', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(
+      <SheetNavLink href="#x" onNavigate={onNavigate}>
+        Go
+      </SheetNavLink>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    expect(onNavigate).toHaveBeenCalledWith({ href: '#x', target: null });
+  });
+});
+
+describe('Sheet 0.29', () => {
+  it('focuses the content container when focusOnOpen is false on a modal sheet (never the body)', async () => {
+    render(<Example focusOnOpen={false}>{null}</Example>);
+    const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(dialog).toHaveFocus());
+    expect(dialog).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('focuses the container of a stacked sheet with focusOnOpen false', async () => {
+    render(
+      <Sheet open>
+        <SheetContent>
+          <SheetTitle>Cockpit</SheetTitle>
+          <SheetDescription>Edit</SheetDescription>
+          <Sheet open>
+            <SheetContent stackDepth={1} focusOnOpen={false}>
+              <SheetTitle>Time entries</SheetTitle>
+              <SheetDescription>Rows</SheetDescription>
+              <a href="/x">Link</a>
+            </SheetContent>
+          </Sheet>
+        </SheetContent>
+      </Sheet>,
+    );
+    await screen.findByText('Time entries');
+    const dialogs = screen.getAllByRole('dialog', { hidden: true });
+    const stacked = dialogs[dialogs.length - 1];
+    await waitFor(() => expect(stacked).toHaveFocus());
+  });
+
+  it('keeps the page focus for a docked sheet by default', () => {
+    render(
+      <>
+        <button type="button">Page</button>
+        <Example modal={false} mode="push">
+          {null}
+        </Example>
+      </>,
+    );
+    expect(screen.getByRole('dialog')).not.toHaveFocus();
+  });
+
+  it('reserves room for the close button in the header, default and zero', () => {
+    const { rerender } = render(
+      <Example>
+        <SheetHeader data-testid="header">
+          <SheetTitle>A very long title that runs toward the close button</SheetTitle>
+        </SheetHeader>
+      </Example>,
+    );
+    expect(screen.getByTestId('header')).toHaveClass('pr-10');
+    rerender(
+      <Example>
+        <SheetHeader data-testid="header" variant="zero">
+          <SheetTitle>A very long title</SheetTitle>
+        </SheetHeader>
+      </Example>,
+    );
+    expect(screen.getByTestId('header')).toHaveClass('pr-16');
+  });
+
+  it('SheetNavLink nav variant takes the foreground token, regular weight and underlines on hover and for the current page', () => {
+    render(
+      <Example>
+        <SheetNavLink href="#a" variant="nav" aria-current="page">
+          Section
+        </SheetNavLink>
+      </Example>,
+    );
+    const link = screen.getByRole('link', { name: 'Section' });
+    expect(link).toHaveClass('text-foreground', 'font-normal', 'hover:underline', 'no-underline', 'aria-[current]:underline');
+    expect(link).not.toHaveClass('text-link-default');
+  });
+
+  it('closeOnNavigate closes the sheet for a plain click that is not a section jump, also after your own preventDefault', async () => {
+    const user = userEvent.setup();
+    const Menu = () => {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetContent>
+            <SheetTitle>Navigation</SheetTitle>
+            <SheetDescription>Pages</SheetDescription>
+            <SheetNavLink href="/route" closeOnNavigate onClick={(event) => event.preventDefault()}>
+              Route
+            </SheetNavLink>
+          </SheetContent>
+        </Sheet>
+      );
+    };
+    render(<Menu />);
+    await user.click(screen.getByRole('link', { name: 'Route' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('closeOnNavigate keeps the sheet open for a modified click', async () => {
+    const user = userEvent.setup();
+    render(
+      <Example>
+        <SheetNavLink href="/route" closeOnNavigate onClick={(event) => event.preventDefault()}>
+          Route
+        </SheetNavLink>
+      </Example>,
+    );
+    await user.keyboard('{Control>}');
+    await user.click(screen.getByRole('link', { name: 'Route' }));
+    await user.keyboard('{/Control}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('focuses the section before it scrolls, so the jump has the last word over focus listeners', async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    Element.prototype.scrollIntoView = vi.fn(function scroll(this: Element) {
+      order.push(`scroll:${document.activeElement === this ? 'focused' : 'unfocused'}`);
+    });
+    const Menu = () => {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetContent>
+              <SheetTitle>Navigation</SheetTitle>
+              <SheetDescription>Sections</SheetDescription>
+              <SheetNavLink href="#order">Go</SheetNavLink>
+            </SheetContent>
+          </Sheet>
+          <section id="order" aria-label="Order section">
+            Order
+          </section>
+        </>
+      );
+    };
+    render(<Menu />);
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    await waitFor(() => expect(order).toEqual(['scroll:focused']));
+  });
+});
+
+describe('Sheet 0.29 review fixes', () => {
+  it('Shift+Tab from the container (focusOnOpen false) goes to the last control', async () => {
+    const user = userEvent.setup();
+    render(
+      <Example focusOnOpen={false}>
+        <button type="button">First</button>
+        <button type="button">Last</button>
+      </Example>,
+    );
+    const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(dialog).toHaveFocus());
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus();
+  });
+
+  it('a jump to the hash that is already current adds no history entry', async () => {
+    const user = userEvent.setup();
+    Element.prototype.scrollIntoView = vi.fn();
+    window.history.pushState(null, '', '#again');
+    const before = window.history.length;
+    render(
+      <>
+        <SheetNavLink href="#again">Go</SheetNavLink>
+        <section id="again">Again</section>
+      </>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    expect(window.history.length).toBe(before);
+  });
+});
+
+describe('SheetNavLink history and focus', () => {
+  it('pushes the history entry before it scrolls, so Back finds the old position', async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    Element.prototype.scrollIntoView = vi.fn(() => {
+      order.push('scroll');
+    });
+    const push = vi.spyOn(window.history, 'pushState').mockImplementation(() => {
+      order.push('push');
+    });
+    render(
+      <>
+        <SheetNavLink href="#order-a">Go</SheetNavLink>
+        <section id="order-a">A</section>
+      </>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    expect(order).toEqual(['push', 'scroll']);
+    push.mockRestore();
+  });
+
+  it('focuses the section again after Back (popstate) instead of leaving focus on the body', async () => {
+    const user = userEvent.setup();
+    Element.prototype.scrollIntoView = vi.fn();
+    render(
+      <>
+        <SheetNavLink href="#back-a">Go</SheetNavLink>
+        <section id="back-a" aria-label="A">
+          A
+        </section>
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Go' }));
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+    expect(screen.getByRole('region', { name: 'A' })).not.toHaveFocus();
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByRole('region', { name: 'A' })).toHaveFocus();
   });
 });

@@ -16,7 +16,7 @@ export interface DesignSystemContextValue {
   preset: DesignSystemPreset;
 }
 
-export const DesignSystemContext = React.createContext<DesignSystemContextValue>({ locale: 'en', labels: labelsEn, preset: 'default' });
+export const DesignSystemContext = React.createContext<DesignSystemContextValue>({ locale: 'en', labels: labelsEn, preset: 'zero' });
 
 // Built-in texts for the current locale. Pass instance props as `overrides` so they win over the provider.
 export const useLabels = (overrides?: LabelOverrides): Labels =>

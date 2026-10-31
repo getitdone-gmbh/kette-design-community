@@ -8,6 +8,7 @@ import * as React from 'react';
 import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from './../../lib/modal-inert';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from './../../lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from './../../lib/sticky-inset';
+import { displayVoice } from '../../lib/recipes';
 import { cn } from './../../lib/utils';
 import { useLabels, usePreset } from './labels-context';
 
@@ -95,7 +96,7 @@ const DialogOverlay = React.forwardRef<
       ref={ref}
       {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }}
       className={cn(
-        'fixed inset-0 z-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        'fixed inset-0 z-dialog duration-base motion-reduce:animate-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         zero ? 'bg-overlay-scrim' : 'bg-overlay',
         className,
       )}
@@ -151,6 +152,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
+      data-slot="dialog-content"
       ref={setRefs}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
@@ -184,8 +186,13 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
         zero ? 'border-border-default' : 'border-hairline',
         'bg-background',
         'p-6',
-        zero ? 'shadow-elevation-raised' : 'shadow-dialog',
-        'duration-200',
+        // Theme expression (kette-tokens 5.26.0): surface image and frame over the dialog's own shadow; the defaults change nothing
+        zero ? '[--dialog-elevation:var(--elevation-raised,0_0_transparent)]' : '[--dialog-elevation:theme(boxShadow.dialog)]',
+        'shadow-[shadow:var(--bevel-dialog),var(--dialog-elevation)]',
+        'bg-[image:var(--image-dialog)]',
+        // Theme motion (UX-031-06): the duration follows the token, no animation under prefers-reduced-motion
+        'duration-base',
+        'motion-reduce:animate-none',
         'data-[state=open]:animate-in',
         'data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0',
@@ -227,9 +234,12 @@ interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const DialogHeader = React.forwardRef<HTMLDivElement, DialogHeaderProps>(({ className, orientation = 'vertical', ...props }, ref) => (
   <div
+    data-slot="dialog-header"
     ref={useStickyInset<HTMLDivElement>('top', ref)}
     className={cn(
       'flex text-left',
+      // Theme header band (kette-tokens 5.26.0 image-dialog-header, bevel-dialog-header), none by default
+      'bg-[image:var(--image-dialog-header)] shadow-[shadow:var(--bevel-dialog-header)]',
       orientation === 'horizontal' ? 'flex-row items-start gap-4 pr-8' : 'flex-col space-y-[6px]',
       className,
     )}
@@ -286,8 +296,9 @@ const DialogTitle = React.forwardRef<
   const zero = usePreset() === 'zero';
   return (
     <DialogPrimitive.Title
+      data-slot="dialog-title"
       ref={ref}
-      className={cn(zero ? 'typography-label-highlight' : 'text-base font-semibold leading-none tracking-[-0.01em]', className)}
+      className={cn(zero ? 'typography-label-highlight' : 'text-base font-semibold leading-none tracking-[-0.01em]', displayVoice, className)}
       {...props}
     />
   );

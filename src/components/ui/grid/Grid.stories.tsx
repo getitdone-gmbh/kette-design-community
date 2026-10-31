@@ -4,7 +4,8 @@ import { Fragment } from 'react';
 import { Grid, GridItem } from './Grid';
 
 const meta = {
-  title: 'Primitives/Grid',
+  id: 'primitives-grid',
+  title: 'Primitives · Layout/Grid',
   component: Grid,
   tags: ['autodocs'],
   argTypes: {

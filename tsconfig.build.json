@@ -4,5 +4,5 @@
     "declaration": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx", "src/lib/assert-compiled.ts", "src/lib/token-contrast.ts"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx", "src/lib/assert-compiled.ts", "src/lib/render-default-look.tsx", "src/lib/token-contrast.ts"]
 }

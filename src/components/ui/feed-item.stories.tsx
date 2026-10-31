@@ -11,7 +11,8 @@ const av = (t: string) => (
 );
 
 const meta = {
-  title: 'Patterns/Feed item',
+  id: 'patterns-feed-item',
+  title: 'Patterns · Interface/Feed item',
   component: FeedList,
   tags: ['autodocs'],
   argTypes: {

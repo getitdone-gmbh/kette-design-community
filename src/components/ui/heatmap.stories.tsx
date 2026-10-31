@@ -4,7 +4,8 @@ import { Heatmap, HeatmapCell, HeatmapRow } from './heatmap';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Heatmap',
+  id: 'patterns-heatmap',
+  title: 'Patterns · Data/Heatmap',
   component: Heatmap,
   tags: ['autodocs'],
   // onRetry shows the error button

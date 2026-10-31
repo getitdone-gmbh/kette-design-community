@@ -10,7 +10,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from './input';
 
 const meta = {
-  title: 'Primitives/Form',
+  id: 'primitives-form',
+  title: 'Primitives · Inputs/Form',
   tags: ['autodocs'],
 } satisfies Meta;
 

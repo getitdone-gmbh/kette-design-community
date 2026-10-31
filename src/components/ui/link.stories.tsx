@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ArrowUpRight, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 import { Link } from './link';
 
 const meta = {
-  title: 'Primitives/Link',
+  id: 'primitives-link',
+  title: 'Primitives · Actions/Link',
   component: Link,
   tags: ['autodocs'],
   args: { children: 'View details', href: '#', color: 'brand', size: 'md' },
@@ -56,6 +58,24 @@ export const WithIcons: Story = {
 export const DotLeading: Story = { args: { dotLeading: true } };
 
 export const Disabled: Story = { args: { disabled: true } };
+
+// Gated: aria-disabled alone keeps the link in the tab order. Enter or a click calls onGatedClick, nothing navigates.
+const GatedLink = () => {
+  const [message, setMessage] = useState('');
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Link href="/billing" aria-disabled="true" aria-describedby="billing-reason" onGatedClick={() => setMessage('Not available to you.')}>
+        Billing
+      </Link>
+      <p id="billing-reason" className="typography-text-small text-text-subtle">Billing is only open to owners.</p>
+      <p role="status" className="typography-text-small text-text-subtle">{message}</p>
+    </div>
+  );
+};
+
+export const Gated: StoryObj<typeof Link> = {
+  render: () => <GatedLink />,
+};
 
 export const Inverse: StoryObj<typeof Link> = {
   render: () => (

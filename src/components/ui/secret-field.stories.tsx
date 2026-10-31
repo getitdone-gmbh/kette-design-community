@@ -4,7 +4,8 @@ import { DesignSystemProvider } from './design-system-provider';
 import { SecretField } from './secret-field';
 
 const meta = {
-  title: 'Primitives/Secret field',
+  id: 'primitives-secret-field',
+  title: 'Primitives · Inputs/Secret field',
   component: SecretField,
   tags: ['autodocs'],
   parameters: {

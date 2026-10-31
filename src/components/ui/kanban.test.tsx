@@ -769,6 +769,8 @@ describe('Kanban rejected drop focus (0.20)', () => {
     };
     render(<Menu />);
     fireEvent.keyDown(screen.getByRole('button', { name: 'Actions for Card A' }), { key: 'Enter' });
+    // dnd-kit swallows document clicks for 50ms after a drag ends, and the drag of the previous test can still be inside that window.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Won' }));
     const card = await screen.findByRole('button', { name: /^Card A$/ });
     expect(screen.getByRole('region', { name: 'Lead' })).toContainElement(card);

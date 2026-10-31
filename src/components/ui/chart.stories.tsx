@@ -4,7 +4,8 @@ import { ActivityGauge, ChartLegend, HBarList, Histogram, LineBarChart, PieChart
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Charts',
+  id: 'patterns-charts',
+  title: 'Patterns · Data/Charts',
   component: LineBarChart,
   tags: ['autodocs'],
   // onRetry shows the error button

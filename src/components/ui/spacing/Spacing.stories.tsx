@@ -4,7 +4,8 @@ import { Spacing } from './Spacing';
 import { SpacingProps } from './spacing.interface';
 
 const meta = {
-  title: 'Primitives/Spacing',
+  id: 'primitives-spacing',
+  title: 'Foundations/Spacing',
   component: Spacing,
   tags: ['autodocs'],
   argTypes: {

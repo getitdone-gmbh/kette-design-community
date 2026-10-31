@@ -4,7 +4,8 @@ import { Bold, Italic } from 'lucide-react';
 import { Toggle } from './toggle';
 
 const meta = {
-  title: 'Primitives/Toggle',
+  id: 'primitives-toggle',
+  title: 'Primitives · Actions/Toggle',
   component: Toggle,
   tags: ['autodocs'],
   args: { 'aria-label': 'Toggle bold', children: <Bold className="h-icon-xs w-icon-xs" aria-hidden="true" /> },

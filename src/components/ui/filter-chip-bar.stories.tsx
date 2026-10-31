@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { FilterChipBar } from './filter-chip-bar';
 
 const meta = {
-  title: 'Patterns/FilterChipBar',
+  id: 'patterns-filterchipbar',
+  title: 'Patterns · Data/FilterChipBar',
   component: FilterChipBar,
   tags: ['autodocs'],
   // onRemove, onReset and onAdd switch controls on, so they are wired explicitly instead of by the default actions.

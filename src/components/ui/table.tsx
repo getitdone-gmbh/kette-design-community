@@ -20,6 +20,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { scrollRegionRing } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
 import { EmptyState, type EmptyStateProps } from './empty-state';
@@ -42,6 +43,8 @@ interface TableContextValue {
   stickyOffset?: string;
   headerTone?: TableHeaderTone;
   rowHover?: TableRowHover;
+  // Width of the visible scroll area (the scroll container without its border) in px, measured by the Table. Unset until measured.
+  visibleWidth?: number;
 }
 
 // `muted` paints the header band with the muted surface; `table` hovers rows with the dedicated table hover token.
@@ -61,7 +64,8 @@ const TableContext = createContext<TableContextValue>({
 // `colors/table/background/default`, `/selected`, `colors/table/foreground/default`) or an
 // existing generic semantic/`general-*` token already used the same way elsewhere in this repo
 // (Chip, Alert). None is a raw Tailwind palette class.
-const tableVariants = cva('w-full caption-bottom text-sm bg-background text-foreground');
+// Data voice of the theme (kette-tokens 5.26.0 font-data, numeric-data), zero specificity so consumer classes win; neutral keeps the body font and inherited figures
+const tableVariants = cva('w-full caption-bottom text-sm bg-background text-foreground [:where(&)]:[font-family:var(--font-data),sans-serif] [:where(&)]:[font-variant-numeric:var(--numeric-data)]');
 
 interface TableProps extends HTMLAttributes<HTMLTableElement>, VariantProps<typeof tableVariants> {
   // Row and header sizing. Unset: `zero` in the zero preset, otherwise `default`.
@@ -83,6 +87,8 @@ interface TableProps extends HTMLAttributes<HTMLTableElement>, VariantProps<type
   maxHeight?: string;
   /** Adds the `elevation-table` shadow to the table container (zero theme: none in base). */
   elevated?: boolean;
+  /** Accessible name of the scroll container. While the table overflows, the container is a tab stop; with a name it is exposed as a region, so a screen reader announces what the tab stop is. */
+  scrollLabel?: string;
 }
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
@@ -97,6 +103,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       headerTone = 'default',
       rowHover = 'default',
       elevated = false,
+      scrollLabel,
       maxHeight,
       ...props
     },
@@ -110,10 +117,15 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     // A scroll area with nothing focusable inside must be reachable by keyboard (WCAG 2.1.1), so it becomes a tab stop only while it really overflows.
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const [overflowing, setOverflowing] = useState(false);
+    // Visible width of the scroll area, so a state row that spans every column (TableEmpty) can centre in what is on screen and not in the full table width.
+    const [visibleWidth, setVisibleWidth] = useState<number | undefined>(undefined);
     useEffect(() => {
       const node = wrapperRef.current;
       if (!node) return;
-      const measure = () => setOverflowing(node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight);
+      const measure = () => {
+        setOverflowing(node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight);
+        setVisibleWidth(node.clientWidth > 0 ? node.clientWidth : undefined);
+      };
       measure();
       if (typeof ResizeObserver === 'undefined') return;
       const observer = new ResizeObserver(measure);
@@ -122,7 +134,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       return () => observer.disconnect();
     }, []);
     return (
-    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover }}>
+    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover, visibleWidth }}>
       {/* `overflow-x-auto` is unconditional so a wide table always scrolls within its own bounded
           container (WCAG 1.4.10 Reflow) regardless of `stickyHeader`, instead of overflowing the
           page. Only the vertical clamp (`max-h`/`overflow-y-auto`) is gated on `stickyHeader`,
@@ -130,9 +142,13 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           + the same `border-border-subtle` token the row/thead dividers already use gives Table a
           real, clipped surface boundary like every other surface component (Card/Dialog/Alert),
           instead of flat, borderless corners. */}
+      {/* The focus ring is drawn by a sibling overlay above the sticky header: a ring or outline on the scroll container itself is painted under the sticky header band. The overlay sits on the sticky layer (z-sticky, 10) and comes later in the tree than the header, so it wins that tie. It is never on the chrome layer: `isolate` keeps it in its own stacking context, and even where an app does not generate that class the ring stays below a fixed top bar on z-30 (DR-0290-01). */}
+      <div className={cn('relative isolate w-full', stickyHeader && stickyMode === 'parent' && 'h-full min-h-0')}>
       <div
         ref={wrapperRef}
         tabIndex={overflowing ? 0 : undefined}
+        role={overflowing && scrollLabel ? 'region' : undefined}
+        aria-label={overflowing && scrollLabel ? scrollLabel : undefined}
         data-scrolled-x={scrolledX || undefined}
         style={maxHeight && stickyHeader && stickyMode === 'container' ? { maxHeight } : undefined}
         onScroll={(event) => {
@@ -140,7 +156,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           if (next !== scrolledX) setScrolledX(next);
         }}
         className={cn(
-          'relative w-full rounded-surface border border-solid focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-inset focus-visible:ring-ring-default',
+          'peer relative w-full rounded-surface border border-solid focus-visible:outline-none',
           edgeClass(zeroPreset),
           // Page mode must not clip: an overflow container would become the sticky scroll parent.
           stickyHeader && stickyMode === 'page' ? 'overflow-visible' : 'overflow-x-auto',
@@ -150,6 +166,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         )}
       >
         <table ref={ref} className={cn(tableVariants({ className }))} {...props} />
+      </div>
+      <div aria-hidden="true" className={cn('pointer-events-none absolute inset-0 z-sticky hidden rounded-surface peer-focus-visible:block', ...scrollRegionRing)} />
       </div>
     </TableContext.Provider>
     );
@@ -163,10 +181,13 @@ const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTable
     const edge = useEdge();
     return (
       <thead
+        data-slot="table-header"
         ref={ref}
         style={stickyOffset && stickyMode === 'page' ? ({ '--table-sticky-offset': stickyOffset, ...style } as CSSProperties) : style}
         className={cn(
           '[&_tr]:border-b border-solid',
+          // Theme header band (kette-tokens 5.26.0 image-table-header, bevel-table-header); the sticky hairline shadow replaces the bevel
+          'bg-[image:var(--image-table-header)] shadow-[shadow:var(--bevel-table-header)]',
           // A muted header paints the row accent gutter (border-l-4) in the header fill, so no strip of table surface shows next to the first header cell.
           headerTone === 'muted' && '[&_tr]:border-l-muted',
           edge,
@@ -274,6 +295,8 @@ const tableRowVariants = cva(
     // selected/invalid compound variants below. It's a shape/position cue in addition to the
     // background tint — not color alone — for WCAG 1.4.1.
     'border-b border-l-4 border-solid border-l-transparent transition-colors',
+    // Theme selection indicator (kette-tokens 5.26.0: edge and ring) on the selected row, nothing by default
+    'data-[state=selected]:shadow-[shadow:inset_var(--indicator-selection-edge)_0_0_var(--indicator-selection-edge-color),inset_0_0_0_var(--indicator-selection-ring)_var(--indicator-selection-ring-color)]',
     // Rows highlight on hover (data tables are scanned); selected/invalid rows keep their own tint.
     '[&:not([data-state=selected]):not([aria-invalid=true])]:hover:bg-muted/50',
     // Row state colours as variables, so a pinned (solid) cell can repaint exactly the tint its row shows.
@@ -439,6 +462,7 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
 
     return (
       <th
+        data-slot="table-head"
         ref={ref}
         scope="col"
         aria-sort={ariaSort}
@@ -658,7 +682,8 @@ interface TableLoadingProps extends HTMLAttributes<HTMLDivElement> {
 
 const TableLoading = forwardRef<HTMLDivElement, TableLoadingProps>(({ className, columns, rows = 5, skeleton = 'tile', ...props }, ref) => {
   const l = useLabels();
-  return skeleton === 'row' ? (
+  const { visibleWidth } = useContext(TableContext);
+  const body = skeleton === 'row' ? (
     <Skeleton ref={ref} variant="row" rows={rows} label={l.loadingTableData} className={className} {...props} />
   ) : (
   <div
@@ -685,6 +710,8 @@ const TableLoading = forwardRef<HTMLDivElement, TableLoadingProps>(({ className,
     </div>
   </div>
   );
+  // Inside a Table (a state row cell) it takes the same sticky frame as the other state rows.
+  return visibleWidth ? <TableStateFrame>{body}</TableStateFrame> : body;
 });
 TableLoading.displayName = 'TableLoading';
 
@@ -700,6 +727,19 @@ interface TableEmptyProps extends Omit<TdHTMLAttributes<HTMLTableCellElement>, '
   variant?: EmptyStateProps['variant'];
 }
 
+// Width of the left accent gutter every row reserves (`border-l-4` in `tableRowVariants`). The state frame of TableEmpty keeps this much free on both sides, so it is centred in the visible scroll area.
+const ROW_GUTTER_PX = 4;
+
+// Frame of every full-width state row (TableEmpty, TableError, TableLoadingMore, TableLoading inside a Table): as wide as the visible scroll area and pinned to its left edge, so the content stays on screen in a wide table.
+const TableStateFrame = ({ children, className }: { children: ReactNode; className?: string }) => {
+  const { visibleWidth } = useContext(TableContext);
+  return (
+    <div data-slot="table-empty-frame" className={cn('sticky max-w-full', className)} style={visibleWidth ? { left: ROW_GUTTER_PX, width: Math.max(0, visibleWidth - 2 * ROW_GUTTER_PX) } : undefined}>
+      {children}
+    </div>
+  );
+};
+
 // Fixed a pre-existing bug: this was typed/forwarded as `HTMLDivElement` and its callback never
 // even accepted a `ref` param, so the ref was silently dropped — the actual rendered root is a
 // <td> (via TableCell) inside a <tr>. Now correctly typed/forwarded to the <td>. Also replaced
@@ -712,16 +752,19 @@ const TableEmpty = forwardRef<HTMLTableCellElement, TableEmptyProps>(
     const rich = title !== undefined || description !== undefined || actions !== undefined || icon !== undefined;
     return (
       <TableRow>
-        <TableCell ref={ref} colSpan={columns} className={cn(rich ? 'py-12' : 'h-24 text-center', className)} {...props}>
-          {rich ? (
-            <div className="mx-auto w-full max-w-lg">
-              <EmptyState variant={variant} title={title ?? message} description={description} icon={icon} actions={actions} />
-            </div>
-          ) : (
-            <div className="typography-table-item flex flex-col items-center justify-center gap-1 text-text-subtle">
-              <p>{message}</p>
-            </div>
-          )}
+        {/* The cell spans every column, so it is as wide as the whole table. The content sits in a frame as wide as the visible scroll area, pinned to its left edge (`sticky`, `left` = the row gutter), so it is centred on screen at any scroll position and not in the full table width (RA-LIB-05). The cell has no side padding, so the frame starts at the edge of the scroll area. */}
+        <TableCell ref={ref} colSpan={columns} className={cn('px-0', rich ? 'py-12' : 'h-24 text-center', className)} {...props}>
+          <TableStateFrame>
+            {rich ? (
+              <div className="mx-auto w-full max-w-lg px-4">
+                <EmptyState variant={variant} title={title ?? message} description={description} icon={icon} actions={actions} />
+              </div>
+            ) : (
+              <div className="typography-table-item flex flex-col items-center justify-center gap-1 px-4 text-text-subtle">
+                <p>{message}</p>
+              </div>
+            )}
+          </TableStateFrame>
         </TableCell>
       </TableRow>
     );
@@ -750,8 +793,9 @@ const TableError = forwardRef<HTMLTableCellElement, TableErrorProps>(
     const retryLabel = retryLabelProp ?? l.tryAgain;
     return (
     <TableRow>
-      <TableCell ref={ref} colSpan={columns} className={cn('py-12', className)} {...props}>
-        <div className="mx-auto w-full max-w-lg">
+      <TableCell ref={ref} colSpan={columns} className={cn('px-0 py-12', className)} {...props}>
+        <TableStateFrame>
+        <div className="mx-auto w-full max-w-lg px-4">
           <EmptyState
             variant="error"
             title={title}
@@ -765,6 +809,7 @@ const TableError = forwardRef<HTMLTableCellElement, TableErrorProps>(
             }
           />
         </div>
+        </TableStateFrame>
       </TableCell>
     </TableRow>
   );
@@ -790,8 +835,9 @@ const TableLoadingMore = forwardRef<HTMLTableCellElement, TableLoadingMoreProps>
     const loadingLabel = loadingLabelProp ?? l.loadingMore;
     return (
     <TableRow>
-      <TableCell ref={ref} colSpan={columns} className={cn('text-center', className)} {...props}>
-        <div role="status" aria-live="polite" className="flex items-center justify-center gap-3 typography-table-item text-text-subtle">
+      <TableCell ref={ref} colSpan={columns} className={cn('px-0 text-center', className)} {...props}>
+        <TableStateFrame>
+        <div role="status" aria-live="polite" className="flex items-center justify-center gap-3 px-4 typography-table-item text-text-subtle">
           {loading ? (
             <>
               <LoadingSpinner size="sm" role="presentation" aria-live="off" aria-label="" />
@@ -805,6 +851,7 @@ const TableLoadingMore = forwardRef<HTMLTableCellElement, TableLoadingMoreProps>
             )
           )}
         </div>
+        </TableStateFrame>
       </TableCell>
     </TableRow>
   );

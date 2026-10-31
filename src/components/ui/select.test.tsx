@@ -1,6 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
+import { DesignSystemProvider } from './design-system-provider';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './select';
 
 // jsdom has no ResizeObserver / pointer-capture / scrollIntoView, all of which Radix's
@@ -223,5 +225,75 @@ describe('Select compact', () => {
     expect(screen.getByRole('combobox', { name: 'Dense' })).toHaveClass('h-8', 'py-1');
     expect(screen.getByRole('combobox', { name: 'Regular' })).not.toHaveClass('h-8');
     expect(screen.getByRole('combobox', { name: 'Dense' })).not.toHaveAttribute('compact');
+  });
+});
+
+describe('Select small sizes use the small type size (RA-LIB-06)', () => {
+  const trigger = (size?: 'xs' | 'sm' | 'md' | 'lg', preset?: 'zero') => {
+    const tree = (
+      <Select defaultValue="a">
+        <SelectTrigger aria-label="Field" size={size}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="a">A</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+    render(preset ? <DesignSystemProvider preset={preset}>{tree}</DesignSystemProvider> : tree);
+    return screen.getByRole('combobox');
+  };
+
+  it.each(['xs', 'sm'] as const)('size %s has the 13px small control type and no 16px floor below sm', (size) => {
+    const el = trigger(size);
+    expect(el).toHaveClass('text-ui', 'font-normal');
+    expect(el).not.toHaveClass('typography-input-text');
+    expect(el.className).not.toContain('max-sm:text-[max(16px');
+  });
+
+  it.each(['md', 'lg', undefined] as const)('size %s keeps the field text with the 16px floor below sm', (size) => {
+    const el = trigger(size);
+    expect(el).toHaveClass('typography-input-text', 'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]');
+    expect(el).not.toHaveClass('text-ui');
+  });
+
+  it('the zero preset compact trigger (a sm trigger) takes the small type too', () => {
+    render(
+      <DesignSystemProvider preset="zero">
+        <Select defaultValue="a">
+          <SelectTrigger aria-label="Field" compact>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="a">A</SelectItem>
+          </SelectContent>
+        </Select>
+      </DesignSystemProvider>,
+    );
+    expect(screen.getByRole('combobox')).toHaveClass('text-ui');
+  });
+
+  it('keeps the height of each size', () => {
+    expect(trigger('sm')).toHaveClass('h-control-sm');
+  });
+
+  it('is a button, so iOS Safari does not zoom on focus, and its native form twin cannot take focus', () => {
+    const { container } = render(
+      <form>
+        <Select name="field" defaultValue="a">
+          <SelectTrigger aria-label="Field" size="sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="a">A</SelectItem>
+          </SelectContent>
+        </Select>
+      </form>,
+    );
+    expect(screen.getByRole('combobox').tagName).toBe('BUTTON');
+    const native = container.querySelector('select');
+    expect(native).not.toBeNull();
+    expect(native).toHaveAttribute('aria-hidden', 'true');
+    expect(native).toHaveAttribute('tabindex', '-1');
   });
 });

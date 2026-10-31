@@ -14,7 +14,8 @@ import {
 } from './navigation-menu';
 
 const meta = {
-  title: 'Primitives/NavigationMenu',
+  id: 'primitives-navigationmenu',
+  title: 'Primitives · Layout/NavigationMenu',
   component: NavigationMenu,
   tags: ['autodocs'],
   argTypes: {},

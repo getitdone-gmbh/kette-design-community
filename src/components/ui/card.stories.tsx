@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Switch } from './switch';
 
 const meta = {
-  title: 'Primitives/Card/Examples',
+  id: 'primitives-card-examples',
+  // The compound card (header, title, description, content, footer); the single-prop card is "Card". No third title level: that made an unnamed folder in the sidebar.
+  title: 'Primitives · Display/Card compound',
   component: Card,
   tags: ['autodocs'],
   argTypes: {

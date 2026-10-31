@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 import { CookieConsent, openCookieSettings, useCookieConsent } from './cookie-consent';
 import { DesignSystemProvider } from './design-system-provider';
@@ -313,24 +313,27 @@ describe('CookieConsent focus reveal', () => {
 });
 
 describe('CookieConsent action stacking', () => {
-  it('stacks the actions below sm and keeps the row layout from sm up', () => {
+  it('keeps decline and accept full width below sm (never wrapping) and keeps the row layout from sm up', () => {
     render(<CookieConsent description="x" onAccept={() => undefined} onDecline={() => undefined} onCustomize={() => undefined} />);
     const row = screen.getByRole('button', { name: 'Accept all' }).parentElement as HTMLElement;
-    expect(row).toHaveClass('flex-col', 'items-stretch', 'sm:flex-row', 'sm:flex-wrap', 'sm:items-center');
+    expect(row).toHaveClass('grid', 'grid-cols-2', 'items-stretch', 'sm:flex', 'sm:flex-row', 'sm:flex-wrap', 'sm:items-center');
     expect(row).not.toHaveClass('flex-wrap');
+    expect(screen.getByRole('button', { name: 'Decline non-essential' })).toHaveClass('max-sm:col-span-2');
+    expect(screen.getByRole('button', { name: 'Accept all' })).toHaveClass('max-sm:col-span-2');
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveClass('max-sm:col-start-1');
     expect(Array.from(row.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['Decline non-essential', 'Accept all', 'Settings']);
   });
 
-  it('stacks two actions and the settings view actions the same way', async () => {
+  it('lays out two actions and the settings view actions the same way', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<CookieConsent description="x" onAccept={() => undefined} onDecline={() => undefined} />);
-    expect(screen.getByRole('button', { name: 'Accept all' }).parentElement).toHaveClass('flex-col', 'sm:flex-row');
+    expect(screen.getByRole('button', { name: 'Accept all' }).parentElement).toHaveClass('grid-cols-2', 'sm:flex-row');
     unmount();
     render(
       <CookieConsent description="x" onAccept={() => undefined} onDecline={() => undefined} categories={[{ id: 'a', title: 'A' }]} />,
     );
     await user.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('button', { name: 'Back' }).parentElement).toHaveClass('flex-col', 'sm:flex-row');
+    expect(screen.getByRole('button', { name: 'Back' }).parentElement).toHaveClass('grid-cols-2', 'sm:flex-row');
   });
   describe('focus on reopen', () => {
     const Page = ({ title = 'Cookies', titleAs, initialOpen = false, remount = false }: { title?: string; titleAs?: 'p'; initialOpen?: boolean; remount?: boolean }) => {
@@ -823,5 +826,67 @@ describe('CookieConsent focus when closed without an opener (0.27.13)', () => {
     await user.click(screen.getByRole('button', { name: 'Cookie settings' }));
     await user.click(screen.getByRole('button', { name: 'Accept all' }));
     expect(screen.getByRole('button', { name: 'Cookie settings' })).toHaveFocus();
+  });
+});
+
+describe('CookieConsent compact card below sm', () => {
+  const originalObserver = globalThis.ResizeObserver;
+  afterEach(() => {
+    globalThis.ResizeObserver = originalObserver;
+  });
+
+  // jsdom has no layout: the stub reports a description that is taller than its two clamped lines.
+  const longText = (overflow: boolean) => {
+    class Stub {
+      constructor(private cb: () => void) {}
+      observe() {
+        this.cb();
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    globalThis.ResizeObserver = Stub as unknown as typeof ResizeObserver;
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => (overflow ? 120 : 20) });
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => 40 });
+  };
+  afterEach(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollHeight;
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientHeight;
+  });
+
+  it('clamps the description to two lines below sm and caps the text area, so the card stays small', () => {
+    longText(true);
+    render(<CookieConsent description="A long text" onAccept={() => undefined} onDecline={() => undefined} />);
+    expect(screen.getByText('A long text')).toHaveClass('max-sm:line-clamp-2');
+    expect(screen.getByRole('region').firstElementChild).toHaveClass('max-sm:max-h-[min(50dvh,20rem)]', 'max-sm:overflow-y-auto');
+    expect(screen.getByRole('region')).toHaveClass('max-sm:p-4');
+  });
+
+  it('shows a Show more toggle only when text is hidden, and it opens and closes the text', async () => {
+    longText(true);
+    const user = userEvent.setup();
+    render(<CookieConsent description="A long text" onAccept={() => undefined} onDecline={() => undefined} />);
+    const toggle = screen.getByRole('button', { name: 'Show more' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveClass('sm:hidden');
+    await user.click(toggle);
+    expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('A long text')).not.toHaveClass('max-sm:line-clamp-2');
+    await user.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(screen.getByText('A long text')).toHaveClass('max-sm:line-clamp-2');
+  });
+
+  it('offers no toggle for a text that fits', () => {
+    longText(false);
+    render(<CookieConsent description="Short" onAccept={() => undefined} onDecline={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /Show/ })).toBeNull();
+  });
+
+  it('opens the text when a link inside it takes focus', () => {
+    longText(true);
+    render(<CookieConsent description={<a href="/privacy">Privacy</a>} onAccept={() => undefined} onDecline={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeInTheDocument();
+    act(() => screen.getByRole('link', { name: 'Privacy' }).focus());
+    expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument();
   });
 });

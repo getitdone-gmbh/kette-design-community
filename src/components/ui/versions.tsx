@@ -131,6 +131,7 @@ const Versions = React.forwardRef<HTMLUListElement, VersionsProps>(
                 </div>
                 {onRestore && !item.current ? (
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     icon={<RotateCcw aria-hidden="true" />}
@@ -143,7 +144,7 @@ const Versions = React.forwardRef<HTMLUListElement, VersionsProps>(
                   </Button>
                 ) : null}
                 {onDownload ? (
-                  <Button variant="ghost" size="icon-sm" aria-label={t.downloadAria(item.version)} onClick={() => onDownload(item)}>
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label={t.downloadAria(item.version)} onClick={() => onDownload(item)}>
                     <Download aria-hidden="true" className="h-icon-sm w-icon-sm" />
                   </Button>
                 ) : null}
@@ -176,6 +177,7 @@ const Versions = React.forwardRef<HTMLUListElement, VersionsProps>(
                 ) : null}
                 {onRestore && !item.current ? (
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     icon={<RotateCcw aria-hidden="true" />}

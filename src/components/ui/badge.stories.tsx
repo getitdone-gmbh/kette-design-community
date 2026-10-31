@@ -6,7 +6,8 @@ import { Badge } from './badge';
 import { Chip } from './chip';
 
 const meta = {
-  title: 'Primitives/Badge',
+  id: 'primitives-badge',
+  title: 'Primitives · Display/Badge',
   component: Badge,
   tags: ['autodocs'],
   argTypes: {
@@ -15,7 +16,14 @@ const meta = {
       options: ['default', 'secondary', 'destructive', 'outline', 'ghost', 'subtle', 'link', 'success', 'warning', 'info', 'credit'],
       description: 'The variant of the badge.',
       defaultValue: 'default',
+      table: { defaultValue: { summary: 'default' } },
     },
+    children: { description: 'Text of the badge.' },
+    icon: { description: 'Icon before the text.' },
+    dot: { description: 'Small status dot before the text.' },
+    tinted: { description: 'Subtle fill with coloured text instead of the bold fill.' },
+    bordered: { description: 'Adds a border in the product colour.' },
+    readable: { description: 'Uses the neutral readable text colour on the subtle fill.' },
   },
 } satisfies Meta<typeof Badge>;
 

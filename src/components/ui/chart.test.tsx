@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { ActivityGauge, ChartLegend, HBarList, Histogram, LineBarChart, PieChart, RadarChart, Sparkline, Treemap } from './chart';

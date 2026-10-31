@@ -1,6 +1,6 @@
 {
   "name": "@getitdone-gmbh/kette-design-community",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "description": "Free, composable and accessible React components for complex business software, and a solid base to build your own. shadcn/ui + Radix UI, Tailwind CSS, TypeScript.",
   "license": "MIT",
   "author": "Get IT Done GmbH",

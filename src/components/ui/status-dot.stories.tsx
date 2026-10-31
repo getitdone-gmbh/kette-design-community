@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { StatusDot } from './status-dot';
 
 const meta = {
-  title: 'Primitives/StatusDot',
+  id: 'primitives-statusdot',
+  title: 'Primitives · Display/StatusDot',
   component: StatusDot,
   tags: ['autodocs'],
   args: { tone: 'success', size: 'sm' },

@@ -47,14 +47,27 @@ export interface ButtonGroupItemProps extends React.ButtonHTMLAttributes<HTMLBut
   icon?: React.ReactNode;
   // Leading status dot (Figma Icon=Dot).
   dotLeading?: boolean;
+  // Called instead of `onClick` while the segment has `aria-disabled`. Explain why here. Nothing else happens.
+  onGatedClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 const ButtonGroupItem = React.forwardRef<HTMLButtonElement, ButtonGroupItemProps>(
-  ({ className, asChild = false, current, icon, dotLeading = false, children, type, ...props }, ref) => {
+  ({ className, asChild = false, current, icon, dotLeading = false, children, type, onClick, onGatedClick, ...props }, ref) => {
     const zero = usePreset() === 'zero';
     const sm = React.useContext(ButtonGroupSizeContext) === 'sm';
     const iconOnly = Boolean(icon) && !children;
     const Comp = asChild ? Slot : 'button';
+    // A segment with aria-disabled stays hoverable and focusable. Its click does not run onClick and does not bubble. onGatedClick gets it.
+    const ariaDisabled = props['aria-disabled'] === true || props['aria-disabled'] === 'true';
+    const guardedClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (ariaDisabled) {
+        event.preventDefault();
+        event.stopPropagation();
+        onGatedClick?.(event);
+        return;
+      }
+      onClick?.(event);
+    };
     return (
       <Comp
         ref={ref}
@@ -65,7 +78,7 @@ const ButtonGroupItem = React.forwardRef<HTMLButtonElement, ButtonGroupItemProps
           'relative inline-flex items-center justify-center gap-2 border-r border-solid border-input bg-background text-text-default transition-colors last:border-r-0',
           'hover:bg-muted active:bg-muted-strong',
           'data-[current]:bg-muted',
-          'disabled:pointer-events-none disabled:text-text-disabled aria-disabled:pointer-events-none aria-disabled:text-text-disabled',
+          'disabled:pointer-events-none disabled:text-text-disabled aria-disabled:cursor-not-allowed aria-disabled:text-text-disabled aria-disabled:hover:bg-background aria-disabled:active:bg-background',
           // Size sm: the label role and padding of Button sm, the segment fills the group height.
           sm
             ? zero
@@ -82,6 +95,7 @@ const ButtonGroupItem = React.forwardRef<HTMLButtonElement, ButtonGroupItemProps
           'focus-visible:z-10 focus-visible:ring-inset focus-visible:ring-offset-0',
           className,
         )}
+        onClick={guardedClick}
         {...props}
       >
         {dotLeading && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-current" />}

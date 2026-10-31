@@ -10,7 +10,8 @@ const items = [
 ];
 
 const meta = {
-  title: 'Data display/Versions',
+  id: 'data-display-versions',
+  title: 'Patterns · Data/Versions',
   component: Versions,
   tags: ['autodocs'],
   args: { items, onRestore: () => undefined },

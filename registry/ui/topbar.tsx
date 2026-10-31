@@ -1,7 +1,7 @@
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Globe, HelpCircle, Menu, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Globe, HelpCircle, Menu, Moon, Sun } from 'lucide-react';
 import * as React from 'react';
 
 import { focusRing, focusRingInverse, transitionBase } from '@/lib/recipes';
@@ -14,13 +14,14 @@ import { useLabels, usePreset } from '@/components/ui/labels-context';
 import { SidebarSwatch } from '@/components/ui/sidebar';
 import { StatusDot, type StatusDotTone } from '@/components/ui/status-dot';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetNavLink, type SheetNavLinkProps, SheetTitle } from '@/components/ui/sheet';
 
 // App top bar family (Figma "Header navigation": Inset App / Settings / Guest, Simple, Dual-tier, Mobile).
 // Composable: TopBar is the landmark, the parts below fill its start and end slots.
 
 const topBarVariants = cva(
-  'flex w-full shrink-0 items-center gap-2 border-0 border-b border-solid border-hairline bg-background-default text-text-default',
+  // Theme expression (kette-tokens 5.26.0): top bar image and bevel, accent stripe as the bottom border image; none by default
+  '@container/topbar flex w-full shrink-0 items-center gap-2 border-0 border-b border-solid border-hairline bg-background-default text-text-default bg-[image:var(--image-top-bar)] shadow-[shadow:var(--bevel-top-bar)] [border-image-source:var(--image-accent-stripe)] [border-image-slice:1]',
   {
     variants: {
       variant: {
@@ -40,6 +41,7 @@ const TopBar = React.forwardRef<HTMLElement, TopBarProps>(({ className, variant,
   const zero = usePreset() === 'zero';
   return (
     <header
+      data-slot="top-bar"
       ref={ref}
       data-variant={variant ?? 'inset'}
       className={cn(topBarVariants({ variant }), zero && 'border-border-default', className)}
@@ -55,13 +57,27 @@ const TopBarStart = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
 TopBarStart.displayName = 'TopBarStart';
 
 const TopBarEnd = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, children, ...props }, ref) => (
     <div
       ref={ref}
-      // Children marked `data-topbar-secondary` drop out below the sm breakpoint, so a long action row does not push the bar past a phone width.
-      className={cn('ml-auto flex shrink-0 items-center gap-2 max-sm:[&>[data-topbar-secondary]]:hidden', className)}
+      // Children marked `data-topbar-secondary` drop out below the sm breakpoint (display none, so they leave the tab order too), so a long action row does not push the bar past a phone width. An element marked `data-topbar-action` (a Button with an icon, or a NavigationMenuTrigger with an `icon`, at any depth) keeps only its icon below sm: the label stays its accessible name but is no longer drawn, and its text is the tooltip, so the primary action fits 320px next to the breadcrumb. The chevron of a trigger does not count as the icon. A status chip (`role=status`, such as `AutosaveStatus`) has a width ceiling and truncates its text with an ellipsis (full text as tooltip), so it cannot push the title. Under 448px of top bar the ceiling only fits the icon, so the label of an `AutosaveStatus` (`data-status-label`) is hidden visually instead of cut to a fragment such as "U...": it stays in the live region as the accessible name and the chip is its icon, a button that opens the status text. This follows the width of the top bar (a size container, under 448px), not the viewport.
+      className={cn(
+        'ml-auto flex shrink-0 items-center gap-2 [&>[role=status]]:max-w-xs [@container_topbar_(max-width:447px)]:[&>[role=status]]:max-w-[var(--size-control-lg)] max-sm:[&>[data-topbar-secondary]]:hidden',
+        'max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:w-control-md max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:gap-0 max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:px-0 max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:text-[0px]',
+        className,
+      )}
       {...props}
-    />
+    >
+      {/* An action marked `data-topbar-action` loses its label below sm: its text becomes the tooltip, so the icon is still named on hover. */}
+      {React.Children.map(children, (child) =>
+        React.isValidElement<{ 'data-topbar-action'?: unknown; title?: string; children?: React.ReactNode }>(child) &&
+        child.props['data-topbar-action'] !== undefined &&
+        child.props.title === undefined &&
+        typeof child.props.children === 'string'
+          ? React.cloneElement(child, { title: child.props.children })
+          : child,
+      )}
+    </div>
   ),
 );
 TopBarEnd.displayName = 'TopBarEnd';
@@ -105,6 +121,9 @@ export interface TopBarBreadcrumbProps extends Omit<React.HTMLAttributes<HTMLEle
 
 const ELLIPSIS = Symbol('ellipsis');
 
+const backArrow = <ArrowLeft aria-hidden="true" className="mr-1 inline-block h-icon-md w-icon-md align-middle sm:hidden" />;
+const backLinkClass = 'block min-w-0 max-w-full truncate leading-[var(--size-control-sm)]';
+
 // Thin header wrapper over Breadcrumbs (type path): adds the icon tile slot, the context slot and the level cap.
 const TopBarBreadcrumb = React.forwardRef<HTMLElement, TopBarBreadcrumbProps>(
   ({ className, items, icon, context, contextSwatches, maxLevels = 3, ...props }, ref) => {
@@ -113,15 +132,32 @@ const TopBarBreadcrumb = React.forwardRef<HTMLElement, TopBarBreadcrumbProps>(
     const collapsed: Array<TopBarBreadcrumbItem | typeof ELLIPSIS> =
       limit === 2 ? [items[0], items[items.length - 1]] : [items[0], ELLIPSIS, ...items.slice(items.length - (limit - 2))];
     const visible: Array<TopBarBreadcrumbItem | typeof ELLIPSIS> = items.length > limit ? collapsed : items;
-    // The trail stays on one line and clips, instead of wrapping into a second line that overflows the bar height. The context text drops out below sm.
+    // The level above the current page, for the back link below sm. A level without a target is not offered.
+    const parent = items.length > 1 && (items[items.length - 2].href || items[items.length - 2].onClick) ? items[items.length - 2] : null;
+    // The trail stays on one line. Every level truncates with an ellipsis (the full text is the tooltip), the parents give way first and the current page keeps its room. Below sm only the back link (the level above) and the current page are drawn: the other parents are display none, so they are neither visible nor focusable. The context text drops out below sm.
     return (
       <div className={cn('flex min-w-0 items-center gap-2', className)}>
         {icon}
-        <Breadcrumbs ref={ref} type="path" className="min-w-0 overflow-hidden [&>ol]:flex-nowrap [&_li]:whitespace-nowrap [&_li:last-child]:min-w-0 [&_li:last-child]:overflow-hidden [&_li:last-child>*]:block [&_li:last-child>*]:truncate [&_li:last-child>*]:leading-[var(--size-control-sm)]" {...props}>
+        <Breadcrumbs ref={ref} type="path" className="-m-1 min-w-0 overflow-hidden p-1 [&>ol]:flex-nowrap [&_li]:whitespace-nowrap" {...props}>
+          {parent && !visible.includes(parent) && (
+            // The level above is not drawn on its own (a collapsed trail): below sm it is still offered as the way back.
+            <li data-back-link="" className="group/crumb inline-flex min-w-[calc(var(--size-control-lg)*2)] shrink-[100000] items-center sm:hidden">
+              <BreadcrumbLink href={parent.href} onClick={parent.onClick} title={typeof parent.label === 'string' ? parent.label : undefined} className={backLinkClass}>
+                {backArrow}
+                {parent.label}
+              </BreadcrumbLink>
+            </li>
+          )}
           {visible.map((item, index) => {
             const last = index === visible.length - 1;
+            // Below sm the level above the current page stays as the back link (arrow plus label); the other parents are hidden.
+            const back = item === parent;
             return (
-              <BreadcrumbItem key={item === ELLIPSIS ? 'ellipsis' : index}>
+              <BreadcrumbItem
+                key={item === ELLIPSIS ? 'ellipsis' : index}
+                // The middle levels give way first (weight 100000), then the root (10), then the current page (1): a weight below 1 would absorb almost nothing, so the title could never end in an ellipsis. Every level keeps a floor of a few characters.
+                className={cn('min-w-0', last ? 'shrink min-w-[var(--size-control-lg)]' : index === 0 ? 'shrink-[10]' : 'shrink-[100000]', !last && !back && 'max-sm:hidden', !last && item !== ELLIPSIS && 'min-w-[calc(var(--size-control-lg)*2)]', back && 'max-sm:[&>span:last-child]:hidden')}
+              >
                 {item === ELLIPSIS ? (
                   <BreadcrumbEllipsis label="Hidden levels" />
                 ) : (
@@ -129,8 +165,10 @@ const TopBarBreadcrumb = React.forwardRef<HTMLElement, TopBarBreadcrumbProps>(
                     href={last ? undefined : item.href}
                     onClick={item.onClick}
                     current={last}
-                    className={cn(last && 'typography-ui-medium text-text-default')}
+                    title={typeof item.label === 'string' ? item.label : undefined}
+                    className={cn('block min-w-0 max-w-full truncate leading-[var(--size-control-sm)]', last && 'typography-ui-medium text-text-default')}
                   >
+                    {back && backArrow}
                     {item.label}
                   </BreadcrumbLink>
                 )}
@@ -139,9 +177,9 @@ const TopBarBreadcrumb = React.forwardRef<HTMLElement, TopBarBreadcrumbProps>(
           })}
         </Breadcrumbs>
         {context && (
-          <span className="typography-ui-sm flex min-w-0 items-center gap-1 truncate text-text-subtle max-sm:hidden">
-            {contextSwatches?.map((color) => <SidebarSwatch key={color} color={color} size="sm" className="mx-0" />)}
-            {context}
+          <span className="typography-ui-sm flex min-w-0 shrink-[3] items-center gap-1 text-text-subtle max-md:hidden">
+            {contextSwatches?.map((color) => <SidebarSwatch key={color} color={color} size="sm" className="mx-0 shrink-0" />)}
+            <span className="min-w-0 truncate">{context}</span>
           </span>
         )}
       </div>
@@ -309,7 +347,8 @@ const TopBarEscapeHint = React.forwardRef<HTMLSpanElement, TopBarEscapeHintProps
     const children = childrenProp ?? l.escClosesSettings;
     useEscapeKey(onEscape);
     return (
-      <span ref={ref} className={cn('typography-ui-sm text-text-subtle', className)} {...props}>
+      // A keyboard hint is no use on a phone: it also took the room of the page title below sm.
+      <span ref={ref} className={cn('typography-ui-sm text-text-subtle max-sm:hidden', className)} {...props}>
         {children}
       </span>
     );
@@ -552,24 +591,32 @@ TopBarPreferences.displayName = 'TopBarPreferences';
  * Guest mobile menu: menu button plus a drawer with the primary links
  * -----------------------------------------------------------------------------------------------*/
 
+// A link of the mobile menu: a TopBarNav link plus its own section-jump handler.
+export interface TopBarMobileMenuLink extends TopBarNavItem {
+  // Replaces the default jump of this link, see `onNavigate` of the menu.
+  onNavigate?: SheetNavLinkProps['onNavigate'];
+}
+
 export interface TopBarMobileMenuGroup {
   // Label of the group. The group collapses and expands with the library Accordion.
   group: React.ReactNode;
   // Links inside the group.
-  items: TopBarNavItem[];
+  items: TopBarMobileMenuLink[];
   // Starts expanded. Default: expanded when one of the links is the current page or section. Ignored when `collapsible` is false.
   defaultOpen?: boolean;
   // `false` shows the group label as a visible, always expanded section heading instead of an accordion trigger. Default `true`.
   collapsible?: boolean;
 }
 
-export type TopBarMobileMenuItem = TopBarNavItem | TopBarMobileMenuGroup;
+export type TopBarMobileMenuItem = TopBarMobileMenuLink | TopBarMobileMenuGroup;
 
 const isMenuGroup = (item: TopBarMobileMenuItem): item is TopBarMobileMenuGroup => 'items' in item;
 
 export interface TopBarMobileMenuProps {
-  // Flat links like TopBarNav, optionally mixed with collapsible groups (`{ group, items }`). Selecting a link closes the drawer.
+  // Flat links like TopBarNav, optionally mixed with collapsible groups (`{ group, items }`). A `#section` link closes the drawer, waits until the scroll lock is gone, scrolls to the section and focuses it (give the sections `scroll-mt-*` below a fixed header). Any other plain click closes the drawer as well. A modified click or a link with a `target` keeps it open.
   items: TopBarMobileMenuItem[];
+  // Replaces the default jump of every link, for example to scroll with a router. Runs once the drawer is completely gone. A link can set its own `onNavigate`.
+  onNavigate?: SheetNavLinkProps['onNavigate'];
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -585,7 +632,7 @@ export interface TopBarMobileMenuProps {
   size?: React.ComponentProps<typeof SheetContent>['size'];
   // Accessible name of the close button of the drawer. Defaults to the provider text "Close menu" / "Menü schließen".
   closeLabel?: string;
-  // Extra content below the links, for example TopBarPreferences or a call to action. Scrolls with the links.
+  // Extra content below the links, for example TopBarPreferences or a call to action. Scrolls with the links. A `SheetNavLink` here jumps to a section like the links above.
   children?: React.ReactNode;
   // Sticky footer of the drawer, outside the scrolling list, for actions such as "Sign in" that must stay visible while the links scroll.
   footer?: React.ReactNode;
@@ -600,6 +647,7 @@ export interface TopBarMobileMenuProps {
 
 const TopBarMobileMenu = ({
   items,
+  onNavigate: onNavigateAll,
   open: openProp,
   defaultOpen = false,
   onOpenChange,
@@ -627,25 +675,23 @@ const TopBarMobileMenu = ({
     if (openProp === undefined) setUncontrolled(next);
     onOpenChange?.(next);
   };
-  const renderLink = ({ label: itemLabel, href, current, onClick, ...rest }: TopBarNavItem, index: number) => (
-    <a
+  const renderLink = ({ label: itemLabel, href, current, onNavigate, ...rest }: TopBarMobileMenuLink, index: number) => (
+    <SheetNavLink
       key={index}
-      {...rest}
+      {...(rest as Omit<typeof rest, 'color'>)}
       href={href}
+      variant="nav"
+      closeOnNavigate
+      onNavigate={onNavigate ?? onNavigateAll}
       aria-current={current ? (current === 'location' ? 'location' : 'page') : undefined}
-      onClick={(event) => {
-        onClick?.(event);
-        setOpen(false);
-      }}
       className={cn(
-        'typography-ui-medium inline-flex h-control-lg items-center rounded-control px-3 text-text-default no-underline',
+        'typography-ui-medium inline-flex h-control-lg items-center rounded-control px-3 no-underline',
         transitionBase,
         'hover:bg-muted aria-[current=page]:bg-muted aria-[current=location]:bg-muted',
-        focusRing,
       )}
     >
       {itemLabel}
-    </a>
+    </SheetNavLink>
   );
   return (
     <>

@@ -43,6 +43,8 @@ const themes = ['zero']
 // The checked fill of Switch, Checkbox and Radio is `background-brand-bold-default`: unlike `primary`, it is re-tuned for dark mode.
 const fill = 'background-brand-bold-default';
 // Known token gap: the yellow brand fill is 2.94:1 on white (light). Needs a darker yellow from design-tokens-maintainer.
+// The boundary of a checked control is the better of its fill and its border (`border-control-checked`, equal to the fill except in discord dark, where it is light).
+const border = 'border-control-checked';
 const KNOWN_BELOW_3 = new Set(['yellow:light']);
 
 describe('checked Switch, Checkbox and Radio contrast (WCAG 1.4.11, tokens from dist theme.css)', () => {
@@ -51,10 +53,11 @@ describe('checked Switch, Checkbox and Radio contrast (WCAG 1.4.11, tokens from 
   });
 
   it.each(themes.flatMap((t) => [[t.name, 'light', t.light] as const, [t.name, 'dark', t.dark] as const]))(
-    '%s %s: checked fill is at least 3:1 against the page and canvas surfaces',
+    '%s %s: checked boundary (fill or border) is at least 3:1 against the page and canvas surfaces',
     (name, mode, tokens) => {
       const key = `${name}:${mode}`;
-      const ratios = [contrast(tokens[fill], tokens.background), contrast(tokens[fill], tokens['surface-canvas'])];
+      const boundary = (surface: Rgb) => Math.max(contrast(tokens[fill], surface), contrast(tokens[border], surface));
+      const ratios = [boundary(tokens.background), boundary(tokens['surface-canvas'])];
       if (KNOWN_BELOW_3.has(key)) {
         expect(Math.min(...ratios)).toBeLessThan(3);
       } else {
@@ -91,9 +94,9 @@ describe('checked state classes', () => {
     );
     const sw = screen.getByRole('switch');
     const cb = screen.getByRole('checkbox');
-    expect(sw).toHaveClass('data-[state=checked]:bg-background-brand-bold-default');
+    expect(sw).toHaveClass('data-[state=checked]:bg-background-brand-bold-default', 'data-[state=checked]:border-border-control-checked');
     expect(sw.className).not.toMatch(/(^|\s)(data-\[state=checked\]:)?bg-primary(\s|$)/);
-    expect(cb).toHaveClass('data-[state=checked]:bg-background-brand-bold-default', 'data-[state=checked]:border-background-brand-bold-default', 'data-[state=checked]:text-text-on-brand');
+    expect(cb).toHaveClass('data-[state=checked]:bg-background-brand-bold-default', 'data-[state=checked]:border-border-control-checked', 'data-[state=indeterminate]:border-border-control-checked', 'data-[state=checked]:text-text-on-brand');
     expect(cb.className).not.toMatch(/-primary(\s|$)/);
   });
 
@@ -103,6 +106,6 @@ describe('checked state classes', () => {
         <RadioGroupItem value="a" aria-label="a" appearance="filled" />
       </RadioGroup>,
     );
-    expect(screen.getByRole('radio')).toHaveClass('data-[state=checked]:border-background-brand-bold-default', 'data-[state=checked]:bg-background-brand-bold-default');
+    expect(screen.getByRole('radio')).toHaveClass('data-[state=checked]:border-border-control-checked', 'data-[state=checked]:bg-background-brand-bold-default');
   });
 });

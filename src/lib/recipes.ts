@@ -7,6 +7,8 @@ export const focusRing = [
   'focus-visible:ring-offset-focus',
   'focus-visible:ring-offset-background',
   'focus-visible:ring-ring-default',
+  // Theme focus glow (kette-tokens 5.26.0 glow-focus) drawn below the solid ring, 0 0 #0000 in themes without one
+  'focus-visible:[--tw-ring-shadow:var(--tw-ring-inset)_0_0_0_calc(var(--size-focus-ring-width)+var(--tw-ring-offset-width))_var(--tw-ring-color),var(--glow-focus)]',
 ] as const;
 
 // Shared focus ring for controls on an inverse surface (dark band in light mode, light band in dark mode): the ring takes the inverse text role and the gap takes the inverse background, so both follow the band in either theme.
@@ -79,6 +81,17 @@ export const menuItemFocusVisible = [
   'focus-visible:-outline-offset-2',
   'focus-visible:outline-ring-default',
 ] as const;
+
+// Keyboard focus on a scroll container whose children paint over it (table cells, grid cells): an inset 2px outline. An outline is painted above the descendants and is not clipped by the container's own overflow, unlike an inset ring (box-shadow), which sits under the cells' backgrounds.
+export const scrollRegionFocusVisible = [
+  'focus-visible:outline',
+  'focus-visible:outline-2',
+  'focus-visible:-outline-offset-2',
+  'focus-visible:outline-ring-default',
+] as const;
+
+// The same ring as an always-on class list, for an overlay element that is shown while a sibling scroll container has keyboard focus (the overlay sits above sticky headers).
+export const scrollRegionRing = ['outline', 'outline-2', '-outline-offset-2', 'outline-ring-default'] as const;
 
 /** Menu / select / command row. Regular weight (owner decision), highlight uses `bg-muted`; no inset rings. */
 export const menuItem = [
@@ -172,3 +185,13 @@ export const compositeFieldDefault = [
   'aria-[invalid=true]:border-error',
   'pl-2',
 ] as const;
+
+// Display voice of the theme (kette-tokens 5.26.0 font-display, case-display, tracking-display, text-shadow-display) for dialog, sheet and card titles; h1 to h3 get it in tailwind.css.
+// Neutral values: the primary font, no case, 0em added tracking, no text shadow. Case and text shadow use zero specificity, so a consumer class still wins.
+export const displayVoice = [
+  '![font-family:var(--font-display),sans-serif]',
+  '[--tracking-extra:var(--tracking-display)]',
+  '[:where(&)]:[text-transform:var(--case-display)]',
+  '[:where(&)]:[text-shadow:var(--text-shadow-display)]',
+] as const;
+

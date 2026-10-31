@@ -5,7 +5,8 @@ import { Card, CardContent } from './card';
 import { Carousel, CarouselContent, CarouselDots, CarouselItem, CarouselNext, CarouselPrevious } from './carousel';
 
 const meta = {
-  title: 'Primitives/Carousel',
+  id: 'primitives-carousel',
+  title: 'Primitives · Layout/Carousel',
   component: Carousel,
   tags: ['autodocs'],
   argTypes: {},

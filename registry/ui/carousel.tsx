@@ -207,6 +207,7 @@ const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProp
     if (overlayTone) {
       return (
         <Button
+          type="button"
           ref={ref}
           variant="ghost"
           size="no-size"
@@ -223,6 +224,7 @@ const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProp
 
     return (
       <Button
+        type="button"
         ref={ref}
         variant={variant}
         size={size}
@@ -252,6 +254,7 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<ty
     if (overlayTone) {
       return (
         <Button
+          type="button"
           ref={ref}
           variant="ghost"
           size="no-size"
@@ -268,6 +271,7 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<ty
 
     return (
       <Button
+        type="button"
         ref={ref}
         variant={variant}
         size={size}

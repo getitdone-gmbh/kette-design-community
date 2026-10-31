@@ -3,6 +3,7 @@
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 
 import { ComponentPropsWithoutRef, ElementRef, forwardRef } from 'react';
+import { scrollRegionFocusVisible } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 
 const ScrollArea = forwardRef<
@@ -10,7 +11,7 @@ const ScrollArea = forwardRef<
   ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
 >(({ className, children, ...props }, ref) => (
   <ScrollAreaPrimitive.Root ref={ref} className={cn('relative overflow-hidden', className)} {...props}>
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">{children}</ScrollAreaPrimitive.Viewport>
+    <ScrollAreaPrimitive.Viewport className={cn('h-full w-full rounded-[inherit]', ...scrollRegionFocusVisible)}>{children}</ScrollAreaPrimitive.Viewport>
     <ScrollBar />
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>

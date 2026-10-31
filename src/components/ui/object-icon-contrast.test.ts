@@ -27,10 +27,11 @@ const readToken = (css: string, mode: 'light' | 'dark', name: string): Rgb => {
 
 // Pinned worst case over all themes: [light, dark].
 const tones = {
-  info: ['info', 5.49, 8.49],
-  success: ['success', 4.84, 8.57],
-  warning: ['warning', 4.52, 8.18],
-  destructive: ['error', 5.3, 8.16],
+  // 0.31.0: light minimum follows the dark-only themes (discord, steam, ableton render dark in light mode)
+  info: ['info', 4.9, 4.9],
+  success: ['success', 4.84, 5.77],
+  warning: ['warning', 4.52, 5.83],
+  destructive: ['error', 5.3, 6.17],
 } as const;
 
 describe('ObjectIcon tone contrast', () => {

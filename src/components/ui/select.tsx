@@ -46,6 +46,8 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, clamp = false, compact = false, size, loading = false, appearance = 'default', leading, success = false, onPointerDown, onKeyDown, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   const effectiveSize = size ?? (zero ? (compact ? 'sm' : 'md') : undefined);
+  // The small sizes (xs, sm) take the type size of the small controls (`text-ui`, 13px, the label size of Button sm) instead of the 16px field text. The trigger is a button, not a text input, so iOS Safari does not zoom on focus and needs no 16px floor.
+  const smallType = effectiveSize === 'xs' || effectiveSize === 'sm';
   return (
     <SelectPrimitive.Trigger
       ref={ref}
@@ -81,9 +83,10 @@ const SelectTrigger = React.forwardRef<
         // and an Input in one form row are the same height.
         'py-2',
         'text-select-foreground-default',
-        'typography-input-text',
-        // Below sm the trigger text is at least 16px so iOS Safari does not zoom on focus.
-        'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
+        // Default and larger: the field text (16px, 13px in zero), at least 16px below sm like Input and the other fields of a form row.
+        !smallType && 'typography-input-text',
+        !smallType && 'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
+        smallType && 'text-ui font-normal',
         'leading-normal',
         transitionBase,
         // Hover: darker border + soft field shadow (no background tint).

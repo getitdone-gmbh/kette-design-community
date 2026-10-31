@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react';
-import { Dispatch, FC, RefObject, SetStateAction, createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Dispatch, FC, RefObject, SetStateAction, createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import { compositeFieldDefault, compositeFieldZero } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import { isMobileDevice } from '../../lib/is-mobile';
@@ -12,6 +12,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, Dia
 import { Input } from './input';
 import { Label } from './label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
+import { PERSISTENT_LIST } from '../../lib/nested-layer';
 import { Spacing } from './spacing';
 import { LabelScope, useLabels, usePreset } from './labels-context';
 
@@ -65,6 +66,17 @@ const SingleSelectProvider: FC<SingleSelectProviderProps> = ({ children }) => {
 
 const singleSelectLabelId = (id: string) => `${id}-label`;
 
+// The chevron names the field it opens: "Open options" plus the visible label (aria-labelledby, so the text follows the label), or plus the accessible name of the field when there is no visible label.
+const toggleName = (openLabel: string, id: string, label: string | undefined, fallbackName: string) =>
+  label
+    ? ({ id: `${id}-toggle`, 'aria-label': openLabel, 'aria-labelledby': `${id}-toggle ${singleSelectLabelId(id)}` } as const)
+    : ({ 'aria-label': `${openLabel} ${fallbackName}` } as const);
+
+// cmdk takes Enter on its root (it selects the highlighted item and prevents the default). A button inside must keep Enter as its own activation while nothing is highlighted.
+const letEnterThrough = (e: React.KeyboardEvent) => {
+  if (e.key === 'Enter') e.stopPropagation();
+};
+
 // Clear control of the chosen value: named, 24 x 24 target, keeps the focus in the field on pointer down.
 const RemoveSelected: FC<{ label?: string; disabled?: boolean; onRemove: () => void }> = ({ label, disabled, onRemove }) => {
   const l = useLabels();
@@ -81,6 +93,7 @@ const RemoveSelected: FC<{ label?: string; disabled?: boolean; onRemove: () => v
         e.preventDefault();
         e.stopPropagation();
       }}
+      onKeyDown={letEnterThrough}
       onClick={() => onRemove()}
       disabled={disabled}
     >
@@ -103,7 +116,8 @@ export interface SingleSelectProps {
   loading?: boolean;
   defaultValue?: string;
   label?: string;
-  id: string;
+  // DOM id of the field (the combobox element). Label `htmlFor`, `aria-labelledby` and focus restoration point at it. Generated when omitted.
+  id?: string;
   disabled?: boolean;
   enableSearch?: boolean;
   disableAddNew?: boolean;
@@ -141,7 +155,7 @@ const SingleSelectField: FC<SingleSelectProps> = ({
   loading = false,
   defaultValue = '',
   label,
-  id,
+  id: idProp,
   disabled = false,
   enableSearch = false,
   disableAddNew = false,
@@ -159,6 +173,8 @@ const SingleSelectField: FC<SingleSelectProps> = ({
   isValueInvalid,
 }: SingleSelectProps) => {
   const l = useLabels();
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
   const valueInvalid = isCurrentValueInvalid({ options, selected, invalidValues, isValueInvalid, loading });
   const selectedLabel = options.find((option) => option.id === selected)?.label ?? selected;
   const zero = usePreset() === 'zero';
@@ -177,6 +193,24 @@ const SingleSelectField: FC<SingleSelectProps> = ({
   const initialHeight = 44;
 
   const open = openId === id;
+
+  // The id sits on the combobox element, which is not a tab stop. Focus (from focus restoration or a label click) moves on to the real control inside.
+  const focusField = () => {
+    if (disabled) return;
+    comboboxRef.current?.querySelector<HTMLElement>('input:not([disabled]), [data-select-toggle]:not([disabled])')?.focus();
+  };
+
+  // The id sits on a div, which a native label cannot activate. A click on any label for this field (the own one or one outside the component) moves focus into the field.
+  useEffect(() => {
+    const handleLabelClick = (e: MouseEvent) => {
+      if (!(e.target instanceof Element)) return;
+      const label = e.target.closest('label');
+      if (label && label.getAttribute('for') === id) focusField();
+    };
+    document.addEventListener('click', handleLabelClick);
+    return () => document.removeEventListener('click', handleLabelClick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, disabled]);
 
   useEffect(() => {
     if (search !== '') {
@@ -279,6 +313,8 @@ const SingleSelectField: FC<SingleSelectProps> = ({
 
   const handleUnselect = () => {
     onChange(null);
+    // The remove button leaves the page with the value. Focus goes to the chevron, not to the body.
+    setTimeout(focusField, 0);
   };
 
   const handleSearchChange = (value: string) => {
@@ -410,6 +446,11 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                 aria-invalid={invalid || valueInvalid || undefined}
                 aria-describedby={ariaDescribedBy}
                 data-id={id}
+                id={id}
+                tabIndex={-1}
+                onFocus={(e) => {
+                  if (e.target === e.currentTarget) focusField();
+                }}
                 className={cn(
                   'flex',
                   'flex-row',
@@ -447,10 +488,16 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                   )}
                 </div>
                 <Button
+                  type="button"
                   disabled={disabled}
                   variant="ghost"
                   size="sm"
-                  aria-label={l.openOptions}
+                  {...toggleName(l.openOptions, id, label, ariaLabel ?? placeholder ?? l.selectOptions)}
+                  data-select-toggle=""
+                  onKeyDown={(e) => {
+                    // Closed: Enter opens the list. Open: Enter stays with cmdk and picks the highlighted option.
+                    if (!open) letEnterThrough(e);
+                  }}
                   className={cn(
                     { 'hover:bg-transparent': decentToggle },
                     'h-control-sm',
@@ -470,6 +517,15 @@ const SingleSelectField: FC<SingleSelectProps> = ({
               </div>
             </SheetTrigger>
             <SheetContent
+              onOpenAutoFocus={(event) => {
+              // A select sheet opens in its search field, not on a chip or the first control.
+              const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>('input:not([disabled])');
+              if (input) {
+                event.preventDefault();
+                input.focus();
+              }
+            }}
+            onAfterClose={() => setSearch('')}
               side={isMobile || isMobileDevice() ? 'bottom' : 'right'}
               className={cn('overflow-y-auto', (isMobile || isMobileDevice()) && 'h-[90vh]')}
             >
@@ -480,7 +536,7 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                 {description && <span className="text-sm text-text-subtle">{description}</span>}
               </SheetHeader>
               <Spacing direction="column" gap="2" className="relative" wrap="nowrap">
-                <Command className="w-full command" vimBindings={false}>
+                <Command className="w-full command" vimBindings={false} {...{ [PERSISTENT_LIST]: '' }}>
                   <CommandGroup className="[&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:nowrap">
                     <SingleSelectInput {...multiSelectInputProps} useSheet={false} noButton />
                     <SingleSelectDropdown {...multiSelectDropdownProps} />
@@ -497,7 +553,7 @@ const SingleSelectField: FC<SingleSelectProps> = ({
               {label}
             </Label>
           )}
-          <Command className="w-full command" vimBindings={false}>
+          <Command className="command w-full overflow-visible" vimBindings={false}>
             <div
               ref={comboboxRef}
               // eslint-disable-next-line jsx-a11y/role-has-required-aria-props -- ARIA 1.2: aria-controls is required only while the lazily mounted list is expanded
@@ -510,6 +566,11 @@ const SingleSelectField: FC<SingleSelectProps> = ({
               aria-invalid={invalid || valueInvalid || undefined}
               aria-describedby={ariaDescribedBy}
               data-id={id}
+              id={id}
+              tabIndex={-1}
+              onFocus={(e) => {
+                if (e.target === e.currentTarget) focusField();
+              }}
               className={cn(
                 'flex',
                 'flex-row',
@@ -557,10 +618,16 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                 )}
               </div>
               <Button
+                type="button"
                 disabled={disabled}
                 variant="ghost"
                 size="sm"
-                aria-label={l.openOptions}
+                {...toggleName(l.openOptions, id, label, ariaLabel ?? placeholder ?? l.selectOptions)}
+                data-select-toggle=""
+                onKeyDown={(e) => {
+                  // Closed: Enter opens the list. Open: Enter stays with cmdk and picks the highlighted option.
+                  if (!open) letEnterThrough(e);
+                }}
                 className={cn(
                   { 'hover:bg-transparent': decentToggle },
                   'h-control-sm',
@@ -596,6 +663,7 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                       <Spacing direction="row" className="self-end" alignItems="center" gap="2">
                         {!disableAddNew && !customAction && (
                           <Button
+                            type="button"
                             variant="ghost"
                             size="sm"
                             onClick={handleDialogSubmit}
@@ -615,6 +683,7 @@ const SingleSelectField: FC<SingleSelectProps> = ({
                         {customAction}
                       </Spacing>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setOpenId(null)}
@@ -692,7 +761,15 @@ const SingleSelectField: FC<SingleSelectProps> = ({
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild></DialogTrigger>
-        <DialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
+        {/* Escape closes the dialog like Cancel; focus goes back into the field, since the dialog trigger is empty. */}
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            // The inline search field is gone once the list closed with Escape: focus goes to the field itself.
+            if (inputRef.current) inputRef.current.focus();
+            else focusField();
+          }}
+        >
           <DialogTitle>{l.add}</DialogTitle>
           <DialogDescription>
             <Input
@@ -705,11 +782,12 @@ const SingleSelectField: FC<SingleSelectProps> = ({
           </DialogDescription>
           <div className="mt-4 flex justify-end">
             <DialogClose asChild>
-              <Button size="sm" variant="ghost" className="ml-2" disabled={disabled}>
+              <Button type="button" size="sm" variant="ghost" className="ml-2" disabled={disabled}>
                 {l.cancel}
               </Button>
             </DialogClose>
             <Button
+              type="button"
               size="sm"
               onClick={handleAddNewItem}
               variant="default"
@@ -839,10 +917,16 @@ const SingleSelectInput: FC<SingleSelectInputProps> = ({
     </div>
     {!noButton && (
       <Button
+        type="button"
         disabled={disabled}
         variant="ghost"
         size="sm"
-        aria-label={l.openOptions}
+        {...toggleName(l.openOptions, id, label, ariaLabel ?? placeholder ?? l.selectOptions)}
+        data-select-toggle=""
+        onKeyDown={(e) => {
+          // Closed: Enter opens the list. Open: Enter stays with cmdk and picks the highlighted option.
+          if (!open) letEnterThrough(e);
+        }}
         className={cn(
           { 'hover:bg-transparent': decentToggle },
           'h-control-sm',
@@ -946,6 +1030,7 @@ const SingleSelectDropdown: FC<SingleSelectDropdownProps> = ({
               <Spacing direction="row" className="self-end" alignItems="center" gap="2">
                 {!disableAddNew && !customAction && (
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={handleDialogSubmit}
@@ -965,7 +1050,7 @@ const SingleSelectDropdown: FC<SingleSelectDropdownProps> = ({
                 {customAction}
               </Spacing>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" disabled={disabled} className="px-2 text-sm">
+                <Button type="button" variant="ghost" size="sm" disabled={disabled} className="px-2 text-sm">
                   {l.close}
                 </Button>
               </SheetTrigger>
@@ -1034,6 +1119,7 @@ const labelScope = (props: { emptyText?: string; addHintText?: string; loadingTe
 
 const SingleSelect: FC<SingleSelectProps> = ({ readOnly = false, ...props }) => {
   const l = useLabels();
+  const generatedId = useId();
   const zero = usePreset() === 'zero';
   if (!readOnly) {
     return (
@@ -1042,7 +1128,8 @@ const SingleSelect: FC<SingleSelectProps> = ({ readOnly = false, ...props }) => 
       </LabelScope>
     );
   }
-  const { id, label, options = [], selected = null, placeholder = l.searchEllipsis, className, invalid = false, ariaDescribedBy } = props;
+  const { label, options = [], selected = null, placeholder = l.searchEllipsis, className, invalid = false, ariaDescribedBy } = props;
+  const id = props.id ?? generatedId;
   const text = options.find((option) => option.id === selected)?.label ?? selected;
   const valueInvalid = isCurrentValueInvalid({ options, selected, invalidValues: props.invalidValues, isValueInvalid: props.isValueInvalid, loading: props.loading });
   return (

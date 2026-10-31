@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { TagInput } from './tag-input';
 
 const meta = {
-  title: 'Primitives/TagInput',
+  id: 'primitives-taginput',
+  title: 'Primitives · Inputs/TagInput',
   component: TagInput,
   tags: ['autodocs'],
   args: { defaultValue: ['lena.hartmann@example.com', 'jonas.weber@example.com'], placeholder: 'Add email' },

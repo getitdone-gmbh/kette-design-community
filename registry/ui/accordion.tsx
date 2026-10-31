@@ -73,13 +73,14 @@ const AccordionTrigger = React.forwardRef<
         // without this a wrapping multi-line header label would center instead of following the
         // left-aligned "label | chevron" row every other disclosure/menu trigger in this system uses.
         'flex flex-1 items-center justify-between gap-2 py-4 text-left transition-all [&[data-state=open]>svg]:rotate-180',
+        // Zero: 44px is the minimum row height, not a fixed one, and the label has 12px (space-3) above and below, so a one-line question stays at 44px and a wrapped one grows and never touches the dividers. The line height is the zero ui token (16px; the button reset left a line height equal to the text size and a generic leading gave off-grid rows). With 12px padding the rows are 44 / 56 / 72, on the 4px grid. The chevron stays centred on the row.
         // Type comes from the dedicated `typography-accordion-title` role (size/weight/line-height/
         // letter-spacing token, currently 16px/500/24px) rather than the ad hoc `font-medium` this
         // used before. `leading-normal` is required alongside it because Tailwind Preflight resets
         // `line-height: inherit` on real `<button>` elements — same reset `button.tsx`/`input.tsx`/
         // `tabs.tsx` already work around for the same reason.
         inset && 'px-3',
-        zero ? 'typography-ui-medium min-h-row py-0' : 'typography-accordion-title leading-normal',
+        zero ? 'typography-ui-medium min-h-row py-3 leading-[var(--typo-ui-medium-lh)]' : 'typography-accordion-title leading-normal',
         // Hover — underline is the non-color-dependent cue (WCAG "don't rely on color alone");
         // paired with a full-row background wash so the entire clickable header shows affordance,
         // not just the text. No dedicated `accordion-*-hover` token exists yet (ACCORDION-MAT-02,
@@ -134,7 +135,7 @@ const AccordionContent = React.forwardRef<
     {...props}
   >
     {/* Same horizontal padding as the trigger so the content text stays aligned with the header label. */}
-    <div className={cn(inset && 'px-3', 'pb-4 pt-0', className)}>{children}</div>
+    <div className={cn(inset && 'px-3', 'pb-4', zero ? 'pt-2' : 'pt-0', className)}>{children}</div>
   </AccordionPrimitive.Content>
   );
 });

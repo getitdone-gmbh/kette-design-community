@@ -6,7 +6,8 @@ import { Button } from './button';
 import { Chip } from './chip';
 
 const meta = {
-  title: 'Primitives/Chip',
+  id: 'primitives-chip',
+  title: 'Primitives · Display/Chip',
   component: Chip,
   tags: ['autodocs'],
   // onRemove renders the remove button, so it must not get an auto action arg

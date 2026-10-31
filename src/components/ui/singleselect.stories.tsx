@@ -12,7 +12,8 @@ const enum Support {
 }
 
 const meta: Meta<SingleSelectProps> = {
-  title: 'Primitives/SingleSelect',
+  id: 'primitives-singleselect',
+  title: 'Primitives · Inputs/SingleSelect',
   component: SingleSelect,
   tags: ['autodocs'],
   argTypes: {
@@ -106,6 +107,7 @@ const defaultArgs = {
 };
 
 export const Default: Story = {
+  parameters: { layout: 'padded' },
   args: {
     ...defaultArgs,
   } as any,
@@ -207,6 +209,7 @@ export const NoRemove: Story = {
 };
 
 export const SheetExample: Story = {
+  parameters: { layout: 'padded' },
   args: {
     ...defaultArgs,
     useSheet: true,
@@ -378,4 +381,47 @@ export const InvalidValue: Story = {
   args: {} as any,
   parameters: { docs: { description: { story: 'The current value can be invalid without the field being invalid. Mark it with `invalid: true` on the option, `invalidValues` or `isValueInvalid(id)`. A `selected` id that is not in the options is shown as invalid with its id as text. The value uses the destructive text role and is announced as invalid.' } } },
   render: () => <InvalidValueDemo />,
+};
+
+// The id sits on the field: the external label points at it, a click on the label moves focus into the field, and the chevron never submits the form.
+const TeamForm = ({ selected, children }: { selected: string | null | undefined; children: React.ReactNode }) => {
+  const [status, setStatus] = useState<'idle' | 'saved' | 'missing'>('idle');
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setStatus(selected ? 'saved' : 'missing');
+      }}
+    >
+      <label htmlFor="team" className="typography-label text-text-default">
+        Team
+      </label>
+      {children}
+      <Button type="submit" variant="outline" size="sm" className="self-start">
+        Save
+      </Button>
+      <p role="status" className={status === 'missing' ? 'typography-text-small text-text-destructive' : 'typography-text-small text-text-subtle'}>
+        {status === 'saved' ? 'Saved' : status === 'missing' ? 'Choose a team first.' : 'Not saved yet'}
+      </p>
+    </form>
+  );
+};
+
+export const InFormWithExternalLabel: Story = {
+  args: {
+    ...defaultArgs,
+    id: 'team',
+    label: undefined,
+    placeholder: 'Select a team',
+  } as any,
+  render: (args, context) => {
+    const { selected } = context.selected;
+    const { setSelected } = context.setSelected;
+    return (
+      <TeamForm selected={selected}>
+        <SingleSelect {...args} selected={selected} onChange={setSelected} ariaLabel="Team" />
+      </TeamForm>
+    );
+  },
 };

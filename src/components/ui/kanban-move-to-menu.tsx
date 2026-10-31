@@ -59,7 +59,7 @@ const KanbanMoveToMenu = ({ title, targets, currentId, onMove, children, labels 
     // Non-modal: a modal menu sets aria-hidden on the board and page around it, which leaves focusable content inside hidden regions (axe aria-hidden-focus). Focus return, Escape and outside click still close it.
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label={actions(title)}>
+        <Button type="button" ref={triggerRef} variant="ghost" size="icon-sm" aria-label={actions(title)}>
           <MoreHorizontal aria-hidden="true" className="h-icon-sm w-icon-sm" />
         </Button>
       </DropdownMenuTrigger>

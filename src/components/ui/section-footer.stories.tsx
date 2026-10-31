@@ -4,7 +4,8 @@ import { Button } from './button';
 import { SectionFooter } from './section-footer';
 
 const meta = {
-  title: 'Patterns/Section footer',
+  id: 'patterns-section-footer',
+  title: 'Patterns · Interface/Section footer',
   component: SectionFooter,
   tags: ['autodocs'],
   argTypes: { type: { control: 'select', options: ['section', 'card'] } },

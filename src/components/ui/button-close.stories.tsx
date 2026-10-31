@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ButtonClose } from './button-close';
 
 const meta = {
-  title: 'Primitives/ButtonClose',
+  id: 'primitives-buttonclose',
+  title: 'Primitives · Actions/ButtonClose',
   component: ButtonClose,
   tags: ['autodocs'],
   argTypes: {

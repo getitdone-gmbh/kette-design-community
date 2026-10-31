@@ -103,7 +103,7 @@ const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWitho
     return (
       <li
         ref={ref}
-        className={cn('group/crumb inline-flex items-center', type === 'path' ? 'gap-gap-control' : type === 'text' || type === 'text-with-line' ? 'gap-3' : 'gap-2', className)}
+        className={cn('group/crumb inline-flex min-w-0 items-center', type === 'path' ? 'gap-gap-control' : type === 'text' || type === 'text-with-line' ? 'gap-3' : 'gap-2', className)}
         {...props}
       >
         {children}
@@ -147,6 +147,7 @@ const BreadcrumbLink = React.forwardRef<HTMLAnchorElement, BreadcrumbLinkProps>(
           ref={ref as unknown as React.Ref<HTMLSpanElement>}
           aria-current={current ? 'page' : undefined}
           aria-disabled={disabled || undefined}
+          title={props.title}
           className={classes}
         >
           {content}

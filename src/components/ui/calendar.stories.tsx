@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Calendar } from './calendar';
 
 const meta = {
-  title: 'Primitives/Calendar',
+  id: 'primitives-calendar',
+  title: 'Primitives · Inputs/Calendar',
   component: Calendar,
   tags: ['autodocs'],
   argTypes: {},

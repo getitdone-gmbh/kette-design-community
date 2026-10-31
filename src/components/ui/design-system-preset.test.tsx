@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render as renderPlain, screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 
 import { Badge } from './badge';
 import { Button } from './button';
@@ -13,8 +14,26 @@ import { Tabs, TabsList, TabsTrigger } from './tabs';
 const zero = (ui: React.ReactElement) => render(<DesignSystemProvider preset="zero">{ui}</DesignSystemProvider>);
 
 describe('DesignSystemProvider preset', () => {
-  it('keeps the shipped defaults without a preset', () => {
-    render(<Button>Go</Button>);
+  it('uses the zero preset without a provider (package default since 0.5.0)', () => {
+    renderPlain(<Button>Go</Button>);
+    expect(screen.getByRole('button', { name: 'Go' })).toHaveClass('bg-background', 'border-border-default');
+  });
+
+  it('uses the zero preset in a provider that sets no preset', () => {
+    renderPlain(
+      <DesignSystemProvider locale="de">
+        <Button>Go</Button>
+      </DesignSystemProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Go' })).toHaveClass('bg-background', 'border-border-default');
+  });
+
+  it('preset="default" brings back the look before 0.5.0', () => {
+    renderPlain(
+      <DesignSystemProvider preset="default">
+        <Button>Go</Button>
+      </DesignSystemProvider>,
+    );
     expect(screen.getByRole('button', { name: 'Go' })).toHaveClass('bg-button-background-default');
   });
 

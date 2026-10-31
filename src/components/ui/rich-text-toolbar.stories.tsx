@@ -18,7 +18,8 @@ const FontSelect = () => (
 );
 
 const meta = {
-  title: 'Patterns/RichTextToolbar',
+  id: 'patterns-richtexttoolbar',
+  title: 'Patterns · Interface/RichTextToolbar',
   component: RichTextToolbar,
   tags: ['autodocs'],
   parameters: { actions: { argTypesRegex: '^on(?!Action)[A-Z].*' } },

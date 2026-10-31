@@ -4,7 +4,8 @@ import { Button } from './button';
 import { Tooltip, TooltipArrow, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
 const meta = {
-  title: 'Primitives/Tooltip',
+  id: 'primitives-tooltip',
+  title: 'Primitives · Overlays/Tooltip',
   component: Tooltip,
   tags: ['autodocs'],
   argTypes: {},

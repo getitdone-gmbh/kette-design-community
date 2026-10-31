@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { vi } from 'vitest';
 
 import { Chip } from './chip';
 import { LogoTile } from './logo-tile';
@@ -897,5 +899,73 @@ describe('Table DataGrid states and densities (Figma Table)', () => {
       render(<BasicTable stickyOffset="10px" />);
       expect((screen.getAllByRole('rowgroup')[0] as HTMLElement).style.getPropertyValue('--table-sticky-offset')).toBe('');
     });
+  });
+});
+
+describe('Table scroll container 0.29', () => {
+  it('exposes the overflowing scroll container as a named region and draws the focus ring in an overlay', () => {
+    const { container } = render(
+      <Table scrollLabel="Time entries">
+        <TableBody>
+          <TableRow>
+            <TableCell>Cell</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const scroller = container.querySelector('table')?.parentElement as HTMLElement;
+    expect(scroller).toHaveClass('peer');
+    // The overlay stays in its own stacking context: it must not paint over an app bar on the same z-index.
+    expect(scroller.parentElement).toHaveClass('relative', 'isolate');
+    const overlay = scroller.nextElementSibling as HTMLElement;
+    expect(overlay).toHaveAttribute('aria-hidden', 'true');
+    // DR-0290-01: the overlay is on the sticky layer, never on the chrome layer of an app top bar (z-30).
+    expect(overlay).toHaveClass('peer-focus-visible:block', 'z-sticky', 'outline-2');
+    expect(overlay).not.toHaveClass('z-chrome');
+  });
+});
+
+describe('TableEmpty frame in the visible scroll area (RA-LIB-05)', () => {
+  const emptyTable = (props: Partial<React.ComponentProps<typeof TableEmpty>> = {}) => (
+    <Table scrollLabel="People">
+      <TableBody>
+        <TableEmpty columns={3} message="No people" {...props} />
+      </TableBody>
+    </Table>
+  );
+
+  it('puts the content in a sticky frame as wide as the visible scroll area, minus the row gutter on both sides', () => {
+    const spy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300);
+    const { container } = render(emptyTable());
+    const frame = container.querySelector('[data-slot="table-empty-frame"]') as HTMLElement;
+    expect(frame).toHaveClass('sticky', 'max-w-full');
+    expect(frame.style.left).toBe('4px');
+    expect(frame.style.width).toBe('292px');
+    expect(frame.parentElement).toHaveClass('px-0');
+    expect(frame).toHaveTextContent('No people');
+    spy.mockRestore();
+  });
+
+  it('keeps the rich variant centred inside the same frame', () => {
+    const spy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300);
+    const { container } = render(emptyTable({ title: 'No people found', description: 'Change the filters.' }));
+    const frame = container.querySelector('[data-slot="table-empty-frame"]') as HTMLElement;
+    expect(frame.firstElementChild).toHaveClass('mx-auto', 'max-w-lg');
+    expect(screen.getByText('No people found')).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it('falls back to the cell width until the scroll area is measured', () => {
+    const { container } = render(emptyTable());
+    const frame = container.querySelector('[data-slot="table-empty-frame"]') as HTMLElement;
+    expect(frame.getAttribute('style')).toBeNull();
+  });
+
+  it('still forwards the ref to the cell and lets a className win over the default padding', () => {
+    const ref = createRef<HTMLTableCellElement>();
+    render(emptyTable({ ref, className: 'px-8' }));
+    expect(ref.current?.tagName).toBe('TD');
+    expect(ref.current).toHaveClass('px-8');
+    expect(ref.current).not.toHaveClass('px-0');
   });
 });

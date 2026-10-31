@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { LoadingSpinner, LoadingSpinnerProps } from './loading-spinner';
 
 const meta = {
-  title: 'Primitives/LoadingSpinner',
+  id: 'primitives-loadingspinner',
+  title: 'Primitives · Display/LoadingSpinner',
   component: LoadingSpinner,
   tags: ['autodocs'],
   argTypes: {

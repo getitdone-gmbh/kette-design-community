@@ -5,7 +5,8 @@ import { DocumentSurface } from './document-surface';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from './table';
 
 const meta = {
-  title: 'Primitives/DocumentSurface',
+  id: 'primitives-documentsurface',
+  title: 'Primitives · Layout/DocumentSurface',
   component: DocumentSurface,
   tags: ['autodocs'],
   argTypes: { fluid: { control: 'boolean' } },

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { RangeSlider, Slider } from './slider';
 
 const meta = {
-  title: 'Primitives/Slider',
+  id: 'primitives-slider',
+  title: 'Primitives · Inputs/Slider',
   component: Slider,
   tags: ['autodocs'],
   args: { 'aria-label': 'Volume', defaultValue: 40 },

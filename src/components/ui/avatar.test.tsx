@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 
@@ -522,5 +523,88 @@ describe('AvatarFallback profile text size (0.15)', () => {
     );
     expect(screen.getByText('AF')).toHaveClass('typography-display');
     expect(screen.getByText('AF')).not.toHaveClass('text-sm');
+  });
+});
+
+describe('AvatarUpload gating (0.28.1)', () => {
+  it('lets a gated click reach onGatedClick, never onClick, and does not bubble', async () => {
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn((event: React.MouseEvent) => event.defaultPrevented);
+    const onAvatarClick = vi.fn();
+    render(
+      <Avatar size="profile" onClick={onAvatarClick}>
+        <AvatarFallback>AF</AvatarFallback>
+        <AvatarUpload aria-disabled="true" onClick={onClick} onGatedClick={onGatedClick} />
+      </Avatar>,
+    );
+    const button = screen.getByRole('button', { name: 'Upload photo' });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toBeDisabled();
+    // userEvent refuses to click an element that has pointer-events: none, so this also proves the class is gone.
+    await userEvent.click(button);
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onGatedClick.mock.results[0].value).toBe(true);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onAvatarClick).not.toHaveBeenCalled();
+    expect(button).toHaveClass('aria-disabled:cursor-not-allowed', 'aria-disabled:opacity-disabled');
+    expect(button.className).not.toMatch(/pointer-events-none/);
+  });
+
+  it('is reachable and activatable by keyboard while gated', async () => {
+    const onGatedClick = vi.fn();
+    render(
+      <Avatar>
+        <AvatarUpload aria-disabled="true" onGatedClick={onGatedClick} />
+      </Avatar>,
+    );
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'Upload photo' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+    expect(onGatedClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs onClick and not onGatedClick when enabled', async () => {
+    const onClick = vi.fn((event: React.MouseEvent) => event.defaultPrevented);
+    const onGatedClick = vi.fn();
+    render(
+      <Avatar>
+        <AvatarUpload onClick={onClick} onGatedClick={onGatedClick} />
+      </Avatar>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Upload photo' }));
+    expect(onClick.mock.results[0].value).toBe(false);
+    expect(onGatedClick).not.toHaveBeenCalled();
+  });
+
+  it('is gated, not inert, inside a disabled Avatar', async () => {
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn();
+    render(
+      <Avatar disabled data-testid="avatar">
+        <AvatarUpload onClick={onClick} onGatedClick={onGatedClick} />
+      </Avatar>,
+    );
+    const button = screen.getByRole('button', { name: 'Upload photo' });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    // The disabled root keeps pointer-events none for its content, the button takes them back.
+    expect(screen.getByTestId('avatar')).toHaveClass('aria-disabled:pointer-events-none');
+    expect(button).toHaveClass('pointer-events-auto');
+    await userEvent.click(button, { pointerEventsCheck: 0 });
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('never submits a surrounding form', async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Avatar>
+          <AvatarUpload aria-disabled="true" />
+        </Avatar>
+      </form>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Upload photo' }));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

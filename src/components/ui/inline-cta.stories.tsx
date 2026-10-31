@@ -4,7 +4,8 @@ import { Button } from './button';
 import { InlineCta } from './inline-cta';
 
 const meta = {
-  title: 'Patterns/Inline CTA',
+  id: 'patterns-inline-cta',
+  title: 'Patterns · Interface/Inline CTA',
   component: InlineCta,
   tags: ['autodocs'],
   args: {

@@ -4,7 +4,8 @@ import { Button } from './button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './hover-card';
 
 const meta = {
-  title: 'Primitives/HoverCard',
+  id: 'primitives-hovercard',
+  title: 'Primitives · Overlays/HoverCard',
   component: HoverCard,
   tags: ['autodocs'],
   argTypes: {},

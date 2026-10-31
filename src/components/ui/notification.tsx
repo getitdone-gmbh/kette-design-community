@@ -101,10 +101,13 @@ const Notification = React.forwardRef<HTMLDivElement, NotificationProps>(
       <NotificationToneContext.Provider value={inverse ? 'inverse' : 'default'}>
         <div ref={ref} role={role} className={cn(notificationVariants({ variant, layout }), className)} {...props}>
           {lead}
-          <div className={cn('flex min-w-0 flex-1 gap-3', inverse ? 'items-center' : 'flex-col')}>
-            <div className="flex min-w-0 flex-col gap-1 pr-6">
+          <div className={cn('flex min-w-0 flex-1 gap-3', inverse ? 'flex-wrap items-center' : 'flex-col', inverse && onDismiss && 'pr-8')}>
+            {/* DR-WBDASH-042: room for the close button only when there is one. On the inverse surface the whole row (title and actions) keeps it, the actions wrap below a title that does not fit beside them instead of squeezing it to 0px */}
+            <div className={cn('flex min-w-0 flex-col gap-1', !inverse && onDismiss && 'pr-8')}>
               <p className={cn('typography-ui-medium', inverse ? 'text-text-inverse' : 'text-text-default')}>{title}</p>
-              {description ? <p className="typography-ui text-text-subtle">{description}</p> : null}
+              {description ? (
+                <p className={cn('typography-ui', inverse ? 'text-text-inverse-subtle' : 'text-text-subtle')}>{description}</p>
+              ) : null}
             </div>
             {media}
             {progress !== undefined ? (
@@ -123,14 +126,16 @@ const Notification = React.forwardRef<HTMLDivElement, NotificationProps>(
                   />
                 </div>
                 {progressLabel ? (
-                  <span className="typography-ui self-end text-text-subtle">{progressLabel}</span>
+                  <span className={cn('typography-ui self-end', inverse ? 'text-text-inverse-subtle' : 'text-text-subtle')}>
+                    {progressLabel}
+                  </span>
                 ) : null}
               </div>
             ) : null}
             {actions ? (
               <div
                 className={cn(
-                  'flex items-center gap-3',
+                  'flex min-w-0 flex-wrap items-center gap-3',
                   layout === 'mobile' && !inverse && 'flex-col items-stretch [&>*]:w-full',
                 )}
               >

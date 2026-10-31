@@ -67,7 +67,7 @@ const RadioCard = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.I
       </span>
       <span
         aria-hidden="true"
-        className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-solid border-checkbox-border-default bg-background group-data-[state=checked]:border-primary"
+        className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-solid border-checkbox-border-default bg-background group-data-[state=checked]:border-border-control-checked"
       >
         <span className="hidden h-2 w-2 rounded-full bg-primary group-data-[state=checked]:block" />
       </span>

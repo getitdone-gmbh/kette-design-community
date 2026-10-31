@@ -4,7 +4,8 @@ import * as React from 'react';
 import { ColorInput, ColorSwatchPicker } from './color-picker';
 
 const meta = {
-  title: 'Patterns/Color picker',
+  id: 'patterns-color-picker',
+  title: 'Patterns · Interface/Color picker',
   component: ColorSwatchPicker,
   tags: ['autodocs'],
   args: { 'aria-label': 'Calendar colour', defaultValue: 'project-3' },

@@ -4,7 +4,8 @@ import { NotificationMatrix, NotificationMatrixCell, NotificationMatrixRow } fro
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Notification matrix',
+  id: 'patterns-notification-matrix',
+  title: 'Patterns · Interface/Notification matrix',
   component: NotificationMatrix,
   tags: ['autodocs'],
   args: { 'aria-label': 'Notification preferences', columns: ['In-app', 'Email', 'Push'] },

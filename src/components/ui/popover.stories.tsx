@@ -5,7 +5,8 @@ import { Input } from './input';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 const meta = {
-  title: 'Primitives/Popover',
+  id: 'primitives-popover',
+  title: 'Primitives · Overlays/Popover',
   component: Popover,
   tags: ['autodocs'],
   argTypes: {},

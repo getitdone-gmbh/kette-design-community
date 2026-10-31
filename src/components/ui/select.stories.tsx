@@ -1,3 +1,4 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { Button } from './button';
@@ -16,10 +17,13 @@ import { Label } from './label';
 import { Building2 } from 'lucide-react';
 
 const meta = {
-  title: 'Primitives/Select',
+  id: 'primitives-select',
+  title: 'Primitives · Inputs/Select',
   component: Select,
   tags: ['autodocs'],
   argTypes: {
+    value: { description: 'Controlled value.' },
+    onValueChange: { description: 'Called with the new value when the selection changes.' },
     disabled: {
       control: 'boolean',
       description: 'Whether the select is disabled',
@@ -395,4 +399,29 @@ export const TouchDensity: Story = {
       </SelectContent>
     </Select>
   ),
+};
+
+// RA-LIB-06: the small triggers (xs, sm) use the 13px type size of the other small controls at every width, also below 640px. Md and lg keep the 16px field text. The play test compares the trigger with a Button of size sm.
+export const SmallSizesTypography: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center gap-2">
+      {(['xs', 'sm', 'md', 'lg'] as const).map((size) => (
+        <Select key={size} defaultValue="olivia">
+          <SelectTrigger aria-label={`Company ${size}`} size={size} className="w-40" data-size={size}>
+            <SelectValue />
+          </SelectTrigger>
+          {options}
+        </Select>
+      ))}
+      <Button size="sm" variant="outline" data-size="button-sm">Button sm</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const size = (name: string) => parseFloat(getComputedStyle(canvasElement.querySelector(`[data-size="${name}"]`) as HTMLElement).fontSize);
+    // 13px like the label of Button sm (zero gives the button label its own 12px token), never the 16px of the field text, at the width the runner uses.
+    expect(size('sm')).toBeLessThanOrEqual(13);
+    expect(size('xs')).toBe(size('sm'));
+    // The trigger is a button, not a text input, so iOS Safari does not zoom on focus.
+    expect((canvasElement.querySelector('[data-size="sm"]') as HTMLElement).tagName).toBe('BUTTON');
+  },
 };

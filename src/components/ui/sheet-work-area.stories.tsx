@@ -5,7 +5,8 @@ import { Button } from './button';
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetPath, SheetTitle } from './sheet';
 
 const meta = {
-  title: 'Primitives/Sheet work area',
+  id: 'primitives-sheet-work-area',
+  title: 'Primitives · Overlays/Sheet work area',
   component: SheetContent,
   tags: ['autodocs'],
   parameters: {

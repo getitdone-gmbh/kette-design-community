@@ -4,6 +4,7 @@ import { cva } from 'class-variance-authority';
 import { Slot } from '@radix-ui/react-slot';
 import * as React from 'react';
 
+import { displayVoice } from '../../lib/recipes';
 import { cn } from './../../lib/utils';
 import type { HeadingTag } from './heading-tag';
 import { useLabels, usePreset } from './labels-context';
@@ -41,7 +42,9 @@ const CardDensityContext = React.createContext<CardDensity>('default');
 // color. Needs a darker value (or new token) from design-tokens-maintainer.
 const cardVariants = cva(
   [
-    'rounded-surface border border-solid border-border bg-card text-card-foreground shadow-xs transition-colors',
+    'rounded-surface border border-solid border-border bg-card text-card-foreground transition-colors',
+    // Theme expression (kette-tokens 5.26.0): panel image and bevel over the card's own shadow-xs; the defaults change nothing. In zero the former shadow-elevation-surface never won over shadow-xs (later in the CSS), so both presets keep shadow-xs.
+    '[--card-elevation:theme(boxShadow.xs)] shadow-[shadow:var(--bevel-card),var(--card-elevation)] bg-[image:var(--image-card)]',
     // Disabled — Card renders a <div>, not a native form control, so (mirrors Chip/AlertClose)
     // the dimmed/inert look is driven by `aria-disabled`/`data-disabled` rather than the
     // (inapplicable) `disabled:` pseudo-class. Independent of `interactive`: a purely informational
@@ -174,6 +177,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
     // A keyboard press on a nested control makes the browser fire a click that bubbles here: ignore it (detail 0 marks a keyboard or programmatic click).
     const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (disabled) return;
       if (asButton && event.detail === 0 && event.target !== event.currentTarget) return;
       onClick?.(event);
     };
@@ -191,6 +195,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <InsideCardContext.Provider value={true}>
       <CardDensityContext.Provider value={density}>
       <Comp
+        data-slot="card"
         ref={ref}
         role={asButton ? 'button' : undefined}
         tabIndex={asButton ? 0 : undefined}
@@ -206,7 +211,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         data-density={density === 'compact' ? 'compact' : undefined}
         onClick={onClick ? handleClick : undefined}
         onKeyDown={handleKeyDown}
-        className={cn(cardVariants({ interactive, variant }), zero && 'shadow-elevation-surface border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle', isLink && 'block no-underline text-inherit', container && '@container', className)}
+        className={cn(cardVariants({ interactive, variant }), zero && 'border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle', isLink && 'block no-underline text-inherit', container && '@container', className)}
         {...props}
       >
         {asChild ? (
@@ -247,16 +252,16 @@ const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
     );
     if (!actions && !leading) {
       return (
-        <div ref={ref} className={cn('flex flex-col space-y-[6px]', pad, decorations, className)} {...props}>
+        <div data-slot="card-header" ref={ref} className={cn('flex flex-col space-y-[6px]', pad, decorations, className)} {...props}>
           {children}
         </div>
       );
     }
     return (
-      <div ref={ref} className={cn('flex items-start gap-3', pad, decorations, className)} {...props}>
+      <div data-slot="card-header" ref={ref} className={cn('flex items-start gap-3', pad, decorations, className)} {...props}>
         {leading ? <div className="shrink-0">{leading}</div> : null}
-        {/* The actions share the first grid row with the title. A negative block margin of 8px lets actions up to title height plus 16px (a 40px control next to a 24px title) sit centered on the title without changing the row; taller actions (a button with a hint line) grow the row and the title centers with them. Nothing is clipped. */}
-        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-[6px] [&>:first-child:not([data-slot=card-actions])]:self-center [&>:not([data-slot=card-actions])]:col-start-1">
+        {/* The actions share the first grid row with the title only. Everything after the title (the description) spans both columns in the rows below, so the actions never narrow it. A negative block margin of 8px lets actions up to title height plus 16px (a 40px control next to a 24px title) sit centered on the title without changing the row; taller actions (a button with a hint line) grow the row and the title centers with them. Nothing is clipped. */}
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-[6px] [&>:first-child:not([data-slot=card-actions])]:self-center [&>:not([data-slot=card-actions])]:col-start-1 [&>:not(:first-child):not([data-slot=card-actions])]:col-span-2">
           {children}
           {actions ? <div data-slot="card-actions" className="col-start-2 row-start-1 -my-2 flex items-center justify-self-end gap-2 self-center">{actions}</div> : null}
         </div>
@@ -279,7 +284,7 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, CardTitleProps>(
       // as children (see stories/tests) — same pre-existing false positive already suppressed on
       // AlertTitle (alert.tsx).
       // eslint-disable-next-line jsx-a11y/heading-has-content
-      <Title ref={ref} className={cn(zero ? 'typography-ui-lg-semibold tracking-[-0.01em]' : 'font-semibold leading-none tracking-[-0.01em]', 'text-card-foreground', className)} {...props} />
+      <Title data-slot="card-title" ref={ref} className={cn(zero ? 'typography-ui-lg-semibold tracking-[-0.01em]' : 'font-semibold leading-none tracking-[-0.01em]', 'text-card-foreground', displayVoice, className)} {...props} />
     );
   },
 );

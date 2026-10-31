@@ -11,7 +11,8 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './popove
 import { Tabs, TabsList, TabsTrigger } from './tabs';
 
 const meta = {
-  title: 'Patterns/Action bar',
+  id: 'patterns-action-bar',
+  title: 'Patterns · Interface/Action bar',
   component: BatchBar,
   tags: ['autodocs'],
   parameters: {

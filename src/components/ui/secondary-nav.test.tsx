@@ -4,6 +4,12 @@ import { vi } from 'vitest';
 
 import { SecondaryNav, SecondaryNavLayout, StorageMeter } from './secondary-nav';
 
+// The components measure with bounding boxes (relative to the scroller), so the tests place an element by its left edge.
+const rectAt = (left: number) => ({ left, right: left, top: 0, bottom: 0, width: 0, height: 0, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+// A scrolled row moves its items to the left on screen, so the box follows the scroll position of the row.
+const rowOf = (el: HTMLElement) => (el.closest('[role="tablist"]') ?? el.closest('nav')?.firstElementChild) as HTMLElement;
+const at = (el: HTMLElement, left: number) => Object.defineProperty(el, 'getBoundingClientRect', { configurable: true, value: () => rectAt(left - rowOf(el).scrollLeft) });
+
 const sections = [
   { id: 'a', label: 'Spaces', items: [{ id: 'all', label: 'All files', count: 12 }, { id: 'mine', label: 'My files' }] },
   { id: 'b', items: [{ id: 'trash', label: 'Trash', href: '#trash' }, { id: 'off', label: 'Archive', disabled: true }] },
@@ -160,35 +166,103 @@ describe('SecondaryNav horizontal and responsive', () => {
     expect(screen.getByText('Footer').parentElement).toHaveClass('hidden', '@area:block');
   });
 
-  it('scrolls the current item into view on mount and when it changes, without clipping at the edges', () => {
+  it('centres the current item on mount and when it changes, and stops at the ends', () => {
     const { rerender } = render(<SecondaryNav aria-label="f" orientation="horizontal" value="cockpit" sections={rowSections} />);
     const row = scroller(screen.getByRole('navigation'));
     metric(row, 'scrollWidth', 600);
     metric(row, 'clientWidth', 200);
     const tx = screen.getByRole('button', { name: 'Transactions' });
-    metric(tx, 'offsetLeft', 400);
+    at(tx, 400);
     metric(tx, 'offsetWidth', 100);
     rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="tx" sections={rowSections} />);
-    // right edge 500 minus the visible width 200 (+ scroll padding, 0 in jsdom)
-    expect(row.scrollLeft).toBe(300);
+    // item middle 450 minus half the visible width 100
+    expect(row.scrollLeft).toBe(350);
     const cockpit = screen.getByRole('button', { name: 'Cockpit' });
-    metric(cockpit, 'offsetLeft', 0);
+    at(cockpit, 0);
     metric(cockpit, 'offsetWidth', 80);
     rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="cockpit" sections={rowSections} />);
     expect(row.scrollLeft).toBe(0);
   });
 
-  it('scrolls the active item into view on mount', () => {
+  it('centres the active item on mount, as far as the row allows', () => {
     const proto = HTMLElement.prototype;
     const spies = [
       vi.spyOn(proto, 'scrollWidth', 'get').mockReturnValue(600),
       vi.spyOn(proto, 'clientWidth', 'get').mockReturnValue(200),
-      vi.spyOn(proto, 'offsetLeft', 'get').mockReturnValue(450),
+      vi.spyOn(proto, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        return rectAt(this.tagName === 'BUTTON' ? 450 : 0);
+      }),
       vi.spyOn(proto, 'offsetWidth', 'get').mockReturnValue(100),
     ];
     render(<SecondaryNav aria-label="f" orientation="horizontal" defaultValue="settings" sections={rowSections} />);
-    expect(scroller(screen.getByRole('navigation')).scrollLeft).toBe(350);
+    // middle 500 minus 100 would be 400, which is also the end of the row (600 - 200)
+    expect(scroller(screen.getByRole('navigation')).scrollLeft).toBe(400);
     spies.forEach((spy) => spy.mockRestore());
+  });
+
+  it('centres in the middle of the row when there is room on both sides', () => {
+    const proto = HTMLElement.prototype;
+    const spies = [
+      vi.spyOn(proto, 'scrollWidth', 'get').mockReturnValue(1000),
+      vi.spyOn(proto, 'clientWidth', 'get').mockReturnValue(200),
+      vi.spyOn(proto, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        return rectAt(this.tagName === 'BUTTON' ? 450 : 0);
+      }),
+      vi.spyOn(proto, 'offsetWidth', 'get').mockReturnValue(100),
+    ];
+    render(<SecondaryNav aria-label="f" orientation="horizontal" defaultValue="tx" sections={rowSections} />);
+    expect(scroller(screen.getByRole('navigation')).scrollLeft).toBe(400);
+    spies.forEach((spy) => spy.mockRestore());
+  });
+
+  describe('moving the row', () => {
+    const setup = () => {
+      const { rerender } = render(<SecondaryNav aria-label="f" orientation="horizontal" value="cockpit" sections={rowSections} />);
+      const row = scroller(screen.getByRole('navigation'));
+      metric(row, 'scrollWidth', 1000);
+      metric(row, 'clientWidth', 200);
+      const tx = screen.getByRole('button', { name: 'Transactions' });
+      at(tx, 450);
+      metric(tx, 'offsetWidth', 100);
+      const scrollTo = vi.fn();
+      Object.defineProperty(row, 'scrollTo', { configurable: true, value: scrollTo });
+      return { rerender, row, scrollTo };
+    };
+    const media = (reduce: boolean) =>
+      vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ matches: reduce && query.includes('prefers-reduced-motion'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false, onchange: null }) as MediaQueryList);
+
+    it('glides to the new current item and never calls scrollIntoView, so the page does not move', () => {
+      const spy = media(false);
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      const { rerender, scrollTo } = setup();
+      rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="tx" sections={rowSections} />);
+      expect(scrollTo).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+      spy.mockRestore();
+    });
+
+    it('jumps instead of gliding when the user prefers reduced motion', () => {
+      const spy = media(true);
+      const { rerender, row, scrollTo } = setup();
+      rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="tx" sections={rowSections} />);
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(row.scrollLeft).toBe(400);
+      spy.mockRestore();
+    });
+
+    it('does not pull the row back when the parent renders again with a new sections array', () => {
+      const spy = media(false);
+      const { rerender, row, scrollTo } = setup();
+      rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="tx" sections={rowSections} />);
+      scrollTo.mockClear();
+      row.scrollLeft = 123;
+      rerender(<SecondaryNav aria-label="f" orientation="horizontal" value="tx" sections={rowSections.map((section) => ({ ...section }))} />);
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(row.scrollLeft).toBe(123);
+      spy.mockRestore();
+    });
   });
 
   it('shows the edge fades only while content overflows on that side', () => {
@@ -236,10 +310,10 @@ describe('SecondaryNav horizontal and responsive', () => {
     metric(row, 'clientWidth', 200);
     const cockpit = screen.getByRole('button', { name: 'Cockpit' });
     const accounts = screen.getByRole('button', { name: 'Accounts' });
-    metric(cockpit, 'offsetLeft', 0);
+    at(cockpit, 0);
     metric(cockpit, 'offsetWidth', 80);
     // Accounts sticks out of the right edge: left 150, right 250, visible width 200.
-    metric(accounts, 'offsetLeft', 150);
+    at(accounts, 150);
     metric(accounts, 'offsetWidth', 100);
     const focus = vi.spyOn(accounts, 'focus');
     cockpit.focus();
@@ -362,5 +436,103 @@ describe('SecondaryNavLayout', () => {
     );
     expect(screen.getByTestId('l')).toHaveClass('bg-muted', 'flex-1');
     expect(document.querySelector('[data-slot="secondary-nav-content"]')).toHaveClass('overflow-y-auto', 'min-h-0');
+  });
+});
+
+describe('SecondaryNav touch hit area (RA-LIB-01)', () => {
+  const items = [{ id: 'a', label: 'One' }, { id: 'b', label: 'Two' }];
+  const cls = (orientation: 'vertical' | 'horizontal' | 'responsive') => {
+    render(<SecondaryNav aria-label="f" orientation={orientation} sections={[{ id: 's', items }]} />);
+    return screen.getByRole('button', { name: 'One' }).className;
+  };
+
+  it('adds a 44px hit area under a coarse pointer in the row, with the 30px visual height unchanged', () => {
+    const horizontal = cls('horizontal');
+    expect(horizontal).toContain('h-nav-item');
+    expect(horizontal).toContain('[@media(pointer:coarse)]:after:h-[var(--size-touch-target-lg)]');
+    expect(horizontal).toContain('[@media(pointer:coarse)]:after:inset-x-0');
+    expect(horizontal).toContain('relative');
+  });
+
+  it('switches the hit area off where the responsive nav is a column', () => {
+    expect(cls('responsive')).toContain('@area:after:hidden');
+  });
+
+  it('adds no hit area to the vertical column', () => {
+    expect(cls('vertical')).not.toContain('pointer:coarse');
+  });
+});
+
+describe('SecondaryNavLayout title and actions (RA-LIB-03)', () => {
+  const nav = <SecondaryNav aria-label="Area" orientation="responsive" sections={[{ id: 's', items: [{ id: 'a', label: 'One' }] }]} />;
+
+  it('renders no grid and no wrapper without title and actions', () => {
+    const { container } = render(<SecondaryNavLayout nav={nav}>Content</SecondaryNavLayout>);
+    const slot = container.querySelector('[data-slot="secondary-nav-slot"]') as HTMLElement;
+    expect(slot).not.toHaveClass('grid');
+    expect(container.querySelector('[data-slot="secondary-nav-nav"]')).toBeNull();
+  });
+
+  it('shows the title only from the @area screen and puts the actions in a field beside the nav below it (UX-030-03)', () => {
+    const { container } = render(
+      <SecondaryNavLayout nav={nav} title="Finance" actions={<button type="button">Add</button>}>
+        Content
+      </SecondaryNavLayout>,
+    );
+    const slot = container.querySelector('[data-slot="secondary-nav-slot"]') as HTMLElement;
+    const title = slot.querySelector('[data-slot="secondary-nav-title"]') as HTMLElement;
+    const actions = slot.querySelector('[data-slot="secondary-nav-actions"]') as HTMLElement;
+    const navWrap = slot.querySelector('[data-slot="secondary-nav-nav"]') as HTMLElement;
+    const grid = slot.querySelector('[data-slot="secondary-nav-grid"]') as HTMLElement;
+    expect(grid).toHaveClass('grid', '@area:grid-rows-[auto_minmax(0,1fr)]', '@area:items-stretch');
+    expect(slot).not.toHaveClass('grid');
+    expect(title).toHaveClass('hidden', '@area:block');
+    expect(title).toHaveTextContent('Finance');
+    // The action is never hidden: no `hidden` class, one node, outside the nav (and so outside its scroll area).
+    expect(actions).not.toHaveClass('hidden');
+    expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
+    expect(navWrap).toContainElement(screen.getByRole('navigation', { name: 'Area' }));
+    expect(navWrap).not.toContainElement(actions);
+    expect(actions.className).toContain('[@media(pointer:coarse)]:[&_button]:min-h-[var(--size-touch-target-lg)]');
+  });
+
+  it('renders actions without a title', () => {
+    const { container } = render(
+      <SecondaryNavLayout nav={nav} actions={<button type="button">Add</button>}>
+        Content
+      </SecondaryNavLayout>,
+    );
+    expect(container.querySelector('[data-slot="secondary-nav-title"]')).toBeNull();
+    expect(container.querySelector('[data-slot="secondary-nav-actions"]')).not.toBeNull();
+  });
+
+  it('does not forward title to the root element as a native tooltip', () => {
+    const { container } = render(<SecondaryNavLayout nav={nav} title="Finance">Content</SecondaryNavLayout>);
+    expect((container.firstElementChild as HTMLElement).hasAttribute('title')).toBe(false);
+  });
+
+  it('keeps the grid on an inner element, so an app navClassName cannot replace it (SNL-0300-01)', () => {
+    const { container } = render(
+      <SecondaryNavLayout nav={nav} title="Files" actions={<button type="button">Add</button>} navClassName="flex flex-col">
+        Content
+      </SecondaryNavLayout>,
+    );
+    const slot = container.querySelector('[data-slot="secondary-nav-slot"]') as HTMLElement;
+    const grid = container.querySelector('[data-slot="secondary-nav-grid"]') as HTMLElement;
+    expect(slot).toHaveClass('flex', 'flex-col');
+    expect(slot).not.toHaveClass('grid');
+    expect(slot).toContainElement(grid);
+    expect(grid).toHaveClass('grid');
+    expect(grid.className).not.toContain('items-center @area:items-center');
+  });
+
+  it('puts title, actions and nav in visual order in the DOM (UX-030-08)', () => {
+    const { container } = render(
+      <SecondaryNavLayout nav={nav} title="Files" actions={<button type="button">Add</button>}>
+        Content
+      </SecondaryNavLayout>,
+    );
+    const grid = container.querySelector('[data-slot="secondary-nav-grid"]') as HTMLElement;
+    expect(Array.from(grid.children).map((el) => el.getAttribute('data-slot'))).toEqual(['secondary-nav-title', 'secondary-nav-actions', 'secondary-nav-nav']);
   });
 });

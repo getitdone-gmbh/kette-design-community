@@ -16,6 +16,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, Dia
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { PERSISTENT_LIST } from '@/lib/nested-layer';
 import { Spacing } from '@/components/ui/spacing';
 import { LabelScope, useLabels, usePreset } from '@/components/ui/labels-context';
 
@@ -611,6 +612,7 @@ const MultiSelectDropdownActions: FC<{
             <div className="flex justify-end">
               {getCheckboxState() === 'checked' ? (
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleUncheckAll}
@@ -620,7 +622,7 @@ const MultiSelectDropdownActions: FC<{
                   {l.uncheckAll}
                 </Button>
               ) : (
-                <Button variant="ghost" size="sm" onClick={handleCheckAll} disabled={disabled} className="text-sm px-2">
+                <Button type="button" variant="ghost" size="sm" onClick={handleCheckAll} disabled={disabled} className="text-sm px-2">
                   {getCheckboxState() === 'indeterminate'
                     ? l.checkAll
                     : getCheckboxState() === 'unchecked'
@@ -632,6 +634,7 @@ const MultiSelectDropdownActions: FC<{
           )}
           {!disableAddNew && !customAction && !customAddAction && (
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={handleDialogSubmit}
@@ -653,10 +656,10 @@ const MultiSelectDropdownActions: FC<{
         <Spacing direction="row" className="self-end" alignItems="center">
           {mode === 'persistent' ? (
             <>
-              <Button variant="outline" size="sm" onClick={onCancel} className="text-sm px-2 mr-2">
+              <Button type="button" variant="outline" size="sm" onClick={onCancel} className="text-sm px-2 mr-2">
                 {cancelButtonText || l.cancel}
               </Button>
-              <Button variant="default" size="sm" onClick={onApply} className="text-sm px-2" disabled={!hasChanges}>
+              <Button type="button" variant="default" size="sm" onClick={onApply} className="text-sm px-2" disabled={!hasChanges}>
                 {applyButtonText || l.apply}
               </Button>
             </>
@@ -664,12 +667,12 @@ const MultiSelectDropdownActions: FC<{
             <>
               {useSheet ? (
                 <SheetClose asChild>
-                  <Button variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
                     {l.close} <span className="ml-1 font-regular">{l.autosaveHint}</span>
                   </Button>
                 </SheetClose>
               ) : (
-                <Button variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
                   {l.close} <span className="ml-1 font-regular">{l.autosaveHint}</span>
                 </Button>
               )}
@@ -1395,6 +1398,15 @@ const MultiSelectField: FC<MultiSelectProps> = ({
             </SheetTrigger>
           </Spacing>
           <SheetContent
+            onOpenAutoFocus={(event) => {
+              // A select sheet opens in its search field, not on a chip or the first control.
+              const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>('input:not([disabled])');
+              if (input) {
+                event.preventDefault();
+                input.focus();
+              }
+            }}
+            onAfterClose={() => setSearch('')}
             side={isMobile || isMobileDevice() ? 'bottom' : 'right'}
             className={cn('overflow-y-auto', (isMobile || isMobileDevice()) && 'h-[90vh]')}
             onInteractOutside={disableBackdropClose ? (e) => e.preventDefault() : undefined}
@@ -1412,7 +1424,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
             </SheetHeader>
             <Spacing direction="column" gap="2" className="relative" wrap="nowrap">
               {!chipsInside && <MultiSelectChips {...multiSelectChipsProps} />}
-              <Command className="w-full command" vimBindings={false}>
+              <Command className="w-full command" vimBindings={false} {...{ [PERSISTENT_LIST]: '' }}>
                 <MultiSelectInput {...multiSelectInputProps} useSheet={false} noButton />
                 <CommandGroup className="[&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:nowrap">
                   <MultiSelectDropdown {...multiSelectDropdownProps} useSheet={true} />
@@ -1422,7 +1434,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
             {mode === 'persistent' && disableBackdropClose && (
               <SheetFooter className="mt-4">
                 <SheetClose asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button type="button" variant="ghost" size="sm">
                     {l.close}
                   </Button>
                 </SheetClose>
@@ -1454,7 +1466,13 @@ const MultiSelectField: FC<MultiSelectProps> = ({
       )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild></DialogTrigger>
-        <DialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
+        {/* Escape closes the dialog like Cancel; focus goes back into the field, since the dialog trigger is empty. */}
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            (inputRef.current ?? comboboxRef.current?.querySelector<HTMLElement>('input:not([disabled]), button:not([disabled])'))?.focus();
+          }}
+        >
           <DialogTitle>{l.add}</DialogTitle>
           <DialogDescription>
             <Input
@@ -1467,11 +1485,12 @@ const MultiSelectField: FC<MultiSelectProps> = ({
           </DialogDescription>
           <div className="mt-4 flex justify-end">
             <DialogClose asChild>
-              <Button size="sm" variant="ghost" className="ml-2" disabled={disabled}>
+              <Button type="button" size="sm" variant="ghost" className="ml-2" disabled={disabled}>
                 {l.cancel}
               </Button>
             </DialogClose>
             <Button
+              type="button"
               size="sm"
               onClick={handleAddNewItem}
               variant="default"

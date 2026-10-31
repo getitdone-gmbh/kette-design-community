@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ContainerSpacer, Spacer } from './spacer';
 
 const meta = {
-  title: 'Primitives/Spacer',
+  id: 'primitives-spacer',
+  title: 'Primitives · Layout/Spacer',
   component: Spacer,
   tags: ['autodocs'],
   argTypes: {

@@ -322,6 +322,8 @@ export const labelsEn: Labels = {
   cookieClose: 'Close cookie banner',
   cookieSaveSelection: 'Save selection',
   cookieBack: 'Back',
+  cookieShowMore: 'Show more',
+  cookieShowLess: 'Show less',
   cookieAlwaysActive: 'Always active',
   cookieSettingsTitle: 'Cookie settings',
   countdownDays: 'Days',

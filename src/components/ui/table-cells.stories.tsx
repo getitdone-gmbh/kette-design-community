@@ -9,7 +9,8 @@ import { Table, TableBadgeCell, TableBody, TableCaption, TableCell, TableHead, T
 import { TableEditCell, TableLeadBadgeCell, TableSelectCell, TableActionsCell, TableButtonCell, TableLockTextCell, TableToggleCell, TablePaymentCell, TableProgressCell, TableRatingCell, TableTrendCell } from './table-cells';
 
 const meta = {
-  title: 'Patterns/Table cells',
+  id: 'patterns-table-cells',
+  title: 'Patterns · Data/Table cells',
   component: TableTrendCell,
   tags: ['autodocs'],
 } satisfies Meta<typeof TableTrendCell>;

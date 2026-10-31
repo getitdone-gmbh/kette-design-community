@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { DesignSystemProvider } from './design-system-provider';
@@ -206,5 +207,194 @@ describe('SingleSelect useSheet', () => {
       renderValue({ readOnly: true, invalidValues: ['design'] });
       expect(document.querySelector('[data-invalid]')).toHaveTextContent('Design (invalid)');
     });
+  });
+});
+
+describe('SingleSelect trigger id (0.28.1)', () => {
+  it('puts the id on the combobox so the label for points at an element', () => {
+    renderSingleSelect();
+    const trigger = screen.getByRole('combobox');
+    expect(trigger).toHaveAttribute('id', 'job-type');
+    expect(document.getElementById('job-type')).toBe(trigger);
+    const label = screen.getByText('Job Type');
+    expect(label).toHaveAttribute('for', 'job-type');
+    expect(trigger).toHaveAttribute('aria-labelledby', label.id);
+  });
+
+  it('generates a stable id when none is passed and keeps it across renders', () => {
+    const element = (
+      <SingleSelectProvider>
+        <SingleSelect label="Job Type" options={options} selected={null} onChange={() => {}} />
+      </SingleSelectProvider>
+    );
+    const { rerender } = render(element);
+    const first = screen.getByRole('combobox').id;
+    expect(first).not.toBe('');
+    expect(screen.getByText('Job Type')).toHaveAttribute('for', first);
+    rerender(element);
+    expect(screen.getByRole('combobox').id).toBe(first);
+  });
+
+  it('moves focus to the control inside when the id is focused (focus restoration)', () => {
+    renderSingleSelect();
+    document.getElementById('job-type')?.focus();
+    expect(screen.getByRole('button', { name: /^Open options/  })).toHaveFocus();
+  });
+
+  it('leaves Enter to cmdk (which picks the highlighted option) while the list is open, and keeps it for the chevron while closed', async () => {
+    const onRootKeyDown = vi.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- test observer for the bubbling keydown
+      <div onKeyDown={onRootKeyDown}>
+        <SingleSelectProvider>
+          <SingleSelect id="job-type" label="Job Type" options={options} selected={null} onChange={() => {}} />
+        </SingleSelectProvider>
+      </div>,
+    );
+    const chevron = screen.getByRole('button', { name: /^Open options/  });
+    chevron.focus();
+    await userEvent.keyboard('{Enter}');
+    // Closed: the chevron kept the key and opened the list.
+    expect(onRootKeyDown).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox', { name: 'Job Type' })).toHaveAttribute('aria-expanded', 'true');
+    screen.getByRole('button', { name: /^Open options/  }).focus();
+    await userEvent.keyboard('{Enter}');
+    // Open: the key bubbles on to cmdk.
+    expect(onRootKeyDown).toHaveBeenCalledTimes(1);
+  });
+
+  it('moves focus into the field when the own label is clicked', async () => {
+    renderSingleSelect();
+    await userEvent.click(screen.getByText('Job Type'));
+    expect(screen.getByRole('button', { name: /^Open options/  })).toHaveFocus();
+  });
+
+  it('moves focus into the field when a label outside the component is clicked', async () => {
+    render(
+      <>
+        <label htmlFor="team">Team</label>
+        <SingleSelectProvider>
+          <SingleSelect id="team" options={options} selected={null} onChange={() => {}} ariaLabel="Team" />
+        </SingleSelectProvider>
+      </>,
+    );
+    await userEvent.click(screen.getByText('Team'));
+    expect(screen.getByRole('button', { name: /^Open options/  })).toHaveFocus();
+  });
+
+  it('opens with Enter on the chevron and removes with Enter on the remove button, then focuses the chevron', async () => {
+    const onChange = vi.fn();
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job-type" label="Job Type" options={options} selected="design" onChange={onChange} />
+      </SingleSelectProvider>,
+    );
+    screen.getByRole('button', { name: /^Open options/  }).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('combobox', { name: 'Job Type' })).toHaveAttribute('aria-expanded', 'true');
+    const remove = screen.getByRole('button', { name: /^Remove/ });
+    remove.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onChange).toHaveBeenCalledWith(null);
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Open options/  })).toHaveFocus());
+  });
+
+  it('puts the id on the trigger of the sheet variant too', () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job-sheet" label="Job Type" options={options} selected={null} onChange={() => {}} useSheet />
+      </SingleSelectProvider>,
+    );
+    expect(screen.getByRole('combobox')).toHaveAttribute('id', 'job-sheet');
+  });
+
+  it('its chevron button does not submit a surrounding form', async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <SingleSelectProvider>
+          <SingleSelect id="job-type" label="Job Type" options={options} selected={null} onChange={() => {}} />
+        </SingleSelectProvider>
+      </form>,
+    );
+    const chevron = screen.getByRole('button', { name: /^Open options/  });
+    expect(chevron).toHaveAttribute('type', 'button');
+    await userEvent.click(chevron);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('SingleSelect 0.29', () => {
+  it('names the chevron after the field: "Open options" plus the visible label', () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job-type" label="Job Type" options={options} selected={null} onChange={() => {}} />
+      </SingleSelectProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Open options Job Type' })).toBeInTheDocument();
+  });
+
+  it('names the chevron after the aria-label when there is no visible label', () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="team" ariaLabel="Team" options={options} selected={null} onChange={() => {}} />
+      </SingleSelectProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Open options Team' })).toBeInTheDocument();
+  });
+
+  it('closes the sheet variant with Escape from the search field (the always visible list owns no Escape)', async () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job-sheet" label="Job Type" options={options} selected={null} onChange={() => {}} useSheet />
+      </SingleSelectProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^Open options/ }));
+    const dialog = await screen.findByRole('dialog');
+    const input = dialog.querySelector('input') as HTMLElement;
+    expect(input).not.toBeNull();
+    input.focus();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+});
+
+describe('SingleSelect sheet 0.29 review fixes', () => {
+  it('opens in the search field and clears the search after closing', async () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job-sheet" label="Job Type" options={options} selected={null} onChange={() => {}} useSheet />
+      </SingleSelectProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^Open options/ }));
+    const dialog = await screen.findByRole('dialog');
+    const input = dialog.querySelector('input') as HTMLInputElement;
+    await waitFor(() => expect(input).toHaveFocus());
+    await userEvent.keyboard('zzz');
+    expect(input.value).toBe('zzz');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /^Open options/ }));
+    const again = (await screen.findByRole('dialog')).querySelector('input') as HTMLInputElement;
+    expect(again.value).toBe('');
+  });
+});
+
+describe('SingleSelect add dialog', () => {
+  it('closes the Add dialog with Escape and puts focus back into the field', async () => {
+    render(
+      <SingleSelectProvider>
+        <SingleSelect id="job" label="Job Type" options={options} selected={null} onChange={() => {}} onAddItemClick={() => {}} />
+      </SingleSelectProvider>,
+    );
+    const search = screen.getByRole('combobox');
+    await userEvent.click(search);
+    await userEvent.type(search, 'Brand new');
+    await userEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Add')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('combobox').contains(document.activeElement)).toBe(true));
   });
 });

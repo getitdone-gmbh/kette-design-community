@@ -4,7 +4,7 @@ import * as NavigationMenuPrimitive from '@radix-ui/react-navigation-menu';
 import { cva } from 'class-variance-authority';
 import { ChevronDown } from 'lucide-react';
 
-import { ComponentPropsWithoutRef, ElementRef, forwardRef, MutableRefObject, useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { ComponentPropsWithoutRef, ElementRef, forwardRef, MutableRefObject, ReactNode, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { menuItemFocusVisible } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
@@ -43,20 +43,31 @@ NavigationMenuList.displayName = NavigationMenuPrimitive.List.displayName;
 const NavigationMenuItem = NavigationMenuPrimitive.Item;
 
 const navigationMenuTriggerStyle = cva(
-  'group inline-flex h-10 w-max items-center justify-center rounded-control bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none disabled:opacity-disabled data-[active]:bg-muted data-[state=open]:bg-muted',
+  'group inline-flex h-control-md w-max items-center justify-center rounded-control bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none disabled:opacity-disabled data-[active]:bg-muted data-[state=open]:bg-muted',
 );
 
-const NavigationMenuTrigger = forwardRef<
-  ElementRef<typeof NavigationMenuPrimitive.Trigger>,
-  ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+interface NavigationMenuTriggerProps extends ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger> {
+  // Leading icon before the label. In a top bar end slot with `data-topbar-action` it is all that stays below sm (the label is the tooltip).
+  icon?: ReactNode;
+}
+
+const NavigationMenuTrigger = forwardRef<ElementRef<typeof NavigationMenuPrimitive.Trigger>, NavigationMenuTriggerProps>(({ className, children, type = 'button', icon, title, ...props }, ref) => (
   <NavigationMenuPrimitive.Trigger
     ref={ref}
+    type={type}
+    // In a top bar end slot (`data-topbar-action`) the label is hidden below sm: its text is the tooltip.
+    title={title ?? ((props as Record<string, unknown>)['data-topbar-action'] !== undefined && typeof children === 'string' ? children : undefined)}
     className={cn(navigationMenuTriggerStyle(), 'group', className)}
     {...props}
   >
+    {icon && (
+      <span aria-hidden="true" className="mr-2 inline-flex h-icon-md w-icon-md shrink-0 items-center justify-center group-data-[topbar-action]:max-sm:mr-0">
+        {icon}
+      </span>
+    )}
     {children}{' '}
     <ChevronDown
+      data-chevron=""
       className="relative top-[1px] ml-1 h-3 w-3 transition duration-200 group-data-[state=open]:rotate-180"
       aria-hidden="true"
     />
@@ -227,6 +238,7 @@ export {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
+  type NavigationMenuTriggerProps,
   NavigationMenuViewport,
   navigationMenuTriggerStyle,
 };

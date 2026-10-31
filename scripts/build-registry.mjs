@@ -26,7 +26,7 @@ const items = [];
 const describe = (name) => name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 // Tests, test helpers and stories stay in the repo, they are not part of the registry.
-const isSource = (f) => /\.tsx?$/.test(f) && !/\.(test|stories)\.tsx?$/.test(f) && !['assert-compiled.ts', 'token-contrast.ts'].includes(path.basename(f));
+const isSource = (f) => /\.tsx?$/.test(f) && !/\.(test|stories)\.tsx?$/.test(f) && !['assert-compiled.ts', 'render-default-look.tsx', 'token-contrast.ts'].includes(path.basename(f));
 
 // Flat files are one item each, a sub folder (stepper/, phone-input/, ...) is one item with all of its files.
 const collect = (dir, kind) =>

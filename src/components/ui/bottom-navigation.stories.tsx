@@ -5,7 +5,8 @@ import { BottomNavigation, BottomNavigationAction, BottomNavigationItem } from '
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Bottom navigation',
+  id: 'patterns-bottom-navigation',
+  title: 'Patterns · Interface/Bottom navigation',
   component: BottomNavigation,
   tags: ['autodocs'],
   parameters: {

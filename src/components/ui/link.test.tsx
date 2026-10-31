@@ -180,3 +180,45 @@ describe('Link tones', () => {
     expect(screen.getByRole('link')).not.toHaveClass('typography-link-sm');
   });
 });
+
+describe('Link gating (0.28.1)', () => {
+  it('stays hoverable for a tooltip, calls onGatedClick and swallows the click', async () => {
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn();
+    const onParentClick = vi.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- test wrapper
+      <div onClick={onParentClick}>
+        <Link href="/x" disabled onClick={onClick} onGatedClick={onGatedClick}>
+          Docs
+        </Link>
+      </div>,
+    );
+    const link = screen.getByText('Docs').closest('a') as HTMLElement;
+    expect(link.className).not.toMatch(/pointer-events-none/);
+    // userEvent refuses to click an element with pointer-events: none.
+    await userEvent.click(link);
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('aria-disabled alone is gated: still focusable and reachable by keyboard, the click is guarded', async () => {
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn((event: React.MouseEvent) => event.defaultPrevented);
+    render(
+      <Link href="/x" aria-disabled="true" onClick={onClick} onGatedClick={onGatedClick}>
+        Docs
+      </Link>,
+    );
+    const link = screen.getByText('Docs').closest('a') as HTMLElement;
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    expect(link).toHaveAttribute('href', '/x');
+    await userEvent.tab();
+    expect(link).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onGatedClick.mock.results[0].value).toBe(true);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});

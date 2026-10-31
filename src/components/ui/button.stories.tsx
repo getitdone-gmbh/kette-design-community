@@ -5,15 +5,26 @@ import { Button, ButtonProps } from './button';
 import { Input } from './input';
 
 const meta = {
-  title: 'Primitives/Button',
+  id: 'primitives-button',
+  title: 'Primitives · Actions/Button',
   component: Button,
   tags: ['autodocs'],
+  // Rows of the docs overview: every variant at four sizes (the full size scale is in the Sizes stories).
+  parameters: { docs: { overview: { rows: 'variant', cols: 'size', colValues: ['sm', 'default', 'md', 'lg'] } } },
   argTypes: {
-    disabled: {
-      control: {
-        type: 'boolean',
-      },
-    },
+    size: { description: 'Height and padding of the button.', table: { defaultValue: { summary: 'default' } } },
+    variant: { description: 'Visual style: how strongly the action is emphasised.', table: { defaultValue: { summary: 'default' } } },
+    underline: { description: 'Underlines the label on hover; always for the link variant.' },
+    children: { description: 'Label of the button.' },
+    disabled: { control: { type: 'boolean' }, description: 'Blocks interaction and dims the button.', table: { defaultValue: { summary: 'false' } } },
+    asChild: { description: 'Renders the child element (a link, for example) with the button styles.' },
+    padded: { description: 'Keeps the padding of the link variant.' },
+    loading: { description: 'Shows a spinner and blocks interaction while an action runs.' },
+    loadingLabel: { description: 'Accessible label announced while loading.' },
+    count: { description: 'Number or text shown as a counter in the button.' },
+    countPlacement: { description: 'Where the counter sits: after the label or before the icon.' },
+    status: { description: 'Small status dot in the corner, for icon-only buttons. Pair it with statusLabel.' },
+    statusLabel: { description: 'Accessible text for the status dot.' },
   },
 } satisfies Meta<typeof Button>;
 

@@ -4,7 +4,8 @@ import { Blockquote } from './blockquote';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Primitives/Blockquote',
+  id: 'primitives-blockquote',
+  title: 'Primitives · Display/Blockquote',
   component: Blockquote,
   tags: ['autodocs'],
   argTypes: { variant: { control: { type: 'select' }, options: ['default', 'pull'] } },

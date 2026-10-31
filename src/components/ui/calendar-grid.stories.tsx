@@ -4,7 +4,8 @@ import { MonthGrid, MonthGridCell, WeekGrid, WeekGridCell, WeekGridEntry, WeekGr
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Calendar grids',
+  id: 'patterns-calendar-grids',
+  title: 'Patterns · Data/Calendar grids',
   component: WeekGrid,
   tags: ['autodocs'],
   // onRetry shows the error button
