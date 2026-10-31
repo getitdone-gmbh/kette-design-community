@@ -164,11 +164,13 @@ const Alert = React.forwardRef<
   const resolvedAriaLive = ariaLive ?? (resolvedRole === 'alert' ? 'assertive' : 'polite');
   const alert = (
     <div
+      data-slot="alert"
+      data-variant={resolvedVariant}
       ref={ref}
       role={resolvedRole}
       aria-live={resolvedAriaLive}
       data-actions-placement={actionsPlacement ?? undefined}
-      className={cn(alertVariants({ variant, size: size ?? (zero ? 'compact' : 'default'), actionsPlacement, preset: zero ? 'zero' : 'default' }), className)}
+      className={cn(alertVariants({ variant, size: size ?? (zero ? 'compact' : 'default'), actionsPlacement, preset: zero ? 'zero' : 'default' }), 'shadow-[shadow:var(--bevel-alert)]', className)}
       {...props}
     />
   );

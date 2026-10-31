@@ -142,6 +142,7 @@ export const PhoneInput: FC<PhoneInputProps> = ({
       <Popover open={openCommand} onOpenChange={setOpenCommand} modal={true}>
         <PopoverTrigger asChild>
           <Button
+            type="button"
             variant="outline"
             role="combobox"
             aria-expanded={openCommand}

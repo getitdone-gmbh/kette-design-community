@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { RichTextEditor } from './rich-text-editor';
 
 const meta = {
-  title: 'Patterns/RichTextEditor',
+  id: 'patterns-richtexteditor',
+  title: 'Patterns · Interface/RichTextEditor',
   component: RichTextEditor,
   tags: ['autodocs'],
   args: {

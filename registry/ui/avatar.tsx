@@ -127,6 +127,9 @@ export interface AvatarProps
  * dark-mode value.
  *
  */
+// True while the surrounding Avatar is disabled. An AvatarUpload inside then behaves as aria-disabled.
+const AvatarDisabledContext = React.createContext(false);
+
 // Size of the surrounding Avatar, so the initials pick their type role without a repeated `size` prop.
 const AvatarSizeContext = React.createContext<NonNullable<VariantProps<typeof avatarVariants>['size']> | undefined>(undefined);
 
@@ -184,7 +187,7 @@ const Avatar = React.forwardRef<React.ElementRef<typeof AvatarPrimitive.Root>, A
         >
           <AvatarSizeContext.Provider value={size ?? 'md'}>{content}</AvatarSizeContext.Provider>
         </span>
-        {badges}
+        <AvatarDisabledContext.Provider value={Boolean(disabled)}>{badges}</AvatarDisabledContext.Provider>
       </AvatarPrimitive.Root>
     );
   },
@@ -328,20 +331,39 @@ export interface AvatarUploadProps extends Omit<React.ButtonHTMLAttributes<HTMLB
   icon?: React.ReactNode;
   // Accessible name. Wins over the provider text.
   uploadLabel?: string;
+  // Called instead of `onClick` while the button is gated (`aria-disabled`, or inside a disabled Avatar). Explain why here. Nothing else happens.
+  onGatedClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 // Upload affordance in the bottom right corner of an Avatar (most useful with size "profile"). A real button; the parent opens the file picker. Pass it as a direct child of Avatar.
+// With `aria-disabled` (or inside a disabled Avatar) the button stays hoverable, focusable and clickable so the consumer can explain why it is gated. `onClick` is not called then, `onGatedClick` is, and the default action and bubbling are stopped.
 const AvatarUpload = React.forwardRef<HTMLButtonElement, AvatarUploadProps>(
-  ({ className, icon, uploadLabel, type = 'button', ...props }, ref) => {
+  ({ className, icon, uploadLabel, type = 'button', onClick, onGatedClick, ...props }, ref) => {
     const l = useLabels({ avatarUpload: uploadLabel });
+    const avatarDisabled = React.useContext(AvatarDisabledContext);
+    const ariaDisabled = props['aria-disabled'] === true || props['aria-disabled'] === 'true' || avatarDisabled;
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (ariaDisabled) {
+        event.preventDefault();
+        event.stopPropagation();
+        onGatedClick?.(event);
+        return;
+      }
+      onClick?.(event);
+    };
     return (
       <button
         ref={ref}
         type={type}
         aria-label={l.avatarUpload}
+        aria-disabled={ariaDisabled || undefined}
+        onClick={handleClick}
         className={cn(
+          // A disabled Avatar sets pointer-events none on the root. The button takes them back so a gated click still arrives.
+          'pointer-events-auto',
           'absolute bottom-0 right-0 inline-flex h-control-md w-control-md cursor-pointer items-center justify-center rounded-full border-2 border-solid border-surface-canvas bg-background-inverse text-text-inverse transition-opacity',
           'hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-disabled',
+          'aria-disabled:cursor-not-allowed aria-disabled:opacity-disabled aria-disabled:hover:opacity-disabled aria-disabled:active:opacity-disabled',
           '[&>svg]:h-icon-sm [&>svg]:w-icon-sm',
           'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default',
           className,

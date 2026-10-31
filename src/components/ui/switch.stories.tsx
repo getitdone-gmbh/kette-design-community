@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Switch } from './switch';
 
 const meta = {
-  title: 'Primitives/Switch',
+  id: 'primitives-switch',
+  title: 'Primitives · Inputs/Switch',
   component: Switch,
   tags: ['autodocs'],
   // Every story switch carries an accessible name.

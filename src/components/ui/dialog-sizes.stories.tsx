@@ -15,7 +15,8 @@ import {
 } from './dialog';
 
 const meta = {
-  title: 'Primitives/Dialog sizes',
+  id: 'primitives-dialog-sizes',
+  title: 'Primitives · Overlays/Dialog sizes',
   component: DialogContent,
   tags: ['autodocs'],
   parameters: {

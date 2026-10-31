@@ -67,8 +67,9 @@ describe('Input component', () => {
     it('darkens the border and adds the soft field shadow (no rest shadow, no bg tint)', () => {
       render(<Input placeholder="Placeholder" />);
       const input = screen.getByPlaceholderText('Placeholder');
-      expect(input).toHaveClass('hover:border-border-bold', 'hover:shadow-field-hover');
-      expect(input.className).not.toMatch(/(^|\s)shadow-/);
+      // field hover shadow under the theme bevel; at rest only the theme bevel (0 0 #0000 without one)
+      expect(input).toHaveClass('hover:border-border-bold', 'hover:shadow-[shadow:var(--bevel-input),theme(boxShadow.field-hover)]', 'shadow-[shadow:var(--bevel-input)]');
+      expect(input.className).not.toMatch(/(^|\s)shadow-(?!\[shadow:var\(--bevel-input\)\])/);
       expect(input.className).not.toMatch(/hover:bg-/);
     });
   });

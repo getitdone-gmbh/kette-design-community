@@ -1,10 +1,14 @@
+import type * as React from 'react';
 import { vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Bell } from 'lucide-react';
 
 import { AutosaveStatus } from './autosave-status';
+import { Button } from './button';
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from './navigation-menu';
 import { DesignSystemProvider } from './design-system-provider';
+import { SheetNavLink } from './sheet';
 import { ObjectIcon } from './object-icon';
 import {
   TimerPill,
@@ -65,6 +69,9 @@ describe('TopBar', () => {
   });
 });
 
+// The extra back link of a collapsed trail (below sm only) is not one of the drawn levels.
+const drawnLevels = () => screen.getAllByRole('listitem').filter((li) => !li.hasAttribute('data-back-link'));
+
 describe('TopBarBreadcrumb', () => {
   const items = [
     { label: 'vacancy', href: '/v' },
@@ -81,7 +88,7 @@ describe('TopBarBreadcrumb', () => {
 
   it('shows three levels at most and collapses the middle of longer trails', () => {
     render(<TopBarBreadcrumb items={[...items, { label: 'Tab' }]} />);
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(drawnLevels()).toHaveLength(3);
     expect(screen.getByText('vacancy')).toBeInTheDocument();
     expect(screen.getByText('Tab')).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByText('Demands')).not.toBeInTheDocument();
@@ -90,7 +97,7 @@ describe('TopBarBreadcrumb', () => {
 
   describe('maxLevels', () => {
     const trail = (count: number) => Array.from({ length: count }, (_, i) => ({ label: `Crumb ${i + 1}`, href: `/c${i + 1}` }));
-    const texts = () => screen.getAllByRole('listitem').map((li) => li.textContent);
+    const texts = () => drawnLevels().map((li) => li.textContent);
 
     it('keeps two items untouched with maxLevels 2', () => {
       render(<TopBarBreadcrumb items={trail(2)} maxLevels={2} />);
@@ -530,5 +537,240 @@ describe('TopBarMenuButton focus ring', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveClass('focus-visible:ring-text-inverse', 'focus-visible:ring-offset-background-inverse', 'text-text-inverse');
     expect(button).not.toHaveClass('focus-visible:ring-ring-default');
+  });
+});
+
+describe('TopBarMobileMenu 0.29 section jumps', () => {
+  it('starts on the first link, like a sheet', async () => {
+    const user = userEvent.setup();
+    render(<TopBarMobileMenu items={[{ label: 'Pricing', href: '#pricing' }, { label: 'Docs', href: '/docs' }]} />);
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveFocus();
+  });
+
+  it('closes, then scrolls to and focuses the section of a #hash link', async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    render(
+      <>
+        <TopBarMobileMenu items={[{ label: 'Pricing', href: '#pricing' }]} />
+        <section id="pricing" aria-label="Pricing section">
+          Pricing
+        </section>
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Pricing' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.getByLabelText('Pricing section')).toHaveFocus());
+    expect(scroll).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs the menu onNavigate (and a link onNavigate first) after the drawer is gone', async () => {
+    const user = userEvent.setup();
+    const all = vi.fn();
+    const own = vi.fn();
+    render(
+      <>
+        <TopBarMobileMenu
+          onNavigate={all}
+          items={[{ label: 'Pricing', href: '#pricing' }, { label: 'Team', href: '#team', onNavigate: own }]}
+        />
+        <section id="pricing">Pricing</section>
+        <section id="team">Team</section>
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Pricing' }));
+    await waitFor(() => expect(all).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Team' }));
+    await waitFor(() => expect(own).toHaveBeenCalledTimes(1));
+    expect(all).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the drawer open for a modified click and closes for a route link after the own onClick', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn((event: React.MouseEvent) => event.preventDefault());
+    render(<TopBarMobileMenu items={[{ label: 'Docs', href: '/docs', onClick }]} />);
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.keyboard('{Control>}');
+    await user.click(screen.getByRole('link', { name: 'Docs' }));
+    await user.keyboard('{/Control}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Docs' }));
+    expect(onClick).toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('hosts a SheetNavLink in its children', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(
+      <TopBarMobileMenu items={[]}>
+        <SheetNavLink href="#x" onNavigate={onNavigate}>
+          Jump
+        </SheetNavLink>
+      </TopBarMobileMenu>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Jump' }));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('TopBarBreadcrumb 0.29 narrow widths', () => {
+  const trail = [{ label: 'vacancy', href: '/v' }, { label: 'A very long middle crumb name', href: '/m' }, { label: 'Demands' }];
+
+  it('truncates every level with an ellipsis and keeps the full text as tooltip', () => {
+    render(<TopBarBreadcrumb items={trail} />);
+    const middle = screen.getByRole('link', { name: 'A very long middle crumb name' });
+    expect(middle).toHaveClass('truncate', 'min-w-0');
+    expect(middle).toHaveAttribute('title', 'A very long middle crumb name');
+  });
+
+  it('drops the root below sm with display none (not focusable) and keeps the parent as the back link', () => {
+    render(<TopBarBreadcrumb items={trail} />);
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveClass('max-sm:hidden');
+    expect(items[1]).not.toHaveClass('max-sm:hidden');
+    expect(items[2]).not.toHaveClass('max-sm:hidden');
+    expect(screen.getByText('Demands')).toHaveAttribute('aria-current', 'page');
+    const back = screen.getByRole('link', { name: 'A very long middle crumb name' });
+    expect(back).toHaveAttribute('href', '/m');
+    expect(back.querySelector('svg')).toHaveClass('sm:hidden');
+    expect(screen.getByRole('link', { name: 'vacancy' }).querySelector('svg')).toBeNull();
+  });
+
+  it('offers no back link when the level above has no target', () => {
+    render(<TopBarBreadcrumb items={[{ label: 'vacancy', href: '/v' }, { label: 'Plain' }, { label: 'Demands' }]} />);
+    expect(screen.getAllByRole('listitem')[1]).toHaveClass('max-sm:hidden');
+  });
+
+  it('adds the real parent as an extra back link when a collapsed trail does not draw it', () => {
+    const long = Array.from({ length: 5 }, (_, i) => ({ label: `Crumb ${i + 1}`, href: `/c${i + 1}` }));
+    render(<TopBarBreadcrumb items={long} maxLevels={3} />);
+    const extra = screen.getAllByRole('listitem').find((li) => li.hasAttribute('data-back-link'));
+    expect(extra).toHaveClass('sm:hidden');
+    expect(extra).toHaveTextContent('Crumb 4');
+  });
+
+  it('TopBarEnd collapses a marked action to its icon below sm', () => {
+    render(
+      <TopBarEnd data-testid="end">
+        <Button data-topbar-action="" icon={<Bell />}>
+          Ask
+        </Button>
+      </TopBarEnd>,
+    );
+    expect(screen.getByTestId('end').className).toContain('max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:text-[0px]');
+    expect(screen.getByRole('button', { name: 'Ask' })).toBeInTheDocument();
+  });
+
+  it('reaches a marked NavigationMenuTrigger at any depth and ignores its chevron as the icon', () => {
+    render(
+      <TopBarEnd data-testid="end">
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger data-topbar-action="" icon={<Bell />}>
+                Products
+              </NavigationMenuTrigger>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+      </TopBarEnd>,
+    );
+    const end = screen.getByTestId('end').className;
+    expect(end).toContain('max-sm:[&_[data-topbar-action]:has(svg:not([data-chevron]))]:text-[0px]');
+    expect(end).toContain('[&>[role=status]]:max-w-xs');
+    expect(screen.getByRole('button', { name: 'Products' })).toHaveAttribute('title', 'Products');
+  });
+
+  it('lets an AutosaveStatus chip shrink with an ellipsis and keeps its full text as tooltip', () => {
+    render(<AutosaveStatus state="dirty" />);
+    const status = screen.getByRole('status');
+    expect(status).toHaveClass('min-w-0', 'max-w-full');
+    expect(screen.getByText('Unsaved changes')).toHaveClass('min-w-0', 'truncate');
+    expect(screen.getByText('Unsaved changes')).toHaveAttribute('title', 'Unsaved changes');
+  });
+
+  it('hides the label of an AutosaveStatus by the width of the top bar, not the viewport, and keeps it as the accessible name (UX-030-01)', () => {
+    render(
+      <TopBarEnd data-testid="end">
+        <AutosaveStatus state="dirty" />
+      </TopBarEnd>,
+    );
+    const status = screen.getByRole('status');
+    // Container query: the label is drawn whole until the top bar (size container) is narrower than the md container screen.
+    expect(screen.getByText('Unsaved changes')).toHaveClass('[@container_topbar_(max-width:447px)]:sr-only');
+    // The ceiling under that width only fits the icon.
+    expect(screen.getByTestId('end').className).toContain('[@container_topbar_(max-width:447px)]:[&>[role=status]]:max-w-[var(--size-control-lg)]');
+    expect(screen.getByTestId('end').className).not.toContain('max-sm:[&>[role=status]');
+    expect(status).toHaveTextContent('Unsaved changes');
+    expect(status).toHaveAttribute('title', 'Unsaved changes');
+    expect(status.querySelector('[data-status-label]')).not.toBeNull();
+  });
+
+  it('makes the icon-only chip a button with a 44px touch hit area that opens the status text (UX-030-01)', async () => {
+    const user = userEvent.setup();
+    render(<AutosaveStatus state="dirty" />);
+    const trigger = screen.getByRole('button', { name: 'Unsaved changes' });
+    expect(trigger).toHaveClass('hidden', '[@container_topbar_(max-width:447px)]:block');
+    expect(trigger.className).toContain('[@media(pointer:coarse)]:h-[var(--size-touch-target-lg)]');
+    await user.click(trigger);
+    expect(await screen.findByText('Unsaved changes', { selector: 'p span' })).toBeInTheDocument();
+  });
+
+  it('offers Retry for error and offline when onRetry is given, in the popover and inline, and announces them as an alert (UX-030-01)', async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    render(<AutosaveStatus state="error" onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Save failed');
+    // Announced by the alert only: the status stays polite, its label is hidden from assistive technology (UX-030-06).
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('status').querySelector('[data-status-label]')).toHaveAttribute('aria-hidden', 'true');
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Save failed' }));
+    const retries = await screen.findAllByRole('button', { name: 'Try again' });
+    expect(retries.length).toBe(2);
+  });
+
+  it('adds no alert and no Retry for saved, saving and dirty', () => {
+    render(<AutosaveStatus state="dirty" onRetry={() => undefined} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('uses a custom string label as the tooltip of the chip and none for a node label', () => {
+    const { rerender } = render(<AutosaveStatus state="dirty" label="Draft not saved" />);
+    expect(screen.getByRole('status')).toHaveAttribute('title', 'Draft not saved');
+    rerender(<AutosaveStatus state="dirty" label={<b>Draft</b>} />);
+    expect(screen.getByRole('status')).not.toHaveAttribute('title');
+  });
+});
+
+describe('TopBarEnd action tooltip', () => {
+  it('gives a data-topbar-action button its text as title, unless it has one', () => {
+    render(
+      <TopBarEnd>
+        <Button data-topbar-action="" icon={<Bell />}>
+          Ask
+        </Button>
+        <Button data-topbar-action="" title="Own" icon={<Bell />}>
+          Other
+        </Button>
+      </TopBarEnd>,
+    );
+    expect(screen.getByRole('button', { name: 'Ask' })).toHaveAttribute('title', 'Ask');
+    expect(screen.getByRole('button', { name: 'Other' })).toHaveAttribute('title', 'Own');
+  });
+
+  it('shows the full text of the current page as tooltip', () => {
+    render(<TopBarBreadcrumb items={[{ label: 'vacancy', href: '/v' }, { label: 'Demands and contracts' }]} />);
+    expect(screen.getByText('Demands and contracts')).toHaveAttribute('title', 'Demands and contracts');
   });
 });

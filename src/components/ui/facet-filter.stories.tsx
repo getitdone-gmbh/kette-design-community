@@ -4,7 +4,8 @@ import { FacetFilter, FacetGroup, FacetOption } from './facet-filter';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Facet filter',
+  id: 'patterns-facet-filter',
+  title: 'Patterns · Data/Facet filter',
   component: FacetFilter,
   tags: ['autodocs'],
   args: {

@@ -326,6 +326,8 @@ export const labelsDe: Labels = {
   cookieClose: 'Cookie-Banner schließen',
   cookieSaveSelection: 'Auswahl speichern',
   cookieBack: 'Zurück',
+  cookieShowMore: 'Mehr anzeigen',
+  cookieShowLess: 'Weniger anzeigen',
   cookieAlwaysActive: 'Immer aktiv',
   cookieSettingsTitle: 'Cookie-Einstellungen',
   countdownDays: 'Tage',

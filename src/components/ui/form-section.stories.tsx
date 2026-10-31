@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './switch';
 
 const meta = {
-  title: 'Patterns/Form section',
+  id: 'patterns-form-section',
+  title: 'Patterns · Interface/Form section',
   component: FormSection,
   tags: ['autodocs'],
   argTypes: { layout: { control: 'select', options: ['one-column', 'two-column', 'two-column-fields', 'sheet'] } },

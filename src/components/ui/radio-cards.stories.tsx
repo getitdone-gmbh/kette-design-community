@@ -4,7 +4,8 @@ import { Building2, Cloud, Server, User } from 'lucide-react';
 import { RadioCard, RadioCardGroup } from './radio-cards';
 
 const meta = {
-  title: 'Patterns/Radio cards',
+  id: 'patterns-radio-cards',
+  title: 'Patterns · Interface/Radio cards',
   component: RadioCardGroup,
   tags: ['autodocs'],
   argTypes: { columns: { control: 'select', options: [1, 2] } },

@@ -345,6 +345,8 @@ const SidebarRailButton = React.forwardRef<HTMLAnchorElement & HTMLButtonElement
       'inline-flex aspect-square h-sidebar-rail-button shrink-0 items-center justify-center rounded-item text-sidebar-muted-foreground no-underline transition-colors',
       'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
       'data-[active]:bg-sidebar-accent data-[active]:text-sidebar-accent-foreground',
+      // Theme selection indicator and list hover (kette-tokens 5.26.0), nothing by default
+      '[&:not([data-active])]:hover:bg-[image:var(--image-sidebar-item-hover)] data-[active]:shadow-[shadow:inset_var(--indicator-selection-edge)_0_0_var(--indicator-selection-edge-color),inset_0_0_0_var(--indicator-selection-ring)_var(--indicator-selection-ring-color)]',
       '[&>svg]:h-icon-lg [&>svg]:w-icon-lg',
       focusRing,
       className,

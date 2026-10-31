@@ -18,6 +18,7 @@ const Checkbox = forwardRef<
   const size = sizeProp ?? (zero ? 'sm' : 'default');
   return (
   <CheckboxPrimitive.Root
+    data-slot="checkbox"
     ref={ref}
     className={cn(
       'peer',
@@ -38,12 +39,17 @@ const Checkbox = forwardRef<
       'focus-visible:ring-offset-background',
       'focus-visible:ring-ring-default',
       'focus-visible:border-ring',
+      'focus-visible:[--tw-ring-shadow:var(--tw-ring-inset)_0_0_0_calc(var(--size-focus-ring-width)+var(--tw-ring-offset-width))_var(--tw-ring-color),var(--glow-focus)]',
+      // Theme expression (kette-tokens 5.26.0): bevel at rest and checked, none by default
+      'shadow-[shadow:var(--bevel-checkbox)]',
+      'data-[state=checked]:shadow-[shadow:var(--bevel-checkbox-checked)]',
+      'data-[state=indeterminate]:shadow-[shadow:var(--bevel-checkbox-checked)]',
       'disabled:cursor-not-allowed',
       'disabled:opacity-disabled',
-      'data-[state=checked]:border-background-brand-bold-default',
+      'data-[state=checked]:border-border-control-checked',
       'data-[state=checked]:bg-background-brand-bold-default',
       'data-[state=checked]:text-text-on-brand',
-      'data-[state=indeterminate]:border-background-brand-bold-default',
+      'data-[state=indeterminate]:border-border-control-checked',
       'data-[state=indeterminate]:bg-background-brand-bold-default',
       'data-[state=indeterminate]:text-text-on-brand',
       className,

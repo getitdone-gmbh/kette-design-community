@@ -5,7 +5,8 @@ import { KpiStrip, MetricItem } from './metric';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/KPI strip',
+  id: 'patterns-kpi-strip',
+  title: 'Patterns · Data/KPI strip',
   component: MetricItem,
   tags: ['autodocs'],
   // onClick turns the item into a button, so it must not get an auto action arg

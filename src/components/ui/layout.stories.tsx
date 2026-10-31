@@ -6,7 +6,7 @@ const Box = ({ children }: { children: React.ReactNode }) => (
   <div className="typography-ui rounded-item bg-muted px-3 py-2 text-text-subtle-on-muted">{children}</div>
 );
 
-const meta = { title: 'Patterns/Layout', component: Stack, tags: ['autodocs'] } satisfies Meta<typeof Stack>;
+const meta = { id: 'patterns-layout', title: 'Patterns · Interface/Layout', component: Stack, tags: ['autodocs'] } satisfies Meta<typeof Stack>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

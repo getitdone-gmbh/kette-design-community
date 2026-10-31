@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarImage, AvatarOnlineIndicator, AvatarUpload } from './avatar';
 
 const meta = {
-  title: 'Primitives/Avatar',
+  id: 'primitives-avatar',
+  title: 'Primitives · Display/Avatar',
   component: Avatar,
   tags: ['autodocs'],
   argTypes: {
@@ -229,4 +230,24 @@ export const ProfileWithUpload: StoryObj<typeof Avatar> = {
       <AvatarUpload onClick={() => {}} />
     </Avatar>
   ),
+};
+
+// Upload gated by the plan: the button stays hoverable and focusable, a click or Enter calls onGatedClick (never onClick) and explains instead of opening the picker. The reason is also linked with aria-describedby.
+const GatedUpload = () => {
+  const [count, setCount] = useState(0);
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <Avatar size="profile">
+        <AvatarFallback size="profile" className="bg-muted text-text-subtle">AF</AvatarFallback>
+        <AvatarUpload aria-disabled="true" aria-describedby="upload-reason" onGatedClick={() => setCount((value) => value + 1)} />
+      </Avatar>
+      <p id="upload-reason" className="typography-text-small text-text-subtle">Changing the photo needs the Team plan.</p>
+      {/* The key makes the status a new node on every activation, so a repeat is announced again. */}
+      <p role="status" key={count} className="typography-text-small text-text-default">{count > 0 ? 'Not available on your plan.' : ''}</p>
+    </div>
+  );
+};
+
+export const ProfileUploadGated: StoryObj<typeof Avatar> = {
+  render: () => <GatedUpload />,
 };

@@ -24,7 +24,8 @@ const tabs = (
 );
 
 const meta = {
-  title: 'Patterns/Section header',
+  id: 'patterns-section-header',
+  title: 'Patterns · Interface/Section header',
   component: PanelSectionHeader,
   tags: ['autodocs'],
   args: { title: 'Team members', description: 'Manage your team members and their account permissions here.' },

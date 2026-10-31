@@ -37,7 +37,7 @@ const RadioGroupItem = React.forwardRef<
         'transition-[color,background-color,border-color,box-shadow]',
         'duration-150',
         'hover:border-checkbox-border-hover',
-        'data-[state=checked]:border-background-brand-bold-default',
+        'data-[state=checked]:border-border-control-checked',
         appearance === 'filled' && 'data-[state=checked]:bg-background-brand-bold-default',
         'focus-visible:outline-none',
         'focus-visible:ring-focus',

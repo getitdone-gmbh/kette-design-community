@@ -7,7 +7,8 @@ import { MilestoneTimeline, NotificationGroup, NotificationItem, NotificationLis
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Activity feed',
+  id: 'patterns-activity-feed',
+  title: 'Patterns · Data/Activity feed',
   component: Timeline,
   tags: ['autodocs'],
   // onRetry shows the error button

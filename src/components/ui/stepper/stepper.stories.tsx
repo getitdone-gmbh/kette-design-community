@@ -5,7 +5,8 @@ import { Button } from '../button';
 import { Step, StepItem, Stepper, useStepper } from './index';
 
 const meta = {
-  title: 'Primitives/Stepper',
+  id: 'primitives-stepper',
+  title: 'Primitives · Display/Stepper',
   component: Stepper,
   tags: ['autodocs'],
   argTypes: {},

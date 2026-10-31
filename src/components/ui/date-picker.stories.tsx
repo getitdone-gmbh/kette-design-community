@@ -8,14 +8,26 @@ import { DatePicker, DatePickerModal, DatePickerPanel, type DatePickerValue } fr
 const today = startOfDay(new Date());
 
 const meta = {
-  title: 'Primitives/DatePicker',
+  id: 'primitives-datepicker',
+  title: 'Primitives · Inputs/DatePicker',
   component: DatePicker,
   tags: ['autodocs'],
   args: { 'aria-label': 'Date' },
-  argTypes: { mode: { control: { type: 'select' }, options: ['single', 'range'] } },
+  argTypes: {
+    mode: { control: { type: 'select' }, options: ['single', 'range'], description: 'One date or a date range.', table: { defaultValue: { summary: 'single' } } },
+    defaultValue: { description: 'Date (or range) selected at the start; the picker keeps its own state.' },
+    'aria-label': { description: 'Accessible name of the trigger when there is no visible label.' },
+    placeholder: { description: 'Text of the trigger while nothing is selected.' },
+    disabled: { control: { type: 'boolean' }, description: 'Blocks the picker.', table: { defaultValue: { summary: 'false' } } },
+    invalid: { control: { type: 'boolean' }, description: 'Error border on the trigger.', table: { defaultValue: { summary: 'false' } } },
+    readOnly: { control: { type: 'boolean' }, description: 'Shows the value without letting it change.', table: { defaultValue: { summary: 'false' } } },
+    actions: { control: { type: 'boolean' }, description: 'Cancel and Apply row: picking only changes a draft until Apply.' },
+    presets: { description: 'Quick choices such as the last 7 days.' },
+  },
   decorators: [
-    (Story) => (
-      <div className="min-h-[28rem] w-72">
+    // The single story view keeps room for the open calendar; a docs page lets the stage grow when it opens.
+    (Story, { viewMode }) => (
+      <div className={viewMode === 'docs' ? 'w-72' : 'min-h-[28rem] w-72'}>
         <Story />
       </div>
     ),

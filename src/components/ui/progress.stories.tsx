@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Progress } from './progress';
 
 const meta = {
-  title: 'Primitives/Progress',
+  id: 'primitives-progress',
+  title: 'Primitives · Display/Progress',
   component: Progress,
   tags: ['autodocs'],
   args: { 'aria-label': 'Progress', value: 60 },

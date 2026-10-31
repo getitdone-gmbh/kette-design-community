@@ -23,7 +23,8 @@ import {
 } from './dropdown-menu';
 
 const meta = {
-  title: 'Primitives/DropdownMenu',
+  id: 'primitives-dropdownmenu',
+  title: 'Primitives · Overlays/DropdownMenu',
   component: DropdownMenu,
   tags: ['autodocs'],
   argTypes: {},

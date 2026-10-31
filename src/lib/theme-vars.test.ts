@@ -8,11 +8,13 @@ const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
 const declared = new Set([...read('styles/theme.css').matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
 // Set at runtime by Radix, not by the theme.
 const RUNTIME = /^--radix-/;
+// Set by components (Button sets --tracking-extra for filled buttons), referenced with a 0em fallback by the typography utilities.
+const COMPONENT_HOOKS = new Set(['--tracking-extra']);
 
 describe.each(['tailwind/tailwind.theme.cjs', 'tailwind/tailwind.preset.cjs', 'tailwind/preset.cjs'])('%s', (file) => {
   it('references only variables that styles/theme.css declares', () => {
     const refs = new Set([...read(file).matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]));
-    const missing = [...refs].filter((v) => !declared.has(v) && !RUNTIME.test(v)).sort();
+    const missing = [...refs].filter((v) => !declared.has(v) && !RUNTIME.test(v) && !COMPONENT_HOOKS.has(v)).sort();
     expect(missing).toEqual([]);
   });
 });

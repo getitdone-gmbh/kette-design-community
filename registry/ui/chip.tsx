@@ -454,7 +454,7 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
         data-disabled={disabled || undefined}
         data-invalid={invalid || undefined}
         data-selected={selected || undefined}
-        onClick={onClick}
+        onClick={disabled ? undefined : onClick}
         onKeyDown={handleKeyDown}
         className={cn(
           chipVariants({ variant: invalid ? 'destructive' : variant, size, preset: zero ? 'zero' : 'default', selected, tinted: tinted ?? (zero && statusVariant ? true : undefined), mutedText, category: invalid ? undefined : category, dashed, hit, chipStyle: invalid ? 'default' : chipStyle }),

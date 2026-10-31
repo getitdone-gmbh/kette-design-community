@@ -144,6 +144,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     const zero = usePreset() === 'zero';
     return (
       <nav
+        data-slot="sidebar"
         ref={ref}
         id={sidebarId}
         aria-label={ariaLabel}
@@ -152,6 +153,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         hidden={collapsed && !rail}
         className={cn(
           'group/sb flex w-[248px] shrink-0 flex-col gap-micro overflow-y-auto overflow-x-hidden',
+          // Theme expression (kette-tokens 5.26.0): sidebar image and edge bevel, none by default
+          'bg-[image:var(--image-sidebar)] shadow-[shadow:var(--bevel-sidebar)]',
           zero ? 'p-2 pb-3' : 'py-[10px] pl-[10px] pr-[8px]',
           'data-[rail]:w-sidebar-collapsed data-[rail]:overflow-x-hidden data-[rail]:px-[10px]',
           sidebarPositionClasses[position],
@@ -584,6 +587,8 @@ const SidebarNavItem = React.forwardRef<HTMLAnchorElement, SidebarNavItemProps>(
         className={cn(
           'flex h-[30px] items-center text-sidebar-foreground no-underline transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
           'data-[active]:bg-sidebar-accent data-[active]:text-sidebar-accent-foreground',
+          // Theme expression (kette-tokens 5.26.0): list hover image and selection indicator (edge, ring), nothing by default
+          '[&:not([data-active])]:hover:bg-[image:var(--image-sidebar-item-hover)] data-[active]:shadow-[shadow:inset_var(--indicator-selection-edge)_0_0_var(--indicator-selection-edge-color),inset_0_0_0_var(--indicator-selection-ring)_var(--indicator-selection-ring-color)]',
           'data-[disabled]:pointer-events-none data-[disabled]:text-text-disabled',
           'group-data-[rail]/sb:justify-center group-data-[rail]/sb:px-0',
           zero ? 'rounded-item' : 'rounded-[7px]',

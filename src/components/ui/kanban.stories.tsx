@@ -11,7 +11,8 @@ import { KanbanMoveToMenu } from './kanban-move-to-menu';
 import { ObjectIcon } from './object-icon';
 
 const meta = {
-  title: 'Patterns/Kanban',
+  id: 'patterns-kanban',
+  title: 'Patterns · Data/Kanban',
   component: Kanban,
   tags: ['autodocs'],
   // onMove enables drag (mouse, pen and touch long press) and the keyboard move model, onRetry shows the error button

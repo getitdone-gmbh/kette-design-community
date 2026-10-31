@@ -8,7 +8,8 @@ import { DesignSystemProvider } from './design-system-provider';
 import { Link } from './link';
 
 const meta = {
-  title: 'Patterns/Card header',
+  id: 'patterns-card-header',
+  title: 'Patterns · Interface/Card header',
   component: Card,
   tags: ['autodocs'],
   // onClick turns the card into a button, so it must not get an auto action arg
@@ -137,4 +138,42 @@ export const CompactDensity: Story = {
       </CardFooter>
     </Card>
   ),
+};
+
+// DR-0302-01-RO: the actions sit in the title row only. The description spans the full header width below it, so a narrow header (390) does not wrap a single word of it because of the actions.
+const HeaderActionsDescription = () => (
+  <div style={{ width: 390 }}>
+    <Card data-testid="card">
+      <CardHeader actions={<Button variant="outline" size="sm">Add rule</Button>}>
+        <CardTitle>Billing rules</CardTitle>
+        <CardDescription data-testid="description">Rules decide which hours are billed to which client and at what rate.</CardDescription>
+      </CardHeader>
+    </Card>
+  </div>
+);
+
+const checkDescriptionWidth = (canvasElement: HTMLElement) => {
+  const description = canvasElement.querySelector('[data-testid="description"]') as HTMLElement;
+  const actions = canvasElement.querySelector('[data-slot="card-actions"]') as HTMLElement;
+  const header = description.parentElement as HTMLElement;
+  const style = getComputedStyle(header);
+  const inner = header.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  // Full width of the header content, not the title column next to the actions.
+  if (Math.abs(description.getBoundingClientRect().width - inner) > 1) throw new Error(`description is ${description.getBoundingClientRect().width}px wide, the header content ${inner}px`);
+  // The actions stay in the title row: they are centred on the title, so they start above the description (a control taller than the title may reach into the gap by design).
+  if (actions.getBoundingClientRect().top >= description.getBoundingClientRect().top) throw new Error('the actions are not in the title row');
+};
+
+export const ActionsKeepDescriptionFullWidth390: Story = {
+  render: () => <HeaderActionsDescription />,
+  play: async ({ canvasElement }) => checkDescriptionWidth(canvasElement),
+};
+
+export const ActionsKeepDescriptionFullWidth390Zero: Story = {
+  render: () => (
+    <DesignSystemProvider preset="zero">
+      <HeaderActionsDescription />
+    </DesignSystemProvider>
+  ),
+  play: async ({ canvasElement }) => checkDescriptionWidth(canvasElement),
 };

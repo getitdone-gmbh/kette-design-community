@@ -14,7 +14,8 @@ const avatar = (
 );
 
 const meta = {
-  title: 'Patterns/Message',
+  id: 'patterns-message',
+  title: 'Patterns · Interface/Message',
   component: Message,
   tags: ['autodocs'],
   args: { author: 'Tobias Lindner', time: 'Friday 2:20pm', avatar, text: 'Hey Lena, can you please review the latest design when you can?' },

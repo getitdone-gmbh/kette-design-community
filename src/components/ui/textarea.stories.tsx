@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Textarea, TextareaProps } from './textarea';
 
 const meta = {
-  title: 'Primitives/Textarea',
+  id: 'primitives-textarea',
+  title: 'Primitives · Inputs/Textarea',
   component: Textarea,
   tags: ['autodocs'],
   // Every story field carries an accessible name.

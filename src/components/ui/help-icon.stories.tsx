@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { HelpIcon } from './help-icon';
 
 const meta = {
-  title: 'Primitives/HelpIcon',
+  id: 'primitives-helpicon',
+  title: 'Primitives · Display/HelpIcon',
   component: HelpIcon,
   tags: ['autodocs'],
   args: { content: 'Billable hours' },

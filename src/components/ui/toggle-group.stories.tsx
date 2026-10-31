@@ -5,7 +5,8 @@ import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 import { Button } from './button';
 
 const meta = {
-  title: 'Primitives/ToggleGroup',
+  id: 'primitives-togglegroup',
+  title: 'Primitives · Actions/ToggleGroup',
   component: ToggleGroup,
   tags: ['autodocs'],
   argTypes: {},
@@ -126,6 +127,32 @@ export const Segmented: Story = {
       </ToggleGroup>
     </div>
   ),
+};
+
+/** Inside a `flex-col` parent the track keeps its content width. Pass `fullWidth` to stretch it and share the width between the items. */
+export const SegmentedInColumn: Story = {
+  args: {} as never,
+  render: () => (
+    <div className="flex w-96 flex-col gap-4 p-6">
+      <ToggleGroup type="single" variant="segmented" defaultValue="month" aria-label="Billing period">
+        <ToggleGroupItem value="month">Monthly</ToggleGroupItem>
+        <ToggleGroupItem value="year">Yearly</ToggleGroupItem>
+      </ToggleGroup>
+      <ToggleGroup type="single" variant="segmented" fullWidth defaultValue="month" aria-label="Billing period full width">
+        <ToggleGroupItem value="month">Monthly</ToggleGroupItem>
+        <ToggleGroupItem value="year">Yearly</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const fit = canvasElement.querySelector<HTMLElement>('[aria-label="Billing period"]');
+    const full = canvasElement.querySelector<HTMLElement>('[aria-label="Billing period full width"]');
+    const parent = fit?.parentElement;
+    if (!fit || !full || !parent) throw new Error('segmented groups missing');
+    const inner = parent.clientWidth - 48;
+    if (fit.getBoundingClientRect().width >= inner - 8) throw new Error('segmented track stretched to the parent');
+    if (Math.abs(full.getBoundingClientRect().width - inner) > 2) throw new Error('fullWidth track does not fill the parent');
+  },
 };
 
 export const Outline: Story = {

@@ -58,6 +58,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 
     return (
       <div
+        data-slot="card"
         className={clsx(
           'card',
           'w-full',
@@ -79,8 +80,14 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           // Zero: one fixed 20px card padding instead of the responsive 16/24/32 scale.
           { 'p-5': zero && !image && !transparent },
           { 'p-md md:p-lg lg:p-xl': !zero && !image && !transparent },
-          { 'shadow-elevation-surface border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle': zero && !transparent && !noBorder },
-          { 'items-center gap-3 !border-none p-3 md:p-6 lg:p-10 text-center shadow': shadow },
+          { 'border-border-default data-[selected=true]:border-border-brand data-[selected=true]:bg-background data-[selected=true]:ring-[3px] data-[selected=true]:ring-background-brand-subtle': zero && !transparent && !noBorder },
+          { 'items-center gap-3 !border-none p-3 md:p-6 lg:p-10 text-center': shadow },
+          // Theme expression (kette-tokens 5.26.0), same as the composable Card: panel image and bevel over the card's own elevation; the defaults change nothing. A transparent card keeps its surface.
+          { 'shadow-[shadow:var(--bevel-card),var(--card-elevation)] bg-[image:var(--image-card)]': !transparent },
+          { 'shadow-[shadow:var(--card-elevation)]': transparent && shadow },
+          { '[--card-elevation:theme(boxShadow.DEFAULT)]': shadow },
+          { '[--card-elevation:theme(boxShadow.elevation-surface)]': !shadow && zero && !transparent && !noBorder },
+          { '[--card-elevation:0_0_#0000]': !shadow && !(zero && !transparent && !noBorder) },
           // CARD-A11Y-01 TOKEN GAP: `border-form-border-default` against `bg-background` computes
           // to ~1.23:1 in light mode (needs ≥3:1 for a UI-component boundary, WCAG 1.4.11) — the
           // resting Card border is effectively edge-less on a white page. Token-value defect (needs
@@ -134,7 +141,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         data-disabled={disabled || undefined}
         data-invalid={invalid || undefined}
         data-selected={selected || undefined}
-        onClick={onClick}
+        onClick={disabled ? undefined : onClick}
         onKeyDown={handleKeyDown}
         data-testid="card"
         {...props}

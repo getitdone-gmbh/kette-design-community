@@ -4,7 +4,8 @@ import { Badge } from './badge';
 import { Attribute, Attributes, SummaryList, SummaryListRow } from './description-list';
 
 const meta = {
-  title: 'Patterns/Description lists',
+  id: 'patterns-description-lists',
+  title: 'Patterns · Data/Description lists',
   component: Attributes,
   tags: ['autodocs'],
   argTypes: {

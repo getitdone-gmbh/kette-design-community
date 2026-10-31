@@ -5,7 +5,8 @@ import { Countdown } from './countdown';
 const inDays = (days: number) => new Date(Date.now() + days * 86400000 + 3723000);
 
 const meta = {
-  title: 'Data display/Countdown',
+  id: 'data-display-countdown',
+  title: 'Patterns · Data/Countdown',
   component: Countdown,
   tags: ['autodocs'],
   args: { to: inDays(12), label: 'Launch in' },

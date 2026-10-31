@@ -108,6 +108,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const decorated = Boolean(leadingIcon || trailing || leadingAddon || trailingAddon || hasActions);
     const field = (
       <input
+        data-slot="input"
         type={effectiveType}
         size={typeof sizeProp === 'number' ? sizeProp : undefined}
         className={cn(
@@ -133,7 +134,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           transitionBase,
           // Hover: darker border + soft field shadow (no resting shadow, no background tint).
           'hover:border-border-bold',
-          'hover:shadow-field-hover',
+          // Theme expression (kette-tokens 5.26.0): engraved bevel at rest and under the field hover shadow, data font and figures; the defaults change nothing
+          'shadow-[shadow:var(--bevel-input)]',
+          'hover:shadow-[shadow:var(--bevel-input),theme(boxShadow.field-hover)]',
+          '[font-family:var(--font-data),sans-serif]',
+          '[:where(&)]:[font-variant-numeric:var(--numeric-data)]',
           !zero && focusRingField,
           // Invalid state driven by `aria-invalid` (forwarded by <FormControl> or set directly).
           invalidRing,

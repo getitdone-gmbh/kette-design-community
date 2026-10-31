@@ -5,7 +5,8 @@ import { Button } from './button';
 import { ChatWindow, type ChatWindowProps } from './chat-window';
 
 const meta = {
-  title: 'Overlays/Chat window',
+  id: 'overlays-chat-window',
+  title: 'Patterns · Interface/Chat window',
   component: ChatWindow,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

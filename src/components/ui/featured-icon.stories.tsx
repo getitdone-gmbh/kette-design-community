@@ -4,7 +4,8 @@ import { CheckCircle2, Info, TriangleAlert } from 'lucide-react';
 import { FeaturedIcon } from './featured-icon';
 
 const meta = {
-  title: 'Primitives/Featured icon',
+  id: 'primitives-featured-icon',
+  title: 'Primitives · Display/Featured icon',
   component: FeaturedIcon,
   tags: ['autodocs'],
   args: { children: <Info />, tone: 'brand' },

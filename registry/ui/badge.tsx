@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 import { usePreset } from '@/components/ui/labels-context';
 
 const badgeVariants = cva(
-  'inline-flex h-badge max-w-full items-center whitespace-nowrap rounded-item border border-solid border-border px-gap-control text-xs leading-normal font-medium',
+  // Theme expression (kette-tokens 5.26.0): plaque bevel (ghost and link badges unframed) and the data voice (font, figures) with zero specificity, so consumer classes still win; the defaults change nothing
+  'inline-flex h-badge max-w-full items-center whitespace-nowrap rounded-item border border-solid border-border px-gap-control text-xs leading-normal font-medium shadow-[shadow:var(--bevel-badge)] [:where(&)]:[font-family:var(--font-data)] [:where(&)]:[font-variant-numeric:var(--numeric-data)]',
   {
     variants: {
       variant: {
@@ -15,10 +16,10 @@ const badgeVariants = cva(
         destructive: 'border-transparent bg-general-error-default text-general-error-on',
         outline: 'border-input bg-transparent text-foreground',
         ghost:
-          'border-transparent bg-badge-background-ghost-default text-badge-foreground-ghost-default',
+          '[--bevel-badge:0_0_transparent] border-transparent bg-badge-background-ghost-default text-badge-foreground-ghost-default',
         subtle:
           'border-transparent bg-badge-background-subtle-default text-badge-foreground-subtle-default',
-        link: 'border-transparent bg-badge-background-link-default text-badge-foreground-link-default',
+        link: '[--bevel-badge:0_0_transparent] border-transparent bg-badge-background-link-default text-badge-foreground-link-default',
         // Tinted status tones (container fill, on-container text) for read-only status labels.
         success: 'border-transparent bg-general-success-container text-general-success-on-container',
         warning: 'border-transparent bg-general-warning-container text-general-warning-on-container',
@@ -102,6 +103,8 @@ function Badge({ className, variant, bordered, readable, tinted, icon, dot, chil
   const text = isText ? String(children) : undefined;
   return (
     <div
+      data-slot="badge"
+      data-variant={variant ?? 'default'}
       className={cn(
         badgeVariants({ variant, bordered, readable, tinted, preset: zero ? 'zero' : 'default' }),
         hasAdornment && 'gap-1',

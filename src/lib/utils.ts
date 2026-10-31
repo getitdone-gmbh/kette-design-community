@@ -65,6 +65,8 @@ const twMerge = extendTailwindMerge<'typography'>({
       'max-w': [{ 'max-w': ['content'] }],
       // Type roles (`typography-ui`, `typography-detail`, ...) set a whole font shorthand. The later role wins, so a className override is not swallowed by the component's own role.
       typography: [{ typography: [() => true] }],
+      // Composed shadows of the theme expression roles (`shadow-[shadow:var(--bevel-…),…]`), so a consumer shadow class replaces them.
+      shadow: [{ shadow: [(v: string) => /^\[shadow:/.test(v)] }],
     },
   },
 });

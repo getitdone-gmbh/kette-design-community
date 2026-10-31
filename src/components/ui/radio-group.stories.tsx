@@ -5,7 +5,8 @@ import { RadioGroup, RadioGroupItem } from './radio-group';
 import { Spacing } from './spacing';
 
 const meta = {
-  title: 'Primitives/RadioGroup',
+  id: 'primitives-radiogroup',
+  title: 'Primitives · Inputs/RadioGroup',
   component: RadioGroup,
   tags: ['autodocs'],
   argTypes: {},

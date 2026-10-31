@@ -6,7 +6,8 @@ import { Button } from './button';
 import { FileUpload, FileUploadItem } from './file-upload';
 
 const meta = {
-  title: 'Primitives/FileUpload',
+  id: 'primitives-fileupload',
+  title: 'Primitives · Inputs/FileUpload',
   component: FileUpload,
   tags: ['autodocs'],
   // onFilesSelected is a data callback, not a rendering switch, so the default action arg is fine.

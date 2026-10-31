@@ -4,7 +4,8 @@ import { Checkbox } from './checkbox';
 import { Label } from './label';
 
 const meta = {
-  title: 'Primitives/Checkbox',
+  id: 'primitives-checkbox',
+  title: 'Primitives · Inputs/Checkbox',
   component: Checkbox,
   tags: ['autodocs'],
   // Every story checkbox carries an accessible name.

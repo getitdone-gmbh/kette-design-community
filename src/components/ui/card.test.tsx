@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { vi } from 'vitest';
@@ -48,7 +48,9 @@ describe('Card component', () => {
         'bg-card',
         'text-card-foreground',
         'border-border',
-        'shadow-xs',
+        // shadow-xs through the card elevation, with the theme bevel on top (kette-tokens 5.26.0)
+        '[--card-elevation:theme(boxShadow.xs)]',
+        'shadow-[shadow:var(--bevel-card),var(--card-elevation)]',
       );
       expect(card).not.toHaveClass('rounded-default');
     });
@@ -373,5 +375,14 @@ describe('Card density', () => {
     expect(screen.getByText('Last run 2 min ago')).toBeVisible();
     // The title centers in the first row, so it stays level with the actions when the row grows.
     expect(actions?.parentElement?.className).toContain('[&>:first-child:not([data-slot=card-actions])]:self-center');
+  });
+});
+
+describe('Card disabled click guard (0.28.1)', () => {
+  it('never calls onClick while disabled, even when the click is dispatched directly', () => {
+    const onClick = vi.fn();
+    render(<Card disabled onClick={onClick}>Body</Card>);
+    fireEvent.click(screen.getByText('Body'));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

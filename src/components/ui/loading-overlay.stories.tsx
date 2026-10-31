@@ -22,7 +22,8 @@ const TriggerDemo = (args: LoadingOverlayProps) => {
 };
 
 const meta = {
-  title: 'Feedback/Loading overlay',
+  id: 'feedback-loading-overlay',
+  title: 'Patterns · Interface/Loading overlay',
   component: LoadingOverlay,
   tags: ['autodocs'],
   parameters: { layout: 'centered' },

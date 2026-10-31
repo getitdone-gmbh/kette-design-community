@@ -4,7 +4,8 @@ import { ChangeEvent, useState } from 'react';
 import { PhoneInput } from '.';
 
 const meta = {
-  title: 'Primitives/PhoneInput',
+  id: 'primitives-phoneinput',
+  title: 'Primitives · Inputs/PhoneInput',
   component: PhoneInput,
   tags: ['autodocs'],
   argTypes: {},

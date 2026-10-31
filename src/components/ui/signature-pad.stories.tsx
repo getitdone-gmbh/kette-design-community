@@ -4,7 +4,8 @@ import * as React from 'react';
 import { SignaturePad, type SignaturePadHandle } from './signature-pad';
 
 const meta = {
-  title: 'Primitives/SignaturePad',
+  id: 'primitives-signaturepad',
+  title: 'Primitives · Inputs/SignaturePad',
   component: SignaturePad,
   tags: ['autodocs'],
   decorators: [

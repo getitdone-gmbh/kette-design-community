@@ -33,8 +33,11 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
     const size = sizeProp ?? (zero ? 'sm' : 'default');
     return (
     <SwitchPrimitives.Root
+      data-slot="switch"
       className={cn(
-        'peer inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-solid border-transparent transition-[color,background-color,border-color,box-shadow] duration-150 data-[state=unchecked]:hover:bg-switch-background-unchecked-hover data-[state=checked]:hover:bg-background-brand-bold-hover aria-[invalid=true]:border-destructive data-[readonly=true]:data-[state=checked]:hover:bg-background-brand-bold-default data-[readonly=true]:data-[state=unchecked]:hover:bg-switch-background-unchecked focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:cursor-not-allowed disabled:opacity-disabled data-[state=checked]:bg-background-brand-bold-default data-[state=unchecked]:bg-switch-background-unchecked',
+        'peer inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-solid border-transparent data-[state=checked]:border-border-control-checked transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none data-[state=unchecked]:hover:bg-switch-background-unchecked-hover data-[state=checked]:hover:bg-background-brand-bold-hover aria-[invalid=true]:border-destructive data-[readonly=true]:data-[state=checked]:hover:bg-background-brand-bold-default data-[readonly=true]:data-[state=unchecked]:hover:bg-switch-background-unchecked focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default focus-visible:[--tw-ring-shadow:var(--tw-ring-inset)_0_0_0_calc(var(--size-focus-ring-width)+var(--tw-ring-offset-width))_var(--tw-ring-color),var(--glow-focus)] disabled:cursor-not-allowed disabled:opacity-disabled data-[state=checked]:bg-background-brand-bold-default data-[state=unchecked]:bg-switch-background-unchecked',
+        // Theme expression (kette-tokens 5.26.0): bevel at rest and checked, none by default
+        'shadow-[shadow:var(--bevel-switch)] data-[state=checked]:shadow-[shadow:var(--bevel-switch-checked)]',
         switchSizes[size].root,
         'data-[readonly=true]:cursor-default data-[readonly=true]:opacity-70',
         className,
@@ -53,7 +56,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
     >
       <SwitchPrimitives.Thumb
         className={cn(
-          'pointer-events-none block rounded-full bg-background shadow-xs ring-0 transition-transform data-[state=unchecked]:translate-x-0',
+          'pointer-events-none block rounded-full bg-background shadow-xs ring-0 transition-transform duration-fast motion-reduce:transition-none data-[state=unchecked]:translate-x-0',
           switchSizes[size].thumb,
         )}
       />

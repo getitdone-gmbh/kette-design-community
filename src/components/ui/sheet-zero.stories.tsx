@@ -19,7 +19,8 @@ import {
 import { AutosaveStatus } from './autosave-status';
 
 const meta = {
-  title: 'Primitives/Sheet zero',
+  id: 'primitives-sheet-zero',
+  title: 'Primitives · Overlays/Sheet zero',
   component: SheetContent,
   tags: ['autodocs'],
   parameters: {

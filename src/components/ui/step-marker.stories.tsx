@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { StepMarker } from './step-marker';
 
 const meta = {
-  title: 'Primitives/StepMarker',
+  id: 'primitives-stepmarker',
+  title: 'Primitives · Display/StepMarker',
   component: StepMarker,
   tags: ['autodocs'],
   args: { step: 1, state: 'upcoming', size: 'md' },

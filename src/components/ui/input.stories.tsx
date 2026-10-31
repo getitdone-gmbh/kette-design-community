@@ -5,17 +5,38 @@ import { Copy, Mail } from 'lucide-react';
 import { Button } from './button';
 
 const meta = {
-  title: 'Primitives/Input',
+  id: 'primitives-input',
+  title: 'Primitives · Inputs/Input',
   component: Input,
   tags: ['autodocs'],
   // Every story field carries an accessible name; stories that show a visible label override it.
   args: { 'aria-label': 'Example field' },
   argTypes: {
+    'aria-label': { description: 'Accessible name when there is no visible label.' },
+    value: { description: 'Controlled value of the field.' },
+    clamp: { description: 'Fluid font size that follows the viewport.' },
     disabled: {
       control: {
         type: 'boolean',
       },
+      description: 'Blocks input and dims the field.',
+      table: { defaultValue: { summary: 'false' } },
     },
+    placeholder: { description: 'Hint shown while the field is empty.' },
+    size: { description: 'Field height (xs to lg), or the number of visible characters.' },
+    compact: { description: 'Denser field height.' },
+    inputClassName: { description: 'Class names for the field itself (className lands on the wrapper).' },
+    appearance: { description: 'Read-only look without the field border.' },
+    loading: { description: 'Shows a spinner at the end of the field.' },
+    success: { description: 'Success border and check mark.' },
+    leadingIcon: { description: 'Icon before the text.' },
+    trailingIcon: { description: 'Icon after the text.' },
+    leadingAddon: { description: 'Attached block before the field, for a prefix such as a currency.' },
+    trailingAddon: { description: 'Attached block after the field, for a suffix such as a unit.' },
+    revealable: { description: 'Password field with a show and hide button.' },
+    showPasswordLabel: { description: 'Label of the show button.' },
+    hidePasswordLabel: { description: 'Label of the hide button.' },
+    trailingAction: { description: 'Action control at the end of the field.' },
     'aria-invalid': {
       control: { type: 'boolean' },
       description: 'Forces the error border/ring treatment (also set automatically by <FormControl> on a validation error).',

@@ -341,6 +341,8 @@ export interface Labels {
   cookieClose: string;
   cookieSaveSelection: string;
   cookieBack: string;
+  cookieShowMore: string;
+  cookieShowLess: string;
   cookieAlwaysActive: string;
   cookieSettingsTitle: string;
   countdownDays: string;

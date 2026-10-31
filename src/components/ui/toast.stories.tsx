@@ -14,7 +14,8 @@ import { TOAST_INSET_PROPERTY, useToastInset } from '../../lib/toast-inset';
 import { useToast } from './use-toast';
 
 const meta = {
-  title: 'Primitives/Toast',
+  id: 'primitives-toast',
+  title: 'Primitives · Display/Toast',
   component: Toast,
   tags: ['autodocs'],
   argTypes: {},

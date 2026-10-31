@@ -39,7 +39,8 @@ const columns: DataGridColumn<Demand>[] = [
 ];
 
 const meta = {
-  title: 'Patterns/Data grid',
+  id: 'patterns-data-grid',
+  title: 'Patterns · Data/Data grid',
   component: DataGrid,
   tags: ['autodocs'],
 } satisfies Meta<typeof DataGrid>;

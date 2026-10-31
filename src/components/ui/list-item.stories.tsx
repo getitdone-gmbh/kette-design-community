@@ -7,7 +7,8 @@ import { Chip } from './chip';
 import { ListItem } from './list-item';
 
 const meta = {
-  title: 'Patterns/List item',
+  id: 'patterns-list-item',
+  title: 'Patterns · Interface/List item',
   component: ListItem,
   tags: ['autodocs'],
   // onClick turns the row into a button, so it must not get an auto action arg

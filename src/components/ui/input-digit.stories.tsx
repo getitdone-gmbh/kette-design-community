@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { InputDigit } from './input-digit';
 
 const meta = {
-  title: 'Primitives/InputDigit',
+  id: 'primitives-inputdigit',
+  title: 'Primitives · Inputs/InputDigit',
   component: InputDigit,
   tags: ['autodocs'],
   // onValueChange and onComplete are data callbacks and do not change rendering.

@@ -6,7 +6,7 @@ const mix = (fill: Rgb, ink: Rgb, alpha: number): Rgb => [0, 1, 2].map((i) => fi
 const PAIRS: Array<[string, string, string]> = [
   ['default', 'button-background-default', 'button-foreground-default'],
   ['primary', 'button-background-primary-default', 'button-foreground-primary-default'],
-  ['destructive', 'general-error-default', 'general-error-on'],
+  ['destructive', 'background-destructive-bold-default', 'text-on-destructive'],
 ];
 
 describe('Filled button count contrast', () => {

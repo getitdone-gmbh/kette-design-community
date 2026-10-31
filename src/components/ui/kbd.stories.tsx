@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Kbd, KbdGroup } from './kbd';
 
 const meta = {
-  title: 'Primitives/Kbd',
+  id: 'primitives-kbd',
+  title: 'Primitives · Display/Kbd',
   component: Kbd,
   tags: ['autodocs'],
   args: { children: 'Ctrl K' },

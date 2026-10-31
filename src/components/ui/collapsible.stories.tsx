@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible';
 
 const meta = {
-  title: 'Primitives/Collapsible',
+  id: 'primitives-collapsible',
+  title: 'Primitives · Layout/Collapsible',
   component: Collapsible,
   tags: ['autodocs'],
   argTypes: {},

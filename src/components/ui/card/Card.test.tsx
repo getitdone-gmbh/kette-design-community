@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { Card } from './Card';
@@ -157,5 +157,14 @@ describe('Card text colour', () => {
     const card = screen.getByTestId('card');
     expect(card).toHaveClass('text-inherit');
     expect(card).not.toHaveClass('text-foreground');
+  });
+});
+
+describe('Card disabled click guard (0.28.1)', () => {
+  it('never calls onClick while disabled, even when the click is dispatched directly', () => {
+    const onClick = vi.fn();
+    render(<Card disabled onClick={onClick}>Body</Card>);
+    fireEvent.click(screen.getByText('Body'));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

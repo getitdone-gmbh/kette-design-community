@@ -6,7 +6,8 @@ import { DataStatePanel } from './data-state-panel';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Data state panel',
+  id: 'patterns-data-state-panel',
+  title: 'Patterns · Data/Data state panel',
   component: DataStatePanel,
   tags: ['autodocs'],
   parameters: {

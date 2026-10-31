@@ -4,7 +4,8 @@ import { SignatureBox } from './signature-box';
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Primitives/SignatureBox',
+  id: 'primitives-signaturebox',
+  title: 'Primitives · Inputs/SignatureBox',
   component: SignatureBox,
   tags: ['autodocs'],
   // onSign turns the open box into a button, so it must not get an automatic action arg.

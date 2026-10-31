@@ -18,7 +18,8 @@ const actions = (
 );
 
 const meta = {
-  title: 'Patterns/Page header',
+  id: 'patterns-page-header',
+  title: 'Patterns · Interface/Page header',
   component: PageHeader,
   tags: ['autodocs'],
   args: { title: 'Companies', subtitle: 'All companies in this workspace. 112 records.', actions },

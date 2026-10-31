@@ -10,7 +10,8 @@ const cell = (title: string, text: string) => (
 );
 
 const meta = {
-  title: 'Layout/Cell grid',
+  id: 'layout-cell-grid',
+  title: 'Patterns · Interface/Cell grid',
   component: CellGrid,
   tags: ['autodocs'],
   argTypes: {

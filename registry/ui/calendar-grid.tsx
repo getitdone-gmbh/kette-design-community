@@ -13,7 +13,7 @@ import {
   type TdHTMLAttributes,
 } from 'react';
 
-import { focusRing, transitionBase } from '@/lib/recipes';
+import { focusRing, scrollRegionFocusVisible, transitionBase } from '@/lib/recipes';
 import { cn } from '@/lib/utils';
 import { DataStatePanel, SkeletonBar } from '@/components/ui/data-state-panel';
 import { edgeClass, useEdge } from '@/components/ui/edge';
@@ -189,7 +189,7 @@ const WeekGrid = forwardRef<HTMLDivElement, WeekGridProps>(
         role={scroll.overflowing && ariaLabel ? 'region' : undefined}
         aria-label={scroll.overflowing ? ariaLabel : undefined}
         tabIndex={scroll.overflowing ? 0 : undefined}
-        className={cn('overflow-x-auto rounded-surface border border-solid bg-card focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-inset focus-visible:ring-ring-default', edge, className)}
+        className={cn('overflow-x-auto rounded-surface border border-solid bg-card', ...scrollRegionFocusVisible, edge, className)}
         {...props}
       >
         <WeekGridLayoutContext.Provider value={layout}>

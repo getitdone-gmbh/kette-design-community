@@ -206,6 +206,11 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [storedKey]);
     const [deferred, setDeferred] = React.useState(false);
+    // Below sm the description is clamped to two lines (the card stays small and covers little of the page); a toggle shows the rest. It only appears when the text really is longer.
+    const [expanded, setExpanded] = React.useState(false);
+    const [clamped, setClamped] = React.useState(false);
+    const descriptionRef = React.useRef<HTMLDivElement | null>(null);
+    const detailsId = `${titleId}-details`;
     const headingRef = React.useRef<HTMLElement | null>(null);
     const sectionRef = React.useRef<HTMLElement | null>(null);
     const settingsButtonRef = React.useRef<HTMLButtonElement | null>(null);
@@ -299,6 +304,16 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [],
     );
+    // Measures whether the clamped description hides text. Runs while collapsed; an expanded description keeps its toggle.
+    React.useEffect(() => {
+      const node = descriptionRef.current;
+      if (!node || expanded || typeof ResizeObserver === 'undefined') return undefined;
+      const measure = () => setClamped(node.scrollHeight > node.clientHeight + 1);
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(node);
+      return () => observer.disconnect();
+    }, [expanded, visible, view, description]);
     const reserveScrollSpace = visible && positioning === 'fixed';
     // On phones a toast rides above the fixed banner instead of covering its buttons.
     useToastInset(sectionRef, { enabled: reserveScrollSpace });
@@ -416,11 +431,11 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
         aria-label={heading ? undefined : l.cookieConsentRegion}
         aria-labelledby={heading ? titleId : undefined}
         className={cn(
-          'relative z-banner flex flex-col gap-4 rounded-surface border border-solid border-border bg-popover p-6 text-popover-foreground shadow-elevation-raised',
+          'relative z-banner flex flex-col gap-4 rounded-surface border border-solid border-border bg-popover p-6 text-popover-foreground shadow-elevation-raised max-sm:gap-3 max-sm:p-4',
           programmaticFocusRing,
           wide ? 'max-w-4xl' : 'max-w-reading sm:flex-row sm:items-end',
           wide && !inSettings && 'md:flex-row md:items-end',
-          positioning === 'fixed' && (wide ? 'fixed inset-x-4 bottom-4 mx-auto' : 'fixed bottom-4 left-4 right-4 sm:right-auto sm:w-full'),
+          positioning === 'fixed' && (wide ? 'fixed inset-x-4 bottom-4 mx-auto' : 'fixed bottom-4 left-4 right-4 sm:right-auto sm:w-[calc(100%-2rem)]'),
           positioning === 'static' && 'w-full',
           positioning === 'static' && wide && 'mx-auto',
           className,
@@ -430,7 +445,8 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
         {closable ? (
           <ButtonClose aria-label={l.cookieClose} className="absolute right-3 top-3" onClick={close} />
         ) : null}
-        <div className={cn('flex min-w-0 flex-1 flex-col gap-2', closable && 'pr-8')}>
+        {/* Below sm the text area has a ceiling and scrolls inside the card, so a long description or a list of categories never pushes the buttons off a short screen. */}
+        <div className={cn('flex min-w-0 flex-1 flex-col gap-2 max-sm:max-h-[min(50dvh,20rem)] max-sm:overflow-y-auto', closable && 'pr-8')}>
           {heading ? (
             <Title ref={headingRef} id={titleId} tabIndex={-1} className={cn('typography-ui-semibold m-0', programmaticFocusRing)}>
               {heading}
@@ -477,11 +493,19 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
               })}
             </ul>
           ) : (
-            <div className={cn('typography-ui text-text-subtle', inlineLink)}>{description}</div>
+            <div
+                ref={descriptionRef}
+                id={detailsId}
+                // A link inside the clamped text that takes keyboard focus opens the text, so it is never focused out of sight.
+                onFocus={() => setExpanded(true)}
+                className={cn('typography-ui text-text-subtle', inlineLink, !expanded && 'max-sm:line-clamp-2')}
+              >
+                {description}
+              </div>
           )}
         </div>
         {inSettings ? (
-          <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid shrink-0 grid-cols-2 items-stretch gap-3 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
             <Button type="button" variant="outline" size={buttonSize} onClick={closeSettings}>
               {l.cookieBack}
             </Button>
@@ -493,16 +517,30 @@ const CookieConsent = React.forwardRef<HTMLElement, CookieConsentProps>(
             </Button>
           </div>
         ) : (
-          <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <Button type="button" variant={decisionVariant} size={buttonSize} onClick={decline}>
+          // Below sm the two decisions stay full width (a label never wraps) and the settings link and the Show more toggle share the row below them, as links of 32px: the card was 370px tall at 320x568 with three full stacked buttons and no clamp.
+          <div className="grid shrink-0 grid-cols-2 items-stretch gap-3 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
+            <Button type="button" variant={decisionVariant} size={buttonSize} className="max-sm:col-span-2" onClick={decline}>
               {l.declineNonEssentialCookies}
             </Button>
-            <Button type="button" variant={decisionVariant} size={buttonSize} onClick={accept}>
+            <Button type="button" variant={decisionVariant} size={buttonSize} className="max-sm:col-span-2" onClick={accept}>
               {l.acceptAllCookies}
             </Button>
             {onCustomize || hasSettings ? (
-              <Button ref={settingsButtonRef} type="button" variant="link" size={buttonSize} onClick={openSettings}>
+              <Button ref={settingsButtonRef} type="button" variant="link" size={buttonSize} className="max-sm:col-start-1 max-sm:justify-self-start" onClick={openSettings}>
                 {l.cookieSettings}
+              </Button>
+            ) : null}
+            {clamped || expanded ? (
+              <Button
+                type="button"
+                variant="link"
+                size={buttonSize}
+                aria-expanded={expanded}
+                aria-controls={detailsId}
+                className="max-sm:col-start-2 max-sm:justify-self-end sm:hidden"
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded ? l.cookieShowLess : l.cookieShowMore}
               </Button>
             ) : null}
           </div>

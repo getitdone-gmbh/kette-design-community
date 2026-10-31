@@ -5,7 +5,8 @@ import { BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcrumbs, type B
 import { DesignSystemProvider } from './design-system-provider';
 
 const meta = {
-  title: 'Patterns/Breadcrumbs',
+  id: 'patterns-breadcrumbs',
+  title: 'Patterns · Interface/Breadcrumbs',
   component: Breadcrumbs,
   tags: ['autodocs'],
   args: { type: 'text', divider: 'chevron' },

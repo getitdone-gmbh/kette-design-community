@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Skeleton, SkeletonProps } from './skeleton';
 
 const meta = {
-  title: 'Primitives/Skeleton',
+  id: 'primitives-skeleton',
+  title: 'Primitives · Display/Skeleton',
   component: Skeleton,
   tags: ['autodocs'],
   argTypes: {},

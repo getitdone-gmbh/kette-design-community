@@ -23,7 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsList, TabsTrigger } from './tabs';
 
 const meta = {
-  title: 'Primitives/Dialog',
+  id: 'primitives-dialog',
+  title: 'Primitives · Overlays/Dialog',
   component: Dialog,
   tags: ['autodocs'],
   argTypes: {},

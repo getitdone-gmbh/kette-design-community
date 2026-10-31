@@ -20,7 +20,8 @@ import {
 import { Step, Stepper } from './stepper';
 
 const meta = {
-  title: 'Primitives/Sheet card',
+  id: 'primitives-sheet-card',
+  title: 'Primitives · Overlays/Sheet card',
   component: SheetContent,
   tags: ['autodocs'],
   parameters: {

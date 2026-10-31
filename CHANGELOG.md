@@ -2,6 +2,48 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.4.6
+
+Synced from kette-design-enterprise 0.31.0 and kette-tokens 5.26.0 (library changelogs 0.27.19 to 0.31.0, token changelogs 5.25.0 and 5.26.0). Only the changes to components and theme parts that are in this package are listed.
+
+### Components
+
+- **Theme expression** (kette-tokens 5.26.0): `Button` (gradient and bevel per variant and state over its own elevation, filled button font, case, tracking and text shadow), `Card` and the content `Card`, `Dialog`, `Sheet`, `Tabs`, `Table` header, `TopBar`, `Sidebar`, `Badge`, `Alert`, `Input`, `Checkbox`, `Switch` and `FileIcon` read the new expression roles (`image-*`, `bevel-*`, `frame-*`, `glow-focus`, `font-display`, `font-button-filled`, `font-tab`, `font-data`). In the zero theme every role has its neutral default, so the look does not change.
+- **Checked controls**: `Checkbox`, `RadioGroupItem`, the radio mark of `RadioCards` and `Switch` take their border from `border-border-control-checked` (an alias of the brand fill in zero, no visible change).
+- **`Button` `outline-destructive`**: text and border on `text-text-destructive` and `border-border-destructive` instead of the fill token. **`FileIcon`** error tag text on `text-text-on-destructive`.
+- **`Sheet`**: opens on the first visible focusable element, links included; the close button is first in the tab order; `focusOnOpen={false}` focuses the sheet container; `SheetHeader` keeps a long title clear of the close button. New **`SheetNavLink`** for section jumps (closes the sheet, waits for the scroll lock, scrolls with `scroll-mt-*`, focuses the section; `variant="nav"`, `closeOnNavigate`, `onNavigate`). New lib module `first-focusable`.
+- **`TopBar`**: `TopBarMobileMenu` links are `SheetNavLink`s (`#section` jumps, `onNavigate`, new type `TopBarMobileMenuLink`); `TopBarBreadcrumb` truncates every level, the middle levels give way first, below 640px the level above stays as a back link; `data-topbar-action` collapses labelled buttons and `NavigationMenuTrigger` to their icon below sm; `TopBar` is a named size container.
+- **`AutosaveStatus`**: the label hides by the width of its top bar (named container), not by the viewport, and always shows outside a top bar; a single polite live region, no double announcement.
+- **`Tabs` `line`**: one scrolling row on phones with the active tab centred and kept clear of the edge fades; full width by default (pass `className="w-auto"` for an inline list); zero line tabs keep 2px at the ends. **`SecondaryNav`**: 44px touch target under `(pointer: coarse)`, active item centred in the row, arrow keys scroll the column; **`SecondaryNavLayout`** gets `title` and `actions` slots for the column header. New lib module `row-scroll`.
+- **`Table`**: the scroll region draws its focus as a complete inset outline above the sticky header (`z-sticky`, `isolate`); `TableEmpty` is centred in the visible width.
+- **`SingleSelect`** and **`MultiSelect`**: every internal button is `type="button"` (no accidental form submit), the combobox has an `id`, Enter works on chevron and remove button, Escape closes the sheet and the Add dialog, the chevron name includes the field label, the chevron focus ring is no longer clipped. Same `type="button"` fix in `Carousel`, `Chip`, `PhoneInput`, `KanbanMoveToMenu`, `Versions`, `ButtonGroup` and others.
+- **`Select`**: `size="xs"` and `"sm"` triggers use `text-ui` at every width.
+- **Gated controls**: `AvatarUpload`, `Link` and `ButtonGroupItem` with `aria-disabled` keep pointer events; the click goes to the new `onGatedClick` instead of `onClick`.
+- **`ToggleGroup` segmented**: content width by default, new `fullWidth` prop for the stretched look.
+- **`Accordion`** (zero): the trigger keeps 8px above and below a wrapped question. **`CardHeader`**: `actions` sit in the title row only, the description gets the full width.
+- **`CookieConsent`**: compact on phones (less padding, "Show more" toggle). **`Notification`**: inverse description and progress label on `text-text-inverse-subtle`; close-button space only when dismissible; inverse actions wrap.
+- **`NavigationMenu`**, **`Breadcrumb`** (`min-w-0` items), **`ScrollArea`**, **`Multiselect`**, **`Input`**, **`labels`** (new strings for the select, top bar and cookie changes), `lib/nested-layer` (`data-persistent-list`), `lib/recipes`, `lib/utils`.
+- Tests: the library tests of these files, `form-buttons.test.tsx`, `compiled-classes-028`, `-0281`, `-0290`, `-0291`, `-0300`. Adapted to the one theme this package ships: `notification.test.tsx` (inverse-subtle contrast read from `styles/theme.css`), `theme-expression.test.ts` (roles read from `styles/theme.css`), `confirm-dialog.test.tsx` (destructive fill class). The zero-only versions of `button-sizes`, `small-sizes`, `progress-contrast` and `text-pairs-contrast` keep their zero values (unchanged in zero).
+- Not taken: the `UntitledIcon` removal and `BurgerBar` (not in this package), the global base CSS of the library (`html`/`body` overflow, the `h1` to `h3` display voice, which comes with the token preset here), `root-overflow.test.ts`, the all-theme tables of the size and contrast tests, the Storybook theme toolbar entries and fonts of the new themes, visual baselines and review probes.
+
+### Theme and Tailwind preset
+
+- `styles/theme.css` from kette-tokens 5.26.0 (zero): the expression roles with their neutral defaults, `--semantic-border-control-checked`, and zero letter spacings written as `0em`. No colour value of zero changed.
+- `tailwind/tailwind.theme.cjs` and `tailwind/tailwind.preset.cjs` copied again: `border-border-control-checked`, `font-display`, `font-button-filled`, `font-tab`, `font-data`, the `image-*`, `bevel-*` and `frame-*` utilities, typography classes add `--tracking-extra`, the display voice base style for `h1` to `h3`. Like windows-95 before, the token preset lists the new generic themes; `styles/theme.css` stays zero only. `tailwind/preset.cjs` is unchanged. `npm run theme:prune` removes nothing. `styles/document-surface.css` regenerated. `scripts/theme-pairs.mjs` unchanged (kette-tokens `color-pairs.js` unchanged).
+- `src/lib/theme-vars.test.ts` accepts `--tracking-extra`, which components set and the typography utilities read with a `0em` fallback.
+
+### Storybook
+
+- 130 story files with 1141 stories (new: `modal-scroll-lock.stories.tsx`), same 9 skipped. `scripts/sync-stories.mjs` gives the three render-only FAQ stories of Accordion `args` for the type check.
+
+### Registry
+
+- `public/r` rebuilt (155 files): new items `first-focusable` and `row-scroll` (dependencies of `sheet`, `tabs` and `secondary-nav`), 47 items changed.
+
+### Sellability
+
+- No consumer or customer names added; example data stays on the shared cast. Git history is unchanged.
+
 ## 0.4.5
 
 No component or theme changes, same sources as 0.4.4 (kette-design-enterprise 0.27.18, kette-tokens 5.24.0). First release published by the release workflow: npmjs.com with provenance, GitHub Packages and a GitHub release from one tag.

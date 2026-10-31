@@ -4,7 +4,8 @@ import * as React from 'react';
 import { RatingInput } from './rating-input';
 
 const meta = {
-  title: 'Primitives/RatingInput',
+  id: 'primitives-ratinginput',
+  title: 'Primitives · Inputs/RatingInput',
   component: RatingInput,
   tags: ['autodocs'],
   args: { 'aria-label': 'Quality', defaultValue: 3 },

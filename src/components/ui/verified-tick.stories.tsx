@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { VerifiedTick, verifiedTickSizes, type VerifiedTickSize } from './verified-tick';
 
 const meta = {
-  title: 'Primitives/VerifiedTick',
+  id: 'primitives-verifiedtick',
+  title: 'Primitives · Display/VerifiedTick',
   component: VerifiedTick,
   tags: ['autodocs'],
   argTypes: { size: { control: { type: 'select' }, options: Object.keys(verifiedTickSizes) } },

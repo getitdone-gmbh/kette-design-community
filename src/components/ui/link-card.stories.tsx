@@ -4,7 +4,8 @@ import { Briefcase } from 'lucide-react';
 import { LinkCard } from './link-card';
 
 const meta = {
-  title: 'Cards/Link card',
+  id: 'cards-link-card',
+  title: 'Patterns · Interface/Link card',
   component: LinkCard,
   tags: ['autodocs'],
   args: { href: '#services', title: 'Product development', description: 'From first prototype to a maintained product.' },

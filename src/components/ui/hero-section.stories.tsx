@@ -5,7 +5,8 @@ import { Button } from './button';
 import { HeroSection } from './hero-section';
 
 const meta = {
-  title: 'Patterns/Hero section',
+  id: 'patterns-hero-section',
+  title: 'Patterns · Interface/Hero section',
   component: HeroSection,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

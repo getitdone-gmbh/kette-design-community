@@ -12,7 +12,8 @@ const DismissibleDemo = (args: CookieConsentProps) => {
 };
 
 const meta = {
-  title: 'Overlays/Cookie consent',
+  id: 'overlays-cookie-consent',
+  title: 'Patterns · Interface/Cookie consent',
   component: CookieConsent,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },
@@ -57,6 +58,24 @@ const categories = [
 
 export const WithSettingsView: Story = {
   args: { layout: 'centered-wide', closable: true, categories, onSave: () => undefined },
+};
+
+// The phone card (320 and 390): two lines of text with a Show more toggle, decline and accept side by side, settings on the row below. It stays below half of a 568px screen instead of covering most of it.
+export const CompactOnPhone: Story = {
+  args: {
+    positioning: 'fixed',
+    onCustomize: () => undefined,
+    description: (
+      <>
+        We set cookies that are needed to run the site. With your consent we also measure how the site is used, remember your language and show you content that fits. You can change your choice at any time in the cookie settings. See our <Link href="/privacy">privacy policy</Link> and our <Link href="/imprint">imprint</Link>.
+      </>
+    ),
+  },
+  render: (args) => (
+    <div className="h-[568px] overflow-hidden">
+      <CookieConsent {...args} />
+    </div>
+  ),
 };
 
 // Returning visitor: the settings view starts from the stored choice (`initialConsent`, uncontrolled). Use `value` with `onValueChange` to control the switches.

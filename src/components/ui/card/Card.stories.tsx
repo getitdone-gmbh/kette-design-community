@@ -4,10 +4,19 @@ import { Card } from './Card';
 import { CardProps } from './card.interface';
 
 const meta = {
-  title: 'Primitives/Card',
+  id: 'primitives-card',
+  title: 'Primitives · Display/Card',
   component: Card,
   tags: ['autodocs'],
   argTypes: {
+    children: { description: 'Content of the card.' },
+    image: { description: 'Image shown above the content.' },
+    isFluid: { description: 'Stretches the card to the full width of its container.' },
+    transparent: { description: 'No surface fill; the text colour is inherited.' },
+    noBorder: { description: 'Removes the border.' },
+    shadow: { description: 'Adds an elevation shadow.' },
+    className: { description: 'Extra class names for the card.' },
+    style: { description: 'Inline styles for the card.' },
     selected: { control: 'boolean' },
     disabled: { control: 'boolean' },
     invalid: { control: 'boolean' },

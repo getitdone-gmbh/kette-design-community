@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Pagination, type PaginationVariant } from './pagination';
 
 const meta = {
-  title: 'Patterns/Pagination',
+  id: 'patterns-pagination',
+  title: 'Patterns · Data/Pagination',
   component: Pagination,
   tags: ['autodocs'],
   args: { variant: 'page', shape: 'square', pageCount: 24 },

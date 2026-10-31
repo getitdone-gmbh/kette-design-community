@@ -27,6 +27,13 @@ const patches = {
     const end = src.indexOf('\n};\n', start) + 4;
     return src.slice(0, start).replace(/\n+$/, '\n') + src.slice(end);
   },
+  // The FAQ stories only render; the Storybook types here need args for the single/multiple union of Accordion.
+  'accordion.stories.tsx': (src, file) => {
+    for (const name of ['FaqLongQuestions390', 'FaqLongQuestions390Zero', 'FaqLongQuestions320Zero']) {
+      src = replaceOnce(src, `export const ${name}: Story = {\n`, `export const ${name}: Story = {\n  args: {} as AccordionProps,\n`, file);
+    }
+    return src;
+  },
   'drawer.stories.tsx': (src, file) => {
     src = replaceOnce(src, "import { Bar, BarChart, ResponsiveContainer } from 'recharts';\n", '', file);
     src = replaceOnce(src, "import { Button } from './button';", "import { Button } from './button';\nimport { Sparkline } from './chart';", file);

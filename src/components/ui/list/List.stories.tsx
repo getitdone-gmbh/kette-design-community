@@ -6,7 +6,8 @@ import { List } from './List';
 import { ListProps } from './list.interface';
 
 const meta = {
-  title: 'Primitives/List',
+  id: 'primitives-list',
+  title: 'Primitives · Display/List',
   component: List,
   tags: ['autodocs'],
   argTypes: {

@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { LogoTile, type LogoTileColor } from './logo-tile';
 
 const meta = {
-  title: 'Primitives/LogoTile',
+  id: 'primitives-logotile',
+  title: 'Primitives · Display/LogoTile',
   component: LogoTile,
   tags: ['autodocs'],
   args: { initials: 'AC', color: 1, size: 'xs' },

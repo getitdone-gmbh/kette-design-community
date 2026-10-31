@@ -7,26 +7,43 @@ import { AlertCircle, X } from 'lucide-react';
 import * as React from 'react';
 
 import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from '@/lib/modal-inert';
+import { focusFirst, focusLast } from '@/lib/first-focusable';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from '@/lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from '@/lib/sticky-inset';
+import { displayVoice } from '@/lib/recipes';
 import { cn } from '@/lib/utils';
 import type { HeadingTag } from '@/components/ui/heading-tag';
 import { AutosaveStatus } from '@/components/ui/autosave-status';
 import { Button } from '@/components/ui/button';
 import { CodeSnippet, type CodeSnippetProps } from '@/components/ui/code-snippet';
 import { useLabels, usePreset } from '@/components/ui/labels-context';
+import { Link, type LinkProps } from '@/components/ui/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Remembers the modal flag so SheetContent can apply docked (non-modal) focus and Escape rules.
 const SheetModalContext = React.createContext(true);
 
+// Lets SheetNavLink close its sheet and queue work for the moment the sheet is completely gone (see SheetContent `onAfterClose`).
+interface SheetNavValue {
+  close: () => void;
+  afterClose: React.MutableRefObject<Array<() => void>>;
+}
+const SheetNavContext = React.createContext<SheetNavValue | null>(null);
+
 const Sheet = ({ modal = true, open, defaultOpen, onOpenChange, ...props }: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Root>) => {
   const state = useGuardedOpen({ open, defaultOpen, onOpenChange });
+  const afterClose = React.useRef<Array<() => void>>([]);
+  // The handler changes with every render of a parent that passes an inline `onOpenChange`. The context value must not follow it: SheetContent clears queued jumps when the value changes, which would drop the jump of a link that closes the sheet.
+  const setOpenRef = React.useRef(state.onOpenChange);
+  setOpenRef.current = state.onOpenChange;
+  const nav = React.useMemo<SheetNavValue>(() => ({ close: () => setOpenRef.current(false), afterClose }), []);
   return (
     <SheetModalContext.Provider value={modal}>
-      <EscapeGuardContext.Provider value={state.guard}>
-        <SheetPrimitive.Root modal={modal} open={state.open} onOpenChange={state.onOpenChange} {...props} />
-      </EscapeGuardContext.Provider>
+      <SheetNavContext.Provider value={nav}>
+        <EscapeGuardContext.Provider value={state.guard}>
+          <SheetPrimitive.Root modal={modal} open={state.open} onOpenChange={state.onOpenChange} {...props} />
+        </EscapeGuardContext.Provider>
+      </SheetNavContext.Provider>
     </SheetModalContext.Provider>
   );
 };
@@ -59,7 +76,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetBase =
-  'fixed z-sheet gap-4 border-hairline bg-background p-6 shadow-dialog transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500';
+  'fixed z-sheet gap-4 border-hairline bg-background p-6 [--sheet-elevation:theme(boxShadow.dialog)] shadow-[shadow:var(--bevel-sheet),var(--sheet-elevation)] bg-[image:var(--image-sheet)] transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500';
 
 const sheetVariants = cva(
   sheetBase,
@@ -135,7 +152,7 @@ interface SheetContentProps
   inset?: SheetInset;
   /** Portals the sheet (and its scrim) into this element instead of the body and positions it `absolute`. The element must be `relative`. */
   container?: HTMLElement | null;
-  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets and false when `Sheet` has `modal={false}` (docked usage keeps the page focus). */
+  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets and false when `Sheet` has `modal={false}` (docked usage keeps the page focus). Focus lands on the first visible focusable element of the content, links included; the close button is only the target when nothing else can take focus. A sheet that is read, not operated, should keep focus at its start: pass `focusOnOpen={false}`, which focuses the sheet container (the dialog itself, tabIndex -1) instead of the first control, or focus the title in `onOpenAutoFocus`. */
   focusOnOpen?: boolean;
   /** Runs once the sheet is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener. Put "focus this field after closing" code here. */
   onAfterClose?: () => void;
@@ -157,6 +174,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       onOpenAutoFocus,
       onEscapeKeyDown,
       onCloseAutoFocus,
+      onKeyDown,
       closeLabel,
       inset = 'none',
       container,
@@ -177,7 +195,17 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     const contentRef = React.useRef<HTMLDivElement | null>(null);
     // A modal sheet makes everything outside its portal inert while it is open, see lib/modal-inert.
     const inertRef = useModalInertRef<HTMLDivElement>(!nonModal);
-    const afterClose = useAfterModalClose<HTMLDivElement>(onAfterClose);
+    const nav = React.useContext(SheetNavContext);
+    // A queued jump from an earlier close that was vetoed must not run at the next close.
+    React.useEffect(() => {
+      if (nav) nav.afterClose.current.length = 0;
+    }, [nav]);
+    const afterClose = useAfterModalClose<HTMLDivElement>(() => {
+      onAfterClose?.();
+      // Work queued by SheetNavLink runs once the scrim and the scroll lock are gone.
+      const queued = nav?.afterClose.current.splice(0) ?? [];
+      queued.forEach((run) => run());
+    });
     const setRefs = (node: HTMLDivElement | null) => {
       contentRef.current = node;
       inertRef(node);
@@ -193,14 +221,26 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     const sized = widthSize !== undefined && (card || side === 'left' || side === 'right');
     const floating = mode === 'overlay' && (side === 'left' || side === 'right');
     const cardDocked = mode === 'card';
+    // The close button is rendered before the content (first tab stop, as at the top). It is absolute and on z-chrome, so sticky headers up to z-sticky do not cover it.
     return (
       <SheetPortal container={container ?? undefined}>
         {mode !== 'push' && <SheetOverlay className={scoped ? 'absolute' : undefined} />}
         <SheetPrimitive.Content
+          data-slot="sheet-content"
           ref={setRefs}
           onOpenAutoFocus={(event) => {
             onOpenAutoFocus?.(event);
-            if (!(focusOnOpen ?? !nonModal)) event.preventDefault();
+            if (event.defaultPrevented) return;
+            if (!(focusOnOpen ?? !nonModal)) {
+              event.preventDefault();
+              // An explicit `focusOnOpen={false}` on a modal sheet still moves focus into the sheet (its container), so focus never stays on the inert page body. A docked sheet keeps the page focus.
+              if (focusOnOpen === false && !nonModal) contentRef.current?.focus({ preventScroll: true });
+              return;
+            }
+            // Radix skips links for the first focus and the close button is now first in the tab order. Focus the first focusable element of the content instead, links included.
+            const root = contentRef.current;
+            if (!root || root.contains(document.activeElement)) return;
+            if (focusFirst(root, root.querySelector('[data-slot="sheet-close"]'))) event.preventDefault();
           }}
           onCloseAutoFocus={(event) => {
             returnFocus.onCloseAutoFocus(event);
@@ -212,6 +252,13 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             guardNestedEscape(escapeGuard, event);
             // A docked sheet shares the page with other widgets: Escape only closes it while focus is inside.
             if (nonModal && !contentRef.current?.contains(document.activeElement)) event.preventDefault();
+          }}
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+            // Focus on the container itself (focusOnOpen={false}): Shift+Tab goes to the last control instead of being pulled back by the focus trap.
+            if (event.defaultPrevented || event.key !== 'Tab' || !event.shiftKey || event.target !== event.currentTarget) return;
+            if (focusLast(event.currentTarget)) event.preventDefault();
           }}
           aria-busy={state === 'loading' || undefined}
           data-sheet-mode={mode}
@@ -225,6 +272,8 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             onInteractOutside?.(event);
           }}
           className={cn(
+            // The container only takes programmatic focus (tabIndex -1), it is no control: no ring of its own.
+            'outline-none',
             card ? sheetBase : sheetVariants({ side, sized }),
             sized && widthSize && sheetSizeWidth[widthSize],
             scrollInsetClasses,
@@ -232,7 +281,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             mode === 'push' && side === 'right' && 'rounded-l-surface',
             mode === 'push' && side === 'left' && 'rounded-r-surface',
             floating && 'inset-y-2 h-auto rounded-surface border border-solid',
-            zero && (floating || card || mode === 'push') && 'border-border-default shadow-elevation-raised',
+            zero && (floating || card || mode === 'push') && 'border-border-default [--sheet-elevation:var(--elevation-raised,0_0_transparent)]',
             // A floating panel keeps its 8px inset on both sides, so a wide size never crosses the viewport edge.
             (floating || cardDocked) && 'max-w-[calc(100%-1rem)]',
             floating && side === 'right' && 'right-2',
@@ -258,11 +307,11 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
           {...props}
         >
           <OpenerCapture onCapture={returnFocus.remember} />
-          <SheetStateContext.Provider value={state}>{children}</SheetStateContext.Provider>
-          <SheetPrimitive.Close data-slot="sheet-close" className={cn('absolute right-3 top-3 inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary', 'h-10 w-10')}>
+          <SheetPrimitive.Close data-slot="sheet-close" className={cn('absolute right-3 top-3 z-chrome inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary', 'h-10 w-10')}>
             <X className="h-icon-md w-icon-md" aria-hidden="true" />
             <span className="sr-only">{l.close}</span>
           </SheetPrimitive.Close>
+          <SheetStateContext.Provider value={state}>{children}</SheetStateContext.Provider>
         </SheetPrimitive.Content>
       </SheetPortal>
     );
@@ -281,10 +330,14 @@ const SheetHeader = React.forwardRef<HTMLDivElement, SheetHeaderProps>(({ classN
   const stickyRef = useStickyInset<HTMLDivElement>('top', ref);
   return (
     <div
+      data-slot="sheet-header"
       ref={stickyRef}
       className={cn(
         'flex flex-col text-left',
-        variant === 'zero' ? 'gap-2 border-0 border-b border-solid border-hairline px-5 py-4' : 'space-y-2',
+        // Theme header band (kette-tokens 5.26.0 image-sheet-header, bevel-sheet-header), none by default
+        'bg-[image:var(--image-sheet-header)] shadow-[shadow:var(--bevel-sheet-header)]',
+        // The close button sits at the top right (12px from the edge, 40px wide): the header keeps its content clear of it, so a long title wraps before it.
+        variant === 'zero' ? 'gap-2 border-0 border-b border-solid border-hairline py-4 pl-5 pr-16' : 'space-y-2 pr-10',
         className,
       )}
       {...props}
@@ -341,9 +394,11 @@ const SheetTitle = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Title
   const variant = variantProp ?? (zero ? 'zero' : 'default');
     return (
       <SheetPrimitive.Title
+        data-slot="sheet-title"
         ref={ref}
         className={cn(
           variant === 'zero' ? 'typography-sheet-title text-foreground' : 'text-base font-semibold tracking-[-0.01em] text-foreground',
+          displayVoice,
           className,
         )}
         {...props}
@@ -556,6 +611,115 @@ const SheetCodeBlock = React.forwardRef<HTMLDivElement, SheetCodeBlockProps>(
 );
 SheetCodeBlock.displayName = 'SheetCodeBlock';
 
+// The element a `#hash` href points to, or null. A malformed percent sequence falls back to the raw id.
+function hashTarget(href: string): HTMLElement | null {
+  let id = href.slice(1);
+  try {
+    id = decodeURIComponent(id);
+  } catch {
+    // keep the raw id
+  }
+  return id ? document.getElementById(id) : null;
+}
+
+// Scrolls to the section and moves focus to it, so keyboard and screen reader users arrive where the page moved. The hash joins the history like a normal anchor click.
+function jumpTo(target: HTMLElement, href: string) {
+  const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // A section is not focusable by itself: it gets tabindex -1 for as long as it holds focus.
+  if (!target.hasAttribute('tabindex')) {
+    target.setAttribute('tabindex', '-1');
+    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+  }
+  // Push first: the browser stores the scroll position of the page we leave when the entry is added, so Back must find it unmoved (a cookie card that scrolls on focus would otherwise save the wrong position). A jump to the hash that is already current adds no history entry, like a native anchor.
+  if (window.location.hash !== href) window.history.pushState(null, '', href);
+  watchPopstate();
+  // Focus, then scroll last: a focus listener on the page (such as the cookie banner keeping focus clear of its edge) may scroll, and the jump must have the final word so `scroll-mt-*` and `scroll-padding` decide where the section lands.
+  target.focus({ preventScroll: true });
+  target.scrollIntoView?.({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+}
+
+let popstateWatched = false;
+
+// After Back or Forward to a jump entry the browser restores the scroll position but leaves focus on the body: the section gets focus again, like after the jump itself.
+function watchPopstate() {
+  if (popstateWatched || typeof window === 'undefined') return;
+  popstateWatched = true;
+  window.addEventListener('popstate', () => {
+    const target = window.location.hash ? hashTarget(window.location.hash) : null;
+    if (!target) return;
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+      target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+    }
+    target.focus({ preventScroll: true });
+  });
+}
+
+interface SheetNavLinkProps extends LinkProps {
+  // Replaces the default scroll and focus. Runs once the sheet is completely gone (scrim removed, scroll lock released, focus back on the opener). `target` is the element for a `#hash` href, or null.
+  onNavigate?: (info: { href: string; target: HTMLElement | null }) => void;
+  // `link` (default) is the brand link, underlined. `nav` is a navigation entry: it takes the foreground text token (not the browser or brand link colour), regular weight, shows the underline on hover and keeps it for the current page (`aria-current`), so a nav list needs no colour or underline overrides.
+  variant?: 'link' | 'nav';
+  // Also closes the sheet for a plain click this link does not handle itself (a route, another page, a click that your `onClick` already handled with `preventDefault`). Modified clicks and links with a `target` keep the sheet open. Default false.
+  closeOnNavigate?: boolean;
+}
+
+// Link inside a sheet that closes the sheet and then goes to a section of the page: it closes, waits until the scroll lock is released, scrolls and focuses the section. Give the section `scroll-mt-*` when a fixed header covers the top of the page. Without `onNavigate` it handles `#hash` hrefs whose element exists. Other hrefs, a missing element, modified clicks (new tab) and links with a `target` stay normal links and keep the sheet open (unless `closeOnNavigate`).
+const SheetNavLink = React.forwardRef<HTMLAnchorElement, SheetNavLinkProps>(({ href, onClick, onNavigate, target: linkTarget, className, underline, color, weight, variant = 'link', closeOnNavigate = false, ...props }, ref) => {
+  const nav = React.useContext(SheetNavContext);
+  const navVariant = variant === 'nav';
+  return (
+    <Link
+      ref={ref}
+      href={href}
+      target={linkTarget}
+      color={navVariant ? 'inherit' : color}
+      underline={underline ?? (navVariant ? 'hover' : 'always')}
+      weight={weight ?? (navVariant ? 'regular' : undefined)}
+      className={cn('h-control-md justify-start', navVariant && 'text-foreground aria-[current]:underline', className)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!href) return;
+        const plain = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && (!linkTarget || linkTarget === '_self');
+        if (event.defaultPrevented) {
+          // Your own handler took over (a router push): the sheet still has to go when asked to.
+          if (closeOnNavigate && plain) nav?.close();
+          return;
+        }
+        const isHash = href.startsWith('#');
+        if (!plain || !(onNavigate || (isHash && hashTarget(href)))) {
+          if (closeOnNavigate && plain) nav?.close();
+          return;
+        }
+        event.preventDefault();
+        // The target is looked up again when the sheet is gone: it may render later than the click.
+        const go = () => {
+          const target = isHash ? hashTarget(href) : null;
+          if (onNavigate) onNavigate({ href, target });
+          else if (target) jumpTo(target, href);
+        };
+        if (!nav) {
+          go();
+          return;
+        }
+        const queue = nav.afterClose.current;
+        queue.push(go);
+        nav.close();
+        // A parent that vetoes the close keeps the sheet open: the jump must not run at some later close.
+        const link = event.currentTarget;
+        setTimeout(() => {
+          if (link.isConnected && link.closest('[data-state="open"]')) {
+            const index = queue.indexOf(go);
+            if (index >= 0) queue.splice(index, 1);
+          }
+        }, 0);
+      }}
+      {...props}
+    />
+  );
+});
+SheetNavLink.displayName = 'SheetNavLink';
+
 export {
   SheetBanner,
   SheetCodeBlock,
@@ -563,6 +727,8 @@ export {
   type SheetCodeBlockProps,
   SheetBody,
   SheetMeta,
+  SheetNavLink,
+  type SheetNavLinkProps,
   SheetPath,
   SheetSection,
   type SheetBodyProps,

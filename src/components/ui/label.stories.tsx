@@ -5,7 +5,8 @@ import { Label } from './label';
 import { Spacing } from './spacing';
 
 const meta = {
-  title: 'Primitives/Label',
+  id: 'primitives-label',
+  title: 'Primitives · Inputs/Label',
   component: Label,
   tags: ['autodocs'],
   argTypes: {},

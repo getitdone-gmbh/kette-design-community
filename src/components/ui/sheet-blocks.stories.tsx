@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { TableSelectCell, TableToggleCell } from './table-cells';
 
 const meta = {
-  title: 'Patterns/Sheet blocks',
+  id: 'patterns-sheet-blocks',
+  title: 'Patterns · Interface/Sheet blocks',
   component: SheetSection,
   tags: ['autodocs'],
   parameters: {

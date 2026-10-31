@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { InlineEdit } from './inline-edit';
 
 const meta = {
-  title: 'Primitives/Inline edit',
+  id: 'primitives-inline-edit',
+  title: 'Primitives · Inputs/Inline edit',
   component: InlineEdit,
   tags: ['autodocs'],
   args: { 'aria-label': 'Company name', defaultValue: 'Acme GmbH' },

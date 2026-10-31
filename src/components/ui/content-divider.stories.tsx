@@ -4,7 +4,8 @@ import { Button } from './button';
 import { ContentDivider } from './content-divider';
 
 const meta = {
-  title: 'Primitives/ContentDivider',
+  id: 'primitives-contentdivider',
+  title: 'Primitives · Layout/ContentDivider',
   component: ContentDivider,
   tags: ['autodocs'],
   args: { children: 'Today' },

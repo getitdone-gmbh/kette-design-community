@@ -149,7 +149,7 @@ describe('Button component', () => {
     it('binds the resting border to the shared form interactive-stroke token', () => {
       render(<Button variant="outline">Cancel</Button>);
       const button = screen.getByRole('button', { name: 'Cancel' });
-      expect(button).toHaveClass('border', 'border-solid', 'border-input', 'bg-background', 'shadow-xs');
+      expect(button).toHaveClass('border', 'border-solid', 'border-input', 'bg-background', '[--button-elevation:theme(boxShadow.xs)]', 'shadow-[shadow:var(--bevel-button-outline-rest),var(--button-elevation)]');
     });
 
     it('does not fall back to the button-specific outline-border token or a raw color', () => {
@@ -173,7 +173,7 @@ describe('Button component', () => {
       const button = screen.getByRole('button', { name: 'Cancel' });
       // Hover darkens the border (no background tint); pressed fills bg-muted.
       expect(button).toHaveClass('hover:border-border-bold', 'active:bg-muted');
-      expect(button.className).not.toMatch(/hover:bg-/);
+      expect(button.className).not.toMatch(/hover:bg-(?!\[image:)/);
     });
 
     it('does not bind hover background to the mismatched button-background-outline-hover token', () => {
@@ -212,7 +212,8 @@ describe('Button component', () => {
       const button = screen.getByRole('button', { name: 'Book' });
       expect(button).toHaveClass(
         'bg-button-background-primary-default',
-        'border-button-background-primary-default',
+        // border through the theme frame role (kette-tokens 5.26.0), default = the primary fill
+        'border-[color:var(--frame-button-primary-rest)]',
         'text-button-foreground-primary-default',
       );
     });
@@ -293,7 +294,10 @@ describe('Button state model (Attio recipe)', () => {
 
   it.each(['default', 'primary', 'destructive'] as const)('%s: filled variants carry no shadow', (variant) => {
     render(<Button variant={variant}>Go</Button>);
-    expect(screen.getByRole('button', { name: 'Go' }).className).not.toMatch(/(^|\s)shadow(-|\s|$)/);
+    // Only the theme bevel composition (0 0 #0000 without a theme bevel), no elevation in the default preset
+    const cls = screen.getByRole('button', { name: 'Go' }).className;
+    expect(cls).toContain('[--button-elevation:0_0_transparent]');
+    expect(cls).not.toMatch(/(^|\s)shadow-(?!\[shadow:var\(--bevel-button-)/);
   });
 
   it('secondary is a muted fill with a stronger hover, so it no longer equals ghost', () => {
@@ -315,7 +319,7 @@ describe('Button state model (Attio recipe)', () => {
     ['ghost', 'data-[state=open]:bg-muted'],
     ['secondary', 'data-[state=open]:bg-muted-strong'],
     ['primary', 'data-[state=open]:bg-button-background-primary-hover'],
-    ['destructive', 'data-[state=open]:bg-general-error-hover'],
+    ['destructive', 'data-[state=open]:bg-background-destructive-bold-hover'],
     ['outline-destructive', 'data-[state=open]:bg-general-error-container'],
     ['default', 'data-[state=open]:bg-button-background-hover'],
   ] as const)('%s: data-[state=open] mirrors the hover look', (variant, cls) => {
@@ -326,7 +330,7 @@ describe('Button state model (Attio recipe)', () => {
   it('outline-destructive pairs error text and stroke on the page background, with AA on-container text on hover', () => {
     render(<Button variant="outline-destructive">Delete</Button>);
     const button = screen.getByRole('button', { name: 'Delete' });
-    expect(button).toHaveClass('border-general-error-default', 'text-general-error-default', 'bg-background', 'shadow-xs');
+    expect(button).toHaveClass('border-border-destructive', 'text-text-destructive', 'bg-background', 'shadow-xs');
     expect(button).toHaveClass('hover:bg-general-error-container', 'hover:text-general-error-on-container');
     expect(button).toHaveClass('rounded-control', 'focus-visible:ring-focus');
   });
