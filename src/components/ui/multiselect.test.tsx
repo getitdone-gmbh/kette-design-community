@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 

@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { DesignSystemProvider } from './design-system-provider';

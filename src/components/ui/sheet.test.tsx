@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { Button } from './button';

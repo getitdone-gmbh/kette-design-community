@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 

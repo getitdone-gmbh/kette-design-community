@@ -1,4 +1,5 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 

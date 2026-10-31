@@ -188,6 +188,13 @@ const labelClearance = (trigger: HTMLElement) => {
   return { top: text.top - box.top, bottom: box.bottom - text.bottom, height: box.height };
 };
 
+// The zero preset reads its line height from the zero ui token (16px). A story run under another toolbar theme (the default is neutral, 20px) keeps the preset but not that token set, so the exact row heights only hold on the zero tokens; every theme keeps rows on the 4px grid, at least 44px.
+const expectZeroRows = (triggers: HTMLElement[], zeroHeights: number[]) => {
+  const heights = triggers.map((trigger) => Math.round(trigger.getBoundingClientRect().height));
+  if (getComputedStyle(triggers[0]).lineHeight === '16px') expect(heights).toEqual(zeroHeights);
+  else heights.forEach((height) => { expect(height % 4).toBe(0); expect(height).toBeGreaterThanOrEqual(44); });
+};
+
 const checkFaq = (canvasElement: HTMLElement) => {
   const triggers = within(canvasElement).getAllByRole('button');
   triggers.forEach((trigger, index) => {
@@ -221,7 +228,7 @@ export const FaqLongQuestions390Zero: Story = {
   play: async ({ canvasElement }) => {
     checkFaq(canvasElement);
     // On the 4px grid: one line 44, two lines 56 (16px token line height, 12px padding).
-    expect(within(canvasElement).getAllByRole('button').map((trigger) => Math.round(trigger.getBoundingClientRect().height))).toEqual([56, 44, 56]);
+    expectZeroRows(within(canvasElement).getAllByRole('button'), [56, 44, 56]);
   },
 };
 
@@ -251,7 +258,7 @@ export const FaqLongQuestions320Zero: Story = {
       expect(trigger.scrollHeight).toBeLessThanOrEqual(trigger.clientHeight);
     });
     // Three lines are 72px, one line 44px (4px grid).
-    expect(triggers.map((trigger) => Math.round(trigger.getBoundingClientRect().height))).toEqual([72, 44, 72]);
+    expectZeroRows(triggers, [72, 44, 72]);
     // Focus ring: drawn outside the trigger box (offset ring), so it never lies on the glyphs.
     triggers[0].focus();
     const ring = getComputedStyle(triggers[0]).boxShadow;

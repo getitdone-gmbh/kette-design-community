@@ -2,7 +2,22 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
-## 0.4.6
+## 0.5.0
+
+Version 0.4.6 was never published: its sync (below) ships as 0.5.0 together with a change of the default look. 0.5.0 is a minor release because the default behaviour changes.
+
+### Breaking: the default preset is `zero`
+
+- `DesignSystemProvider` and the context default of every component (`usePreset`) now resolve to `zero` instead of `default`. The package ships the zero theme only, so colours and component look now match without setting `preset="zero"`. Components rendered without a provider, or in a provider that sets no preset, look like the zero preset: the outline secondary `Button`, zero density and sizes (`Input`, `Checkbox`, `Table`, `Tabs`), floating `Sheet`, segmented `ToggleGroup` size, line `Tabs` with the hairline, and so on.
+- **To get the previous look back**, wrap your app or a subtree in `<DesignSystemProvider preset="default">`. Explicit props such as `variant`, `size` and `density` on a component keep winning over the preset, as before.
+- The Storybook of this package renders the zero look, like the Enterprise Storybook in the zero theme.
+- Tests that pin values of the `default` look now render under `preset="default"` through the new test helper `src/lib/render-default-look.tsx` (not part of the package or the registry). New cases in `design-system-preset.test.tsx` cover the new default, a provider without preset and `preset="default"`.
+
+### Fixes
+
+- **Storybook, `TopBar` Status Chip Icon On Phone**: the play function no longer queries the hidden status trigger by role at wide widths (display none leaves it out of the accessibility tree, so the query threw and the Storybook showed the error screen at 1440). Taken over from the library story. **Accordion** FAQ zero stories check the exact row heights only on the zero tokens (16px line height) and the 4px grid on any token set.
+
+## 0.4.6 (synced, released as 0.5.0)
 
 Synced from kette-design-enterprise 0.31.0 and kette-tokens 5.26.0 (library changelogs 0.27.19 to 0.31.0, token changelogs 5.25.0 and 5.26.0). Only the changes to components and theme parts that are in this package are listed.
 

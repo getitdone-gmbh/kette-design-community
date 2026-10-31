@@ -559,12 +559,15 @@ export const StatusChipIconOnPhone: Story = {
     expect(status).toHaveAttribute('title', 'Save failed');
     expect(canvas.getByRole('alert')).toHaveTextContent('Save failed');
     const narrow = (canvasElement.querySelector('header') as HTMLElement).getBoundingClientRect().width < 448;
-    const trigger = canvas.getByRole('button', { name: 'Save failed' });
     if (!narrow) {
-      expect(getComputedStyle(trigger).display).toBe('none');
+      // display:none removes the trigger from the accessibility tree, so no role query finds it (not even with hidden: true, a hidden element has no name): look it up by its data hook and check that it is not drawn and is not exposed.
+      const hiddenTrigger = canvasElement.querySelector('[data-status-trigger]') as HTMLElement;
+      expect(getComputedStyle(hiddenTrigger).display).toBe('none');
+      expect(canvas.queryByRole('button', { name: 'Save failed' })).toBeNull();
       expect(canvas.getByRole('button', { name: 'Try again' })).toBeVisible();
       return;
     }
+    const trigger = canvas.getByRole('button', { name: 'Save failed' });
     // Icon only: no label drawn, the chip itself is a focusable button that opens the text and Retry.
     expect((status.querySelector('[data-status-label]') as HTMLElement).getBoundingClientRect().width).toBeLessThanOrEqual(1);
     expect(trigger).toBeVisible();

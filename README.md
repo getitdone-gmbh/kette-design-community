@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@getitdone-gmbh/kette-design-community?label=npm&color=cb3837)](https://www.npmjs.com/package/@getitdone-gmbh/kette-design-community) [![license](https://img.shields.io/npm/l/@getitdone-gmbh/kette-design-community)](LICENSE)
 
-Version 0.4.6 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
+Version 0.5.0 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
 
 We build business software with many screens, tables, forms and states. These components are the base layer of that system. We are sharing them in case they are useful to others working on similar products.
 
@@ -36,6 +36,20 @@ The CLI itself is free. Without a licence key it sets up the Community rule set 
 **General components (87):** Action Bar, Activity Feed (Timeline, Notification List), Autosave Status, Blockquote, Bottom Navigation, Button Close, Button Group, Calendar Grid (Week Grid, Month Grid), Card Default, Cell Grid, Charts (line and bar, pie, radar, histogram, treemap, sparkline, bar list, gauge), Chat Window, Checkbox Group, Chip, Code Snippet, Color Picker, Confirm Dialog, Content Divider, Cookie Consent, Countdown, Data Grid, Data State Panel, Date Picker, Description List (Attributes, Summary List), Design System Provider, Document Surface, Empty State, Facet Filter, Featured Icon, Feed Item, File Icon, File Upload, Filter Chip Bar, Form Section, Grid, Heatmap, Help Icon, Hero Section, Illustration, Inline CTA, Inline Edit, Input Digit, Kanban (with Move To Menu), Layout (Stack, Cluster, Tile Grid, Split View), Link, Link Card, List, List Item, Loading Overlay, Loading Spinner, Logo Tile, Message, Metric (KPI Strip), Metric Panel, Multiselect, Notification, Notification Matrix, Object Icon, Page Header, Pagination Dot Group, Phone Input, Progress Circle, Radio Cards, Rating Input, Rich Text Editor, Rich Text Toolbar, Secondary Nav, Secret Field, Section, Section Footer, Section Header, Section Label, Sidebar, Sidebar Nav, Signature Box, Signature Pad, Single Select, Spacing (Spacing, Spacer), Status Dot, Step Marker, Stepper, Table Cells, Table of Contents, Tag Input, Top Bar, Verified Tick, Versions.
 
 Plus the zero theme as CSS variables (typography, colours, radii, elevation, light and dark) and a Tailwind CSS 3 preset.
+
+### Default look is `zero` (since 0.5.0)
+
+The theme this package ships is the zero theme, and since 0.5.0 the components come with the zero look to match: `DesignSystemProvider` and every component without a provider default to `preset="zero"` (outline secondary button, zero density and sizes, floating sheet, segmented size, line tabs with a hairline). You do not have to set anything.
+
+To get the look of 0.4.x and earlier back, wrap your app (or one subtree) in a provider with the former preset:
+
+```tsx
+import { DesignSystemProvider } from '@getitdone-gmbh/kette-design-community';
+
+<DesignSystemProvider preset="default">{children}</DesignSystemProvider>
+```
+
+Nested providers inherit the closest preset, so `preset="default"` on a subtree also works inside a zero app.
 
 Every component with a story in the library comes with it: 130 story files with 1141 stories, see [Storybook](#storybook).
 

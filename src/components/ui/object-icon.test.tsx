@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../lib/render-default-look';
 
 import { ObjectIcon } from './object-icon';
 
