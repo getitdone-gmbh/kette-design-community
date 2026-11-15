@@ -4,7 +4,7 @@ This package is a copy of the general components of the Get IT Done design syste
 
 ## 0.6.0
 
-Synced from kette-design-enterprise 0.39.0 and kette-tokens 5.33.0 (library changelogs 0.32.0 to 0.39.0, token changelogs 5.26.1 to 5.33.0). Only the changes to components and theme parts that are in this package are listed. No new components. Minor because `ConfirmDialog` changes its role and the warning colours change.
+Synced from kette-design-enterprise 0.39.0 plus the MultiSelect and Sheet fixes of library PR #183, and kette-tokens 5.33.0 plus the dark chart palette of tokens PR #95 (5.33.1) (library changelogs 0.32.0 to 0.39.0, token changelogs 5.26.1 to 5.33.1). Only the changes to components and theme parts that are in this package are listed. No new components. Minor because `ConfirmDialog` changes its role and the warning colours change.
 
 ### Behaviour change: `ConfirmDialog` is an `alertdialog`
 
@@ -20,6 +20,8 @@ Synced from kette-design-enterprise 0.39.0 and kette-tokens 5.33.0 (library chan
 - **`Button`** `wrap`: the label may run over several lines, the size height becomes a minimum height.
 - **`Checkbox`** and **`RadioGroupItem`** `comfortable`: an invisible 44px hit area around the unchanged box.
 - **`MultiSelect`**: opens without a `MultiSelectProvider`, typing filters correctly, ArrowDown or ArrowUp opens the list, the search input is the only `combobox`; `maxSelected` with a hint (`maxSelectedHint` label), `clearSearchOnSelect`, `hideAutosaveHint`; the open list is a popover surface with an edge in dark mode; Tab walks through the list buttons before the list closes.
+- **`MultiSelect`** (library PR #183): the limit text sits in a footer below the options that keeps its place, so no option row moves when the limit is reached or released; new default limit text "You can choose up to {max}. Remove one to choose another." (`maxSelectedHint`); Enter on an option that cannot be added announces the limit again; removing a chip with its button moves focus to the next chip, else the previous chip, else the search input; a pick with the pointer returns focus to the search input; an empty result names the search ("No matches for ...", new label `notFoundFor`), sits outside the listbox and is announced.
+- **`Sheet`** (library PR #183): with `focusOnOpen={false}` the focused `SheetBody` shows the focus ring when the keyboard opened the sheet; the ring stays hidden only after a pointer click. New helper `openedByPointer` in `opened-by-activation`.
 - **`ToggleGroup`**: segmented single groups behave as a radio group (never empty, arrow keys, Home and End choose); an item with icon and label keeps both in one row.
 - **`RadioCard`**: named by its title and described by its description; title and description wrap; in the zero look a checked card shows the brand border and tint instead of a ring.
 - **`Sheet`**: a push sheet opened by a click takes focus; `focusOnOpen={false}` focuses the first `SheetBody` so the keyboard scrolls at once; `statusPlacement="footer"` draws the save status once in the zero `SheetFooter` (`onRetry`, `retryLabel`); `mobileFullscreen` fills the viewport below 640px. New internal module `autosave-scope`, new lib module `opened-by-activation` (also registry items).
@@ -40,6 +42,7 @@ Synced from kette-design-enterprise 0.39.0 and kette-tokens 5.33.0 (library chan
 ### Theme (kette-tokens 5.33.0)
 
 - Warning family amber instead of orange (fills, surfaces, border, icon, text, status dot, partial score); categorical chart palette with 3:1 on canvas and card; planning chart roles and `chart-subtle-non-working`.
+- Dark categorical chart palette in one lightness band (tokens PR #95): dark `chart-1`, `chart-7` and `chart-8` are no longer near white next to the saturated slots; `chart-1`, `chart-2` and `chart-5` take the light values (blue-500, violet-600, sky-700), `chart-6` is pink-400, `chart-7` purple-400 and `chart-8` rose-600, labels keep 4.7:1 or more. Light mode unchanged.
 - Heading and title roles read `--font-display` (the zero theme has no own display font, so nothing changes visually).
 - New roles: product colour `meeting`, code placeholder, console palette, flat brand gradient, edition marker; sizes `measure-prose`, `icon-tile-lg`, `snippet-max-height`. Jobsearch product colour one step darker with a white icon. `tailwind/preset.cjs` unchanged, `theme:prune` removed 0.
 

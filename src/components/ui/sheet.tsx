@@ -8,7 +8,7 @@ import * as React from 'react';
 
 import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from './../../lib/modal-inert';
 import { focusFirst, focusLast, hasFocusable } from './../../lib/first-focusable';
-import { openedByActivation } from './../../lib/opened-by-activation';
+import { openedByActivation, openedByPointer } from './../../lib/opened-by-activation';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from './../../lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from './../../lib/sticky-inset';
 import { displayVoice } from '../../lib/recipes';
@@ -160,7 +160,7 @@ interface SheetContentProps
   inset?: SheetInset;
   /** Portals the sheet (and its scrim) into this element instead of the body and positions it `absolute`. The element must be `relative`. */
   container?: HTMLElement | null;
-  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets. A docked sheet (`Sheet` has `modal={false}`, for example `mode="push"`) takes focus when a click opened it and keeps the page focus when it opened without one (a selection or a route changed it). Focus lands on the first visible focusable element of the content, links included; the close button is only the target when nothing else can take focus. A sheet that is read, not operated, should keep focus at its start: pass `focusOnOpen={false}`, which focuses the first `SheetBody` (no ring for that focus; a body without controls stays a tab stop) so Page Down, Space, the arrow keys and End scroll it at once, or the sheet container (the dialog itself, tabIndex -1) when there is no SheetBody, instead of the first control. Or focus the title in `onOpenAutoFocus`. */
+  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets. A docked sheet (`Sheet` has `modal={false}`, for example `mode="push"`) takes focus when a click opened it and keeps the page focus when it opened without one (a selection or a route changed it). Focus lands on the first visible focusable element of the content, links included; the close button is only the target when nothing else can take focus. A sheet that is read, not operated, should keep focus at its start: pass `focusOnOpen={false}`, which focuses the first `SheetBody` (no ring when a pointer click opened the sheet, the ring shows when the keyboard opened it; a body without controls stays a tab stop) so Page Down, Space, the arrow keys and End scroll it at once, or the sheet container (the dialog itself, tabIndex -1) when there is no SheetBody, instead of the first control. Or focus the title in `onOpenAutoFocus`. */
   focusOnOpen?: boolean;
   /** Below the `sm` screen (640px) the sheet fills the whole viewport: no inset, no radius, no border, full width and height (Figma Slide out menu, Mobile=Full screen). From `sm` up it keeps its mode and size. Works with every mode and side. */
   mobileFullscreen?: boolean;
@@ -259,9 +259,11 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
                 if (body) {
                   // A body with controls is reached through them, so it only takes this programmatic focus. A body of text stays a tab stop, so Tab can bring the keyboard back to scroll it.
                   if (!body.hasAttribute('tabindex')) body.tabIndex = hasFocusable(body) ? -1 : 0;
-                  // No ring for the focus the sheet sets itself; the mark goes with the first blur, a later keyboard focus shows the ring.
-                  body.setAttribute('data-sheet-autofocus', '');
-                  body.addEventListener('blur', () => body.removeAttribute('data-sheet-autofocus'), { once: true });
+                  // No ring for the focus the sheet sets itself after a pointer click; the mark goes with the first blur, a later keyboard focus shows the ring. Opened by keyboard (or programmatically) the ring shows, since focus landed on a tab stop the user has to see.
+                  if (openedByPointer()) {
+                    body.setAttribute('data-sheet-autofocus', '');
+                    body.addEventListener('blur', () => body.removeAttribute('data-sheet-autofocus'), { once: true });
+                  }
                 }
                 (body ?? contentRef.current)?.focus({ preventScroll: true });
               }

@@ -23,6 +23,7 @@ import {
   SheetPath,
   SheetSection,
   SheetTitle,
+  SheetTrigger,
   type SheetContentProps,
 } from './sheet';
 
@@ -936,18 +937,60 @@ describe('Sheet focusOnOpen false with a SheetBody (KETTE-61)', () => {
     expect(body).toHaveAttribute('tabindex', '0');
   });
 
-  it('draws no ring for the focus the sheet sets itself, a later keyboard focus gets the ring', async () => {
+  it('draws no ring for the focus the sheet sets itself after a pointer click, a later keyboard focus gets the ring', async () => {
+    resetOpenedByActivation();
+    const user = userEvent.setup();
     render(
-      <Example focusOnOpen={false}>
-        <SheetBody data-testid="body">Text</SheetBody>
-        <button type="button">Outside body</button>
-      </Example>,
+      <Sheet>
+        <SheetTrigger>Open</SheetTrigger>
+        <SheetContent focusOnOpen={false}>
+          <SheetTitle>Edit company</SheetTitle>
+          <SheetDescription>Details</SheetDescription>
+          <SheetBody data-testid="body">Text</SheetBody>
+          <button type="button">Outside body</button>
+        </SheetContent>
+      </Sheet>,
     );
-    const body = screen.getByTestId('body');
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    const body = await screen.findByTestId('body');
     await waitFor(() => expect(body).toHaveFocus());
     expect(body).toHaveAttribute('data-sheet-autofocus');
     expect(body).toHaveClass('focus-visible:ring-focus', 'focus-visible:ring-inset', '[&[data-sheet-autofocus]:focus-visible]:ring-0');
     act(() => screen.getByRole('button', { name: 'Outside body' }).focus());
+    expect(body).not.toHaveAttribute('data-sheet-autofocus');
+  });
+
+  it('keeps the ring when the keyboard opened the sheet (KDC-UX-01)', async () => {
+    resetOpenedByActivation();
+    const user = userEvent.setup();
+    render(
+      <Sheet>
+        <SheetTrigger>Open</SheetTrigger>
+        <SheetContent focusOnOpen={false}>
+          <SheetTitle>Edit company</SheetTitle>
+          <SheetDescription>Details</SheetDescription>
+          <SheetBody data-testid="body">Text</SheetBody>
+        </SheetContent>
+      </Sheet>,
+    );
+    screen.getByRole('button', { name: 'Open' }).focus();
+    // Enter on a button is turned into a click with detail 0
+    await user.keyboard('{Enter}');
+    const body = await screen.findByTestId('body');
+    await waitFor(() => expect(body).toHaveFocus());
+    expect(body).toHaveAttribute('tabindex', '0');
+    expect(body).not.toHaveAttribute('data-sheet-autofocus');
+  });
+
+  it('keeps the ring when the sheet opened without a click at all', async () => {
+    resetOpenedByActivation();
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body">Text</SheetBody>
+      </Example>,
+    );
+    const body = screen.getByTestId('body');
+    await waitFor(() => expect(body).toHaveFocus());
     expect(body).not.toHaveAttribute('data-sheet-autofocus');
   });
 

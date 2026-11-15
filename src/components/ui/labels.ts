@@ -33,6 +33,8 @@ export interface Labels {
   navigation: string;
   next: string;
   notFound: string;
+  // Empty result of a search, with the typed text.
+  notFoundFor: (query: string) => string;
   online: string;
   presenceAway: string;
   presenceCall: string;

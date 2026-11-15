@@ -159,7 +159,7 @@ describe('MultiSelect round 3 props', () => {
     await userEvent.click(getInput());
     const other = (await waitFor(() => screen.getByText('Other', { selector: 'label' }))).closest('[cmdk-item]') as HTMLElement;
     expect(other).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText('Maximum of 2 selected')).toBeInTheDocument();
+    expect(screen.getByText('You can choose up to 2. Remove one to choose another.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check All' })).not.toBeInTheDocument();
     await userEvent.click(other);
     expect(other).toHaveAttribute('aria-checked', 'false');
@@ -429,11 +429,11 @@ describe('MultiSelect keyboard and name (round 2)', () => {
     await userEvent.click(getInput());
     const dev = (await screen.findByText('Development', { selector: 'label' })).closest('[cmdk-item]') as HTMLElement;
     await userEvent.click(dev);
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Development selected. Maximum of 2 selected'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Development selected. You can choose up to 2. Remove one to choose another.'));
     const other = screen.getByText('Other', { selector: 'label' }).closest('[cmdk-item]') as HTMLElement;
     const hint = document.querySelector('[data-slot="multiselect-limit-hint"]') as HTMLElement;
     expect(other.getAttribute('aria-describedby')).toBe(hint.id);
-    expect(hint).toHaveTextContent('Maximum of 2 selected');
+    expect(hint).toHaveTextContent('You can choose up to 2. Remove one to choose another.');
   });
 
   it('returns focus to the search input when the list closes from a list button', async () => {
@@ -526,3 +526,112 @@ describe('MultiSelect filterMode', () => {
   });
 });
 
+// Fix round 15.11.2026: limit footer, limit re-announce, chip remove focus, pointer pick focus, empty result text.
+describe('MultiSelect limit footer, focus and empty result (0.40.1)', () => {
+  const LIMIT_TEXT = 'You can choose up to 2. Remove one to choose another.';
+  const getHint = () => document.querySelector('[data-slot="multiselect-limit-hint"]') as HTMLElement;
+
+  it('keeps the limit text in a footer below the options that holds its place before the limit (DR-19)', async () => {
+    render(<Controlled maxSelected={2} initial={['design']} />);
+    await userEvent.click(getInput());
+    const listbox = await screen.findByRole('listbox');
+    const before = getHint();
+    // below the options, in the layout, but invisible and out of the accessibility tree until the limit
+    expect(before.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(before).toHaveClass('invisible');
+    expect(before).toHaveAttribute('aria-hidden', 'true');
+    expect(before).toHaveTextContent(LIMIT_TEXT);
+    await userEvent.click((await screen.findByText('Development', { selector: 'label' })).closest('[cmdk-item]') as HTMLElement);
+    await waitFor(() => expect(getHint()).not.toHaveClass('invisible'));
+    // the same node, so nothing is inserted above the options
+    expect(getHint()).toBe(before);
+    expect(getHint()).not.toHaveAttribute('aria-hidden');
+    expect(getHint().compareDocumentPosition(screen.getByRole('listbox')) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
+  it('has no footer without a limit', async () => {
+    render(<Controlled />);
+    await userEvent.click(getInput());
+    await screen.findByRole('listbox');
+    expect(getHint()).toBeNull();
+  });
+
+  it('announces the limit again when Enter hits an option that cannot be added (UXR-22)', async () => {
+    const user = userEvent.setup();
+    render(<Controlled maxSelected={2} initial={['design', 'development']} />);
+    await user.type(getInput(), 'oth');
+    await screen.findByText('Other', { selector: 'label' });
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(LIMIT_TEXT));
+    const first = screen.getByRole('status').textContent;
+    await user.keyboard('{Enter}');
+    // the region changes, so the repeated text is read out again
+    await waitFor(() => expect(screen.getByRole('status').textContent).not.toBe(first));
+    expect(screen.getByRole('status')).toHaveTextContent(LIMIT_TEXT);
+  });
+
+  it('clears the status message when the list closes (UXR-22)', async () => {
+    const user = userEvent.setup();
+    render(<Controlled maxSelected={2} initial={['design']} />);
+    await user.click(getInput());
+    await user.click((await screen.findByText('Development', { selector: 'label' })).closest('[cmdk-item]') as HTMLElement);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(LIMIT_TEXT));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(''));
+  });
+
+  describe('removing a chip with its button (UXR-20)', () => {
+    const removeButtons = () => screen.queryAllByRole('button').filter((b) => /^Remove /.test(b.getAttribute('aria-label') ?? ''));
+
+    it('moves focus to the next chip, else the previous chip, else the search input', async () => {
+      const user = userEvent.setup();
+      render(<Controlled initial={['design', 'development', 'other']} />);
+      removeButtons()[1].focus();
+      await user.keyboard('{Enter}');
+      await waitFor(() => expect(removeButtons()).toHaveLength(2));
+      expect(document.activeElement?.getAttribute('aria-label')).toBe('Remove Other');
+      await user.keyboard('{Enter}');
+      await waitFor(() => expect(removeButtons()).toHaveLength(1));
+      expect(document.activeElement?.getAttribute('aria-label')).toBe('Remove Design');
+      await user.keyboard('{Enter}');
+      await waitFor(() => expect(removeButtons()).toHaveLength(0));
+      expect(getInput()).toHaveFocus();
+    });
+
+    it('moves focus to the search input when the last chip is the only one left', async () => {
+      const user = userEvent.setup();
+      render(<Controlled initial={['other']} />);
+      removeButtons()[0].focus();
+      await user.keyboard('{Enter}');
+      await waitFor(() => expect(getInput()).toHaveFocus());
+    });
+  });
+
+  it('returns focus to the search input after a pick with the pointer (UXR-21)', async () => {
+    const user = userEvent.setup();
+    render(<Controlled />);
+    await user.click(getInput());
+    const dev = (await screen.findByText('Development', { selector: 'label' })).closest('[cmdk-item]') as HTMLElement;
+    await user.click(dev);
+    await waitFor(() => expect(dev).toHaveAttribute('aria-checked', 'true'));
+    expect(getInput()).toHaveFocus();
+    await user.keyboard('oth');
+    expect(getInput()).toHaveValue('oth');
+  });
+
+  it('names the search in an empty result and announces it (UXR-23)', async () => {
+    const user = userEvent.setup();
+    render(<Controlled disableAddNew />);
+    await user.type(getInput(), 'zzz');
+    expect(await screen.findByText('No matches for "zzz"', { selector: 'span:not([role])' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No matches for "zzz"'));
+  });
+
+  it('lets emptyText override the empty result text, also with a search', async () => {
+    const user = userEvent.setup();
+    render(<Controlled disableAddNew emptyText="Nothing here" />);
+    await user.type(getInput(), 'zzz');
+    expect(await screen.findAllByText('Nothing here')).not.toHaveLength(0);
+    expect(screen.queryByText(/No matches for/)).toBeNull();
+  });
+});

@@ -27,6 +27,7 @@ export const labelsDe: Labels = {
   navigation: 'Navigation',
   next: 'Weiter',
   notFound: 'Nicht gefunden',
+  notFoundFor: (query) => `Keine Treffer für „${query}“`,
   online: 'Online',
   presenceAway: 'Abwesend',
   presenceCall: 'Im Gespräch',
@@ -232,7 +233,7 @@ export const labelsDe: Labels = {
   selectOptions: 'Optionen auswählen',
   optionSelected: (label) => `${label} ausgewählt`,
   optionRemoved: (label) => `${label} entfernt`,
-  maxSelectedHint: (max) => `Höchstens ${max} Einträge wählbar`,
+  maxSelectedHint: (max) => `Bis zu ${max} wählbar. Einen Eintrag entfernen, um einen anderen zu wählen.`,
   stepName: (index, label) => (label ? `Schritt ${index}: ${label}` : `Schritt ${index}`),
   stepCurrent: 'Aktuell',
   autosaveStates: {

@@ -182,7 +182,7 @@ const MultiSelectInput: FC<
     placeholder?: string;
     options?: MultiSelectOption[];
     selected?: MultiSelectOptionId[];
-    handleUnselect: (item: MultiSelectOptionId) => void;
+    handleUnselect: (item: MultiSelectOptionId, focus?: HTMLElement | 'input' | null) => void;
     disableSearch?: boolean;
     inputRef: React.RefObject<HTMLInputElement>;
     search: string;
@@ -431,7 +431,7 @@ const DraggableChip: FC<{
   index: number;
   selected: MultiSelectOptionId[];
   onChange: Dispatch<SetStateAction<string[]>>;
-  handleUnselect: (item: MultiSelectOptionId) => void;
+  handleUnselect: (item: MultiSelectOptionId, focus?: HTMLElement | 'input' | null) => void;
   disabled?: boolean;
   useDragAndDrop?: boolean;
   selectedOptionsAsText?: boolean;
@@ -487,6 +487,22 @@ const DraggableChip: FC<{
     drag(drop(ref));
   }
 
+  // Removing a chip with its own button: focus moves to the next chip's button, else the previous one, else the search input, before the button unmounts.
+  const removeChip = () => {
+    const root = ref.current;
+    if (!root || !root.contains(document.activeElement)) {
+      handleUnselect(option?.id);
+      return;
+    }
+    const neighbourButton = (step: 'nextElementSibling' | 'previousElementSibling') => {
+      for (let node = root[step]; node; node = node[step]) {
+        if (node.matches('[data-slot="multiselect-chip"]')) return node.querySelector<HTMLElement>('button:not([disabled])');
+      }
+      return null;
+    };
+    handleUnselect(option?.id, neighbourButton('nextElementSibling') ?? neighbourButton('previousElementSibling') ?? 'input');
+  };
+
   return (
     <>
       {useDragAndDrop && (
@@ -500,6 +516,7 @@ const DraggableChip: FC<{
       )}
       <div
         ref={ref}
+        data-slot="multiselect-chip"
         className={cn(
           'flex items-center',
           { 'list-item list-disc ml-4': selectedOptionsAsListItems },
@@ -548,7 +565,7 @@ const DraggableChip: FC<{
                 e.preventDefault();
                 e.stopPropagation();
               }}
-              onClick={() => handleUnselect(option?.id)}
+              onClick={removeChip}
               disabled={disabled}
             >
               <X aria-hidden="true" className={cn('h-icon-xs', 'w-icon-xs', { hidden: disabled })} />
@@ -570,7 +587,7 @@ const DraggableChip: FC<{
             )}
             disabled={disabled}
             label={option?.label}
-            onRemove={disabled ? undefined : () => handleUnselect(option?.id)}
+            onRemove={disabled ? undefined : removeChip}
             removeLabel={l.remove(option?.label)}
           />
         )}
@@ -784,10 +801,13 @@ const MultiSelectDropdown: FC<
     customAddAction?: React.ReactNode;
     dropdownClassName?: string;
     listLabel?: string;
+    // Hands a text to the field's live region (the empty result is announced through it).
+    announce?: (text: string) => void;
   }
 > = ({
   dropdownClassName,
   listLabel,
+  announce,
   maxSelected,
   maxSelectedText,
   clearSearchOnSelect,
@@ -835,6 +855,7 @@ const MultiSelectDropdown: FC<
 
   const limitReached = maxSelected != null && selected.length >= maxSelected;
   const limitHint = maxSelectedText ?? (maxSelected != null ? l.maxSelectedHint(maxSelected) : '');
+  const emptyMessage = search.trim() ? l.notFoundFor(search.trim()) : l.notFound;
 
   const multiSelectDropdownActionsProps = {
     disableAddNew,
@@ -922,18 +943,7 @@ const MultiSelectDropdown: FC<
         <div>
           <MultiSelectDropdownActions {...multiSelectDropdownActionsProps} />
 
-          {limitReached && (
-            <p id={limitHintId(id)} data-slot="multiselect-limit-hint" className={cn('ml-1 pb-2 text-sm text-text-subtle', zero ? 'px-5' : 'px-4')}>
-              {limitHint}
-            </p>
-          )}
           <CommandList className={dropdownClassName} label={listLabel}>
-            <CommandEmpty className="px-2 pt-2 pb-4 text-sm text-text-subtle text-center">
-              <Spacing direction="column">
-                <span>{l.notFound}</span>
-                <span className="opacity-disabled">{l.pressEnterToAdd}</span>
-              </Spacing>
-            </CommandEmpty>
             {sortedOptions.length > 0 &&
               sortedOptions
                 .filter((option) => !hideCheckedItems || !selected.includes(option.id))
@@ -941,10 +951,37 @@ const MultiSelectDropdown: FC<
                   <MultiSelectCommandItem {...multiSelectCommandItemProps} option={option} key={option.id} />
                 ))}
           </CommandList>
+          <CommandEmpty className="px-2 pt-2 pb-4 text-sm text-text-subtle text-center">
+            <Spacing direction="column">
+              <EmptyResult text={emptyMessage} announce={announce} />
+              {!disableAddNew && <span className="opacity-disabled">{l.pressEnterToAdd}</span>}
+            </Spacing>
+          </CommandEmpty>
+          {maxSelected != null && (
+            // Footer below the options, always in the layout: the text only shows at the limit, so no option row moves when the limit is reached or released. Invisible text still sets the height, also when it wraps.
+            <p
+              id={limitHintId(id)}
+              data-slot="multiselect-limit-hint"
+              data-state={limitReached ? 'limit' : 'open'}
+              aria-hidden={limitReached ? undefined : true}
+              className={cn('mt-1 text-sm text-text-subtle', zero ? 'px-5' : 'px-4', !limitReached && 'invisible')}
+            >
+              {limitHint}
+            </p>
+          )}
         </div>
       </Card>
     )
   );
+};
+
+// The text of an empty result. The empty message sits outside the listbox, since a listbox with no option may hold nothing else (aria-required-children). It only mounts while the list has no match, so mounting (and a changed text) is the moment to announce it.
+const EmptyResult: FC<{ text: string; announce?: (text: string) => void }> = ({ text, announce }) => {
+  useEffect(() => {
+    announce?.(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+  return <span>{text}</span>;
 };
 
 const MultiSelectCommandItem: FC<{
@@ -1019,6 +1056,8 @@ const MultiSelectCommandItem: FC<{
             prevSelected.includes(option.id) ? prevSelected.filter((item) => item !== option.id) : [...prevSelected, option.id],
           );
           if (clearSearchOnSelect) setSearch('');
+          // A pick with the pointer leaves focus on the list: back to the search input, so typing keeps filtering. Not on a touch device, where it would raise the keyboard.
+          if (!isMobile) inputRef.current?.focus();
           // Keep selection state
           setOpenId(id);
         }
@@ -1264,6 +1303,11 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     };
   }, [open, selected, disableAddNew, useSheet, initialHeight]);
 
+  // A status message belongs to the open list: it is dropped when the list closes.
+  useEffect(() => {
+    if (!open && !useSheet) setAnnouncement('');
+  }, [open, useSheet]);
+
   // The filter text is not a value: it is cleared when the list closes (choice, Escape, Tab, click away).
   useEffect(() => {
     if (!open && !useSheet) setSearch('');
@@ -1303,7 +1347,9 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSelected]);
 
-  const handleUnselect = (item: MultiSelectOptionId) => {
+  // `focus` is given when the remove button had focus: it goes to the neighbouring chip, or to the search input, so it never drops to the page body when the button unmounts.
+  const handleUnselect = (item: MultiSelectOptionId, focus?: HTMLElement | 'input' | null) => {
+    if (focus) (focus === 'input' ? inputRef.current : focus)?.focus();
     if (mode === 'persistent') {
       setTempSelected((prevSelected) => prevSelected.filter((i) => i !== item));
     } else {
@@ -1387,6 +1433,17 @@ const MultiSelectField: FC<MultiSelectProps> = ({
         setDialogOpen(true);
       }
       // Otherwise, let cmdk handle the Enter key to select/toggle the first match
+    }
+
+    // At the limit an Enter on an option that cannot be added does nothing: say why once more instead of staying silent.
+    if (e.key === 'Enter' && open && maxSelected != null && currentSelected.length >= maxSelected) {
+      const list = dropdownRef.current;
+      const canToggle = list?.querySelector('[cmdk-item][aria-selected="true"]:not([aria-disabled="true"])');
+      if (list && !canToggle && list.querySelector('[cmdk-item][aria-disabled="true"]')) {
+        const text = maxSelectedText ?? l.maxSelectedHint(maxSelected);
+        // The same text again is only read out when the region changes, so a trailing no-break space alternates.
+        setAnnouncement((previous) => (previous === text ? `${text}\u00A0` : text));
+      }
     }
 
     // Note: Arrow keys are handled by cmdk itself for navigation
@@ -1506,6 +1563,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     useDragAndDrop,
     dropdownClassName,
     listLabel: label ?? ariaLabel ?? placeholder ?? l.selectOptions,
+    announce: setAnnouncement,
     maxSelected,
     maxSelectedText,
     clearSearchOnSelect,
@@ -1678,7 +1736,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
 const MultiSelectChips: FC<
   MultiSelectProps & {
     chipWrapperRef: React.RefObject<HTMLDivElement>;
-    handleUnselect: (item: MultiSelectOptionId) => void;
+    handleUnselect: (item: MultiSelectOptionId, focus?: HTMLElement | 'input' | null) => void;
     disabled?: boolean;
     chipsInside?: boolean;
     useDragAndDrop?: boolean;
@@ -1753,7 +1811,7 @@ const MultiSelectChips: FC<
 };
 
 const labelScope = (props: { emptyText?: string; addHintText?: string; loadingText?: string; addNewText?: string }) => ({
-  ...(props.emptyText !== undefined && { notFound: props.emptyText }),
+  ...(props.emptyText !== undefined && { notFound: props.emptyText, notFoundFor: () => props.emptyText as string }),
   ...(props.addHintText !== undefined && { pressEnterToAdd: props.addHintText }),
   ...(props.loadingText !== undefined && { pleaseWait: props.loadingText }),
   ...(props.addNewText !== undefined && { addNew: props.addNewText }),

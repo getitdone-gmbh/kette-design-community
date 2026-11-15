@@ -1470,7 +1470,93 @@ export const MaxSelected: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByPlaceholderText('Search...'));
-    await waitFor(() => expect(canvas.getByText('Maximum of 2 selected')).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByText('You can choose up to 2. Remove one to choose another.')).toBeInTheDocument());
+  },
+};
+
+const LimitStableDemo = () => {
+  const [selected, setSelected] = useState<string[]>(['design']);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'other', label: 'Other' },
+    { id: 'testing', label: 'Testing' },
+  ];
+  return (
+    <MultiSelectProvider>
+      <MultiSelect id="limit-stable" label="Job type (at most 2)" options={opts} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} maxSelected={2} disableAddNew hideAutosaveHint />
+    </MultiSelectProvider>
+  );
+};
+
+// The limit state: the limit text sits in a footer below the options and holds its place before the limit, so no option row moves when the limit is reached or released. The play function measures the rows.
+export const MaxSelectedLimitStaysPut: Story = {
+  args: {} as any,
+  render: () => <LimitStableDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByPlaceholderText('Search...'));
+    // Measured from the top of the list, so the open animation and a moved field do not count; only the rows moving inside the list does.
+    const rowTop = (name: string) => canvas.getByText(name, { selector: 'label' }).closest('[cmdk-item]')!.getBoundingClientRect().top - canvasElement.querySelector('[role="listbox"]')!.getBoundingClientRect().top;
+    const hint = () => canvasElement.querySelector<HTMLElement>('[data-slot="multiselect-limit-hint"]')!;
+    await waitFor(() => expect(canvas.getByText('Development', { selector: 'label' })).toBeInTheDocument());
+    // the list grows in over 300 ms when it opens
+    const settle = () => new Promise((done) => setTimeout(done, 600));
+    await settle();
+    const before = rowTop('Testing');
+    await expect(hint().getAttribute('aria-hidden')).toBe('true');
+    // reach the limit
+    await userEvent.click(canvas.getByText('Development', { selector: 'label' }));
+    await waitFor(() => expect(hint().getAttribute('aria-hidden')).toBeNull());
+    await settle();
+    await expect(rowTop('Testing')).toBe(before);
+    await expect(canvas.getByText('You can choose up to 2. Remove one to choose another.')).toBeInTheDocument();
+    // release it
+    await userEvent.click(canvas.getByText('Development', { selector: 'label' }));
+    await waitFor(() => expect(hint().getAttribute('aria-hidden')).toBe('true'));
+    await settle();
+    await expect(rowTop('Testing')).toBe(before);
+  },
+};
+
+const ChipFocusDemo = () => {
+  const [selected, setSelected] = useState<string[]>(['design', 'development', 'other']);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'other', label: 'Other' },
+  ];
+  return (
+    <MultiSelectProvider>
+      <MultiSelect id="chip-focus" label="Job type" options={opts} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} disableAddNew hideAutosaveHint />
+    </MultiSelectProvider>
+  );
+};
+
+// Removing a chip with its remove button and Enter keeps focus in the field: next chip, else the previous one, else the search input.
+export const RemoveChipKeepsFocus: Story = {
+  args: {} as any,
+  render: () => <ChipFocusDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    canvas.getByRole('button', { name: 'Remove Development' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Remove Other' })).toHaveFocus());
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Remove Design' })).toHaveFocus());
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(canvas.getByPlaceholderText('Search...')).toHaveFocus());
+  },
+};
+
+// An empty result names the search: No matches for "zzz". It is announced and the text can be replaced with `emptyText`.
+export const EmptyResult: Story = {
+  args: {} as any,
+  render: () => <ChipFocusDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByPlaceholderText('Search...'), 'zzz');
+    await waitFor(() => expect(canvas.getAllByText('No matches for "zzz"').length).toBeGreaterThan(0));
   },
 };
 

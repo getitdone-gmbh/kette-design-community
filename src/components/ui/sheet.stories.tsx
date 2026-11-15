@@ -352,6 +352,40 @@ export const FocusOnOpenFalseScrollBody: Story = {
   },
 };
 
+// Opened with the keyboard (Enter on the trigger): focus lands on the body, a tab stop, and the ring shows so the user can see where it is. A pointer click suppresses it (see the story above).
+export const FocusOnOpenFalseKeyboard: Story = {
+  args: {} as any,
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button>Open sheet</Button>
+      </SheetTrigger>
+      <SheetContent focusOnOpen={false} mode="overlay" padded={false}>
+        <SheetHeader>
+          <SheetTitle>Month report</SheetTitle>
+          <SheetDescription>Read only, opened with the keyboard.</SheetDescription>
+        </SheetHeader>
+        <SheetBody data-testid="scroll-body" className="gap-4 p-5">
+          {Array.from({ length: 30 }, (_, i) => (
+            <p key={i} className="m-0">
+              Paragraph {i + 1}: hours, rates and documents of the month.
+            </p>
+          ))}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('button', { name: 'Open sheet' });
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    const body = await within(document.body).findByTestId('scroll-body');
+    await waitFor(() => expect(body).toHaveFocus());
+    await expect(body).toHaveAttribute('tabindex', '0');
+    await expect(body).not.toHaveAttribute('data-sheet-autofocus');
+  },
+};
+
 // Phone: below 640px the sheet fills the viewport (Figma Slide out menu, Mobile=Full screen); from 640px up it is the overlay panel.
 export const MobileFullscreen: Story = {
   args: {} as any,
