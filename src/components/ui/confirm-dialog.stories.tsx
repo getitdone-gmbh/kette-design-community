@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from './button';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from './sheet';
@@ -49,24 +50,49 @@ export const PrimaryConfirm: Story = {
   },
 };
 
-// A plain dialog (role="dialog") for a confirmation that may be dismissed: a click outside closes it.
-export const PlainDialog: Story = {
-  args: { trigger: undefined, open: true, onOpenChange: () => undefined, role: 'dialog' },
-  play: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    if (!document.querySelector('[role="dialog"]')) throw new Error('No dialog rendered');
-    if (document.querySelector('[role="alertdialog"]')) throw new Error('Rendered an alertdialog, expected role dialog');
-  },
+const AlertDialogExample = (props: React.ComponentProps<typeof ConfirmDialog>) => {
+  const [open, setOpen] = useState(false);
+  return <ConfirmDialog {...props} open={open} onOpenChange={setOpen} />;
 };
 
-// An alert dialog (role alertdialog): it interrupts and asks for an answer. Focus starts on Cancel (the safe action) and stays trapped, a click outside does not close it, Escape does.
+// An alert dialog (role alertdialog): it interrupts and asks for an answer. Focus starts on Cancel (the safe action) and stays trapped, a click outside does not close it, Escape does. It opens from its button; the play function checks that a click outside leaves it open.
 export const AlertDialog: Story = {
-  args: { trigger: undefined, open: true, onOpenChange: () => undefined },
-  play: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  render: (args) => <AlertDialogExample {...args} />,
+  play: async ({ canvasElement }) => {
+    const trigger = canvasElement.querySelector('button');
+    if (!trigger) throw new Error('No trigger button rendered');
+    trigger.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
     const dialog = document.querySelector('[role="alertdialog"]');
     if (!dialog) throw new Error('No alertdialog rendered');
     if (document.activeElement?.textContent !== 'Cancel') throw new Error(`Focus is on "${document.activeElement?.textContent}", expected Cancel`);
+    // A click on the scrim must not close an alert dialog
+    const scrim = document.querySelector<HTMLElement>('[data-modal-overlay]');
+    scrim?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    scrim?.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    if (!document.querySelector('[role="alertdialog"]')) throw new Error('A click outside closed the alert dialog');
+  },
+};
+
+// A plain dialog (role="dialog") for a confirmation that may be dismissed. It opens from its button like the alert dialog; the play function checks that a click outside closes it.
+export const PlainDialog: Story = {
+  args: { role: 'dialog' },
+  render: (args) => <AlertDialogExample {...args} />,
+  play: async ({ canvasElement }) => {
+    const trigger = canvasElement.querySelector('button');
+    if (!trigger) throw new Error('No trigger button rendered');
+    trigger.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    if (!document.querySelector('[role="dialog"]')) throw new Error('No dialog rendered');
+    if (document.querySelector('[role="alertdialog"]')) throw new Error('Rendered an alertdialog, expected role dialog');
+    // A click on the scrim closes a plain dialog
+    const scrim = document.querySelector<HTMLElement>('[data-modal-overlay]');
+    if (!scrim) throw new Error('No scrim rendered');
+    scrim.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    scrim.click();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (document.querySelector('[role="dialog"]')) throw new Error('A click outside did not close the dialog');
   },
 };
 

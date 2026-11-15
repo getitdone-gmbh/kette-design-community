@@ -327,12 +327,12 @@ export const FocusOnOpenFalseScrollBody: Story = {
       <SheetTrigger asChild>
         <Button>Open sheet</Button>
       </SheetTrigger>
-      <SheetContent focusOnOpen={false} mode="overlay" padded={false}>
+      <SheetContent focusOnOpen={false} mode="overlay">
         <SheetHeader>
           <SheetTitle>Month report</SheetTitle>
           <SheetDescription>Read only, scroll with the keyboard.</SheetDescription>
         </SheetHeader>
-        <SheetBody data-testid="scroll-body" className="gap-4 p-5">
+        <SheetBody data-testid="scroll-body" className="gap-4">
           {Array.from({ length: 30 }, (_, i) => (
             <p key={i} className="m-0">
               Paragraph {i + 1}: hours, rates and documents of the month.
@@ -360,12 +360,12 @@ export const FocusOnOpenFalseKeyboard: Story = {
       <SheetTrigger asChild>
         <Button>Open sheet</Button>
       </SheetTrigger>
-      <SheetContent focusOnOpen={false} mode="overlay" padded={false}>
+      <SheetContent focusOnOpen={false} mode="overlay">
         <SheetHeader>
           <SheetTitle>Month report</SheetTitle>
           <SheetDescription>Read only, opened with the keyboard.</SheetDescription>
         </SheetHeader>
-        <SheetBody data-testid="scroll-body" className="gap-4 p-5">
+        <SheetBody data-testid="scroll-body" className="gap-4">
           {Array.from({ length: 30 }, (_, i) => (
             <p key={i} className="m-0">
               Paragraph {i + 1}: hours, rates and documents of the month.

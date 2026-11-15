@@ -22,18 +22,61 @@ const replaceOnce = (src, from, to, file) => {
 const patches = {
   // The search input has min-w-0 since 0.39.0, so a w-full frame collapses to content width in the centred layout (KDC-DR-01). Skipped once the library ships the fixed frame.
   'command.stories.tsx': (src) => src.split("'w-full max-w-[456px] ").join("'w-[456px] max-w-full "),
-  // The library has no plain dialog story; this one shows role="dialog" (dismissible, click outside closes) next to the alertdialog default (KDC-UX-02).
+  // ConfirmDialog stories (KDC-UX-02, KDC-UX-05): the AlertDialog story opens from its button with own state (library PR #183, commit 38b29b2, taken over when the source still has the open story), the scrim is found by its overlay attribute (the zero scrim has no .bg-overlay class), and a PlainDialog story shows role="dialog", which an outside click closes.
   'confirm-dialog.stories.tsx': (src, file) => {
+    if (!src.includes('const AlertDialogExample')) {
+      src = replaceOnce(src, "import { AlertTriangle } from 'lucide-react';\n", "import { AlertTriangle } from 'lucide-react';\nimport { useState } from 'react';\n", file);
+      const start = src.indexOf('// An alert dialog (role alertdialog)');
+      const end = src.indexOf('\n};\n', start) + 4;
+      if (start < 0 || end < start) throw new Error(`Patch for ${file} no longer matches: AlertDialog story`);
+      src = src.slice(0, start) + `const AlertDialogExample = (props: React.ComponentProps<typeof ConfirmDialog>) => {
+  const [open, setOpen] = useState(false);
+  return <ConfirmDialog {...props} open={open} onOpenChange={setOpen} />;
+};
+
+// An alert dialog (role alertdialog): it interrupts and asks for an answer. Focus starts on Cancel (the safe action) and stays trapped, a click outside does not close it, Escape does. It opens from its button; the play function checks that a click outside leaves it open.
+export const AlertDialog: Story = {
+  render: (args) => <AlertDialogExample {...args} />,
+  play: async ({ canvasElement }) => {
+    const trigger = canvasElement.querySelector('button');
+    if (!trigger) throw new Error('No trigger button rendered');
+    trigger.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const dialog = document.querySelector('[role="alertdialog"]');
+    if (!dialog) throw new Error('No alertdialog rendered');
+    if (document.activeElement?.textContent !== 'Cancel') throw new Error(\`Focus is on "\${document.activeElement?.textContent}", expected Cancel\`);
+    // A click on the scrim must not close an alert dialog
+    const scrim = document.querySelector<HTMLElement>('.bg-overlay');
+    scrim?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    scrim?.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    if (!document.querySelector('[role="alertdialog"]')) throw new Error('A click outside closed the alert dialog');
+  },
+};
+` + src.slice(end);
+    }
+    src = src.split("document.querySelector<HTMLElement>('.bg-overlay')").join("document.querySelector<HTMLElement>('[data-modal-overlay]')");
     if (src.includes('export const PlainDialog')) return src;
-    const anchor = '// An alert dialog (role alertdialog)';
-    if (!src.includes(anchor)) throw new Error(`Patch for ${file} no longer matches: AlertDialog story`);
-    const story = `// A plain dialog (role="dialog") for a confirmation that may be dismissed: a click outside closes it.
+    const anchor = '// An alert dialog opened from a sheet';
+    if (!src.includes(anchor)) throw new Error(`Patch for ${file} no longer matches: AlertDialogInSheet story`);
+    const story = `// A plain dialog (role="dialog") for a confirmation that may be dismissed. It opens from its button like the alert dialog; the play function checks that a click outside closes it.
 export const PlainDialog: Story = {
-  args: { trigger: undefined, open: true, onOpenChange: () => undefined, role: 'dialog' },
-  play: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  args: { role: 'dialog' },
+  render: (args) => <AlertDialogExample {...args} />,
+  play: async ({ canvasElement }) => {
+    const trigger = canvasElement.querySelector('button');
+    if (!trigger) throw new Error('No trigger button rendered');
+    trigger.click();
+    await new Promise((resolve) => setTimeout(resolve, 200));
     if (!document.querySelector('[role="dialog"]')) throw new Error('No dialog rendered');
     if (document.querySelector('[role="alertdialog"]')) throw new Error('Rendered an alertdialog, expected role dialog');
+    // A click on the scrim closes a plain dialog
+    const scrim = document.querySelector<HTMLElement>('[data-modal-overlay]');
+    if (!scrim) throw new Error('No scrim rendered');
+    scrim.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    scrim.click();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (document.querySelector('[role="dialog"]')) throw new Error('A click outside did not close the dialog');
   },
 };
 
@@ -152,8 +195,10 @@ const problems = (file, src) => {
   return out;
 };
 
+// ONLY=<file>[,<file>] syncs just these story files and leaves the others as they are (for a fix commit of the library that is ported as a diff).
+const only = process.env.ONLY?.split(',');
 // Start from a clean state, so stories removed in the library disappear here as well.
-for (const f of fs.readdirSync(UI, { recursive: true })) if (isStory(f)) fs.rmSync(path.join(UI, f));
+if (!only) for (const f of fs.readdirSync(UI, { recursive: true })) if (isStory(f)) fs.rmSync(path.join(UI, f));
 
 const copied = [];
 const skipped = [];
@@ -166,7 +211,7 @@ const sources = [
   ...fs.readdirSync(LIB_UI, { recursive: true }).filter(isStory).sort().map((rel) => [rel, path.join(LIB_UI, rel), (src) => src]),
   ...Object.entries(extra).map(([from, rel]) => [rel, path.join(LIB, '@/components', from), (src) => src.split("'../../ui/").join("'./")]),
 ];
-for (const [rel, from, rewrite] of sources) {
+for (const [rel, from, rewrite] of sources.filter(([rel]) => !only || only.includes(rel))) {
   const target = path.join(UI, rel);
   if (!fs.existsSync(path.dirname(target))) {
     skipped.push(`${rel} (folder not in ui)`);

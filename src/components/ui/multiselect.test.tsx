@@ -634,4 +634,31 @@ describe('MultiSelect limit footer, focus and empty result (0.40.1)', () => {
     expect(await screen.findAllByText('Nothing here')).not.toHaveLength(0);
     expect(screen.queryByText(/No matches for/)).toBeNull();
   });
+
+  it('announces nothing when a list with matches opens (KDC-UX-05)', async () => {
+    const user = userEvent.setup();
+    render(<Controlled />);
+    const log: string[] = [];
+    const observer = new MutationObserver(() => log.push(screen.getByRole('status').textContent ?? ''));
+    observer.observe(screen.getByRole('status'), { childList: true, subtree: true, characterData: true });
+    await user.click(getInput());
+    await screen.findByRole('listbox');
+    await new Promise((done) => setTimeout(done, 500));
+    observer.disconnect();
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+    expect(log.filter(Boolean)).toEqual([]);
+    expect(screen.getByRole('status')).toHaveTextContent('');
+  });
+
+  it('announces the empty result once after typing paused, not for each key', async () => {
+    const user = userEvent.setup();
+    render(<Controlled disableAddNew />);
+    const log: string[] = [];
+    const observer = new MutationObserver(() => log.push(screen.getByRole('status').textContent ?? ''));
+    observer.observe(screen.getByRole('status'), { childList: true, subtree: true, characterData: true });
+    await user.type(getInput(), 'zzz');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No matches for "zzz"'));
+    observer.disconnect();
+    expect(log.filter(Boolean)).toEqual(['No matches for "zzz"']);
+  });
 });

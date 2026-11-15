@@ -1,7 +1,6 @@
-<!-- KDC-UX-02 ISO Lernförderlichkeit / Nielsen 10: the ConfirmDialog behaviour change (alertdialog) has no Storybook story -->
+<!-- KDC-UX-02 ISO Lernförderlichkeit / Nielsen 10: the ConfirmDialog behaviour change (alertdialog) needs Storybook stories -->
 - URL: `$BASE/index.json` (Storybook 0.6.0, port 6106 in the review run)
-- Viewport and theme: any
-- Selector: entries whose id contains `confirm-dialog` or `confirmdialog`
-- Measured (15.11.2026): 0 entries; ConfirmDialog only appears as a sentence in `primitives-dropdownmenu--opens-overlay`
-- Expected: at least `primitives-confirmdialog--default` (alertdialog, focus on Cancel, outside click keeps it open), `--with-confirm-value` (focus on the input) and `--plain-dialog` (`role="dialog"`)
-- Check: `curl -s $BASE/index.json | grep -ci confirm` must be greater than 0
+- Viewport and theme: 1280, light
+- Selector: entries `compositions-dialogs-confirm-dialog--alert-dialog`, `--plain-dialog`, `--confirm-input`, `--alert-dialog-in-sheet`
+- Measured (re-check 15.11.2026, head 0f4f1da): all present; alert-dialog role alertdialog, focus on Cancel; confirm-input focus on the input; plain-dialog role dialog
+- Expected: the four ids exist (`curl -s $BASE/index.json | grep -c confirm-dialog--` at least 4)

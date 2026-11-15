@@ -857,6 +857,18 @@ const MultiSelectDropdown: FC<
   const limitHint = maxSelectedText ?? (maxSelected != null ? l.maxSelectedHint(maxSelected) : '');
   const emptyMessage = search.trim() ? l.notFoundFor(search.trim()) : l.notFound;
 
+  // The empty result is announced only for a typed query that matches nothing, after the typing paused (so "z", "zz", "zzz" are one announcement). A list that opens without a query is never announced as empty, whatever it renders for a moment.
+  useEffect(() => {
+    const query = search.trim();
+    if (!query || !isVisible || !announce) return undefined;
+    const timer = setTimeout(() => {
+      const list = dropdownRef.current;
+      if (list && !list.querySelector('[cmdk-item]') && list.querySelector('[cmdk-empty]')) announce(l.notFoundFor(query));
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, isVisible, options]);
+
   const multiSelectDropdownActionsProps = {
     disableAddNew,
     disableCheckAll,
@@ -953,7 +965,7 @@ const MultiSelectDropdown: FC<
           </CommandList>
           <CommandEmpty className="px-2 pt-2 pb-4 text-sm text-text-subtle text-center">
             <Spacing direction="column">
-              <EmptyResult text={emptyMessage} announce={announce} />
+              <EmptyResult text={emptyMessage} />
               {!disableAddNew && <span className="opacity-disabled">{l.pressEnterToAdd}</span>}
             </Spacing>
           </CommandEmpty>
@@ -964,7 +976,7 @@ const MultiSelectDropdown: FC<
               data-slot="multiselect-limit-hint"
               data-state={limitReached ? 'limit' : 'open'}
               aria-hidden={limitReached ? undefined : true}
-              className={cn('mt-1 text-sm text-text-subtle', zero ? 'px-5' : 'px-4', !limitReached && 'invisible')}
+              className={cn('mt-1 text-sm leading-normal text-text-subtle', zero ? 'px-5' : 'px-4', !limitReached && 'invisible')}
             >
               {limitHint}
             </p>
@@ -975,14 +987,8 @@ const MultiSelectDropdown: FC<
   );
 };
 
-// The text of an empty result. The empty message sits outside the listbox, since a listbox with no option may hold nothing else (aria-required-children). It only mounts while the list has no match, so mounting (and a changed text) is the moment to announce it.
-const EmptyResult: FC<{ text: string; announce?: (text: string) => void }> = ({ text, announce }) => {
-  useEffect(() => {
-    announce?.(text);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
-  return <span>{text}</span>;
-};
+// The text of an empty result. It sits outside the listbox, since a listbox with no option may hold nothing else (aria-required-children). The announcement is made by the dropdown from the query and the match count.
+const EmptyResult: FC<{ text: string }> = ({ text }) => <span>{text}</span>;
 
 const MultiSelectCommandItem: FC<{
   option: MultiSelectOption;
