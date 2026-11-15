@@ -127,9 +127,20 @@ export const HorizontalManyItems: Story = {
     const canvas = within(canvasElement);
     // Web fonts change the item widths, so the keys are pressed once the row is final.
     await document.fonts.ready;
+    // The row width settles after the fonts swap in (a loaded runner is slower), so wait until it stops changing before the keys are pressed.
+    let last = -1;
+    let stable = 0;
+    await waitFor(
+      () => {
+        stable = row.scrollWidth === last ? stable + 1 : 0;
+        last = row.scrollWidth;
+        expect(stable).toBeGreaterThanOrEqual(5);
+      },
+      { timeout: 8000, interval: 100 },
+    );
     canvas.getByRole('button', { name: /Section 14/ }).focus();
     await userEvent.keyboard('{End}');
-    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1));
+    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1), { timeout: 5000 });
     await waitFor(() => expect(row).not.toHaveAttribute('data-fade-end'));
     await userEvent.keyboard('{Home}');
     await waitFor(() => expect(row.scrollLeft).toBe(0));
@@ -472,7 +483,7 @@ export const HorizontalValueSetAfterMount: Story = {
     const canvas = within(canvasElement);
     const row = canvasElement.querySelector('nav')?.firstElementChild as HTMLElement;
     await waitFor(() => expect(canvas.getByText('Coming soon')).toBeVisible());
-    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1));
+    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1), { timeout: 5000 });
     await waitFor(() => expect(row).not.toHaveAttribute('data-fade-end'));
   },
 };

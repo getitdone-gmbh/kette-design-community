@@ -1300,3 +1300,42 @@ export const LoadingMoreCentredInScrollArea: Story = {
     });
   },
 };
+
+// Named, focusable scroll region at every width. The wrapper is role="region" named by the caption, tabindex 0, and the shared ring is drawn inside it. The table keeps native table semantics; there is no stacked mode.
+export const ScrollRegion: Story = {
+  render: () => (
+    <div className="max-w-sm">
+      <Table scrollRegion="always">
+        <TableCaption>Tools of this server</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tool</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Read-only</TableHead>
+            <TableHead>Destructive</TableHead>
+            <TableHead>Idempotent</TableHead>
+            <TableHead>Open world</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {['search_issues', 'create_issue', 'delete_branch'].map((tool) => (
+            <TableRow key={tool}>
+              <TableCell className="whitespace-nowrap">{tool}</TableCell>
+              <TableCell className="min-w-[16rem]">Does what its name says.</TableCell>
+              <TableCell>Yes</TableCell>
+              <TableCell>No</TableCell>
+              <TableCell>Yes</TableCell>
+              <TableCell>Not declared</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const region = within(canvasElement).getByRole('region', { name: 'Tools of this server' });
+    await expect(region).toHaveAttribute('tabindex', '0');
+    region.focus();
+    await expect(region).toHaveFocus();
+  },
+};

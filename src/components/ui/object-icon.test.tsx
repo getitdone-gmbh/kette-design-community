@@ -11,7 +11,7 @@ describe('ObjectIcon', () => {
     expect(el).toHaveClass('bg-product-record-default', 'h-icon-md', 'rounded-tight');
   });
 
-  it.each(['workstream', 'backoffice', 'coldcall', 'vacancy', 'jobsearch', 'record', 'contextual'] as const)('renders app %s', (app) => {
+  it.each(['workstream', 'backoffice', 'coldcall', 'vacancy', 'jobsearch', 'meeting', 'record', 'contextual'] as const)('renders app %s', (app) => {
     const { container } = render(<ObjectIcon app={app} />);
     expect((container.firstChild as HTMLElement).className).toMatch(app === 'contextual' ? /bg-product-accent-default/ : new RegExp(`bg-product-${app}-default`));
   });

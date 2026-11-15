@@ -39,9 +39,9 @@ describe('Alert component', () => {
       ['default', 'status', 'bg-surface-canvas', 'text-text-default'],
       ['decent', 'status', 'bg-background-neutral-subtle', 'text-text-default'],
       ['info', 'status', 'bg-general-info-default/10', 'text-general-info-hover'],
-      ['success', 'status', 'bg-general-success-default/10', 'text-general-success-hover'],
-      ['warning', 'alert', 'bg-general-warning-default/10', 'text-general-warning-hover'],
-      ['destructive', 'alert', 'bg-general-error-default/10', 'text-text-destructive-on-subtle'],
+      ['success', 'status', 'bg-background-success-subtle', 'text-general-success-hover'],
+      ['warning', 'alert', 'bg-background-warning-subtle', 'text-general-warning-hover'],
+      ['destructive', 'alert', 'bg-background-destructive-subtle', 'text-text-destructive-on-subtle'],
     ] as const)('applies token classes for the %s variant', (variant, role, bgClass, textClass) => {
       render(<Alert variant={variant}>Content</Alert>);
       const alertEl = screen.getByRole(role);

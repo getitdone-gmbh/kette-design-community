@@ -1,7 +1,7 @@
 'use client';
 
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
 import { fieldHaloZero, focusRingField, invalidRing, menuItem, menuItemZero, openRing, overlayMotion, overlaySurface, overlaySurfaceZero, transitionBase } from '@/lib/recipes';
@@ -9,12 +9,14 @@ import { cn } from '@/lib/utils';
 import type { InputSize } from '@/components/ui/input';
 import { usePreset } from '@/components/ui/labels-context';
 
-// Trigger heights share the Input scale: `xs` is the compact `--size-control-xs` height (28, 24 in zero), `sm`, `md` and `lg` follow the control tokens.
+// Trigger heights share the Input scale: `xs` is the compact `--size-control-xs` height (28, 24 in zero), `sm`, `md`, `lg`, `xl` and `2xl` follow the control tokens.
 const TRIGGER_SIZE: Record<InputSize, string> = {
   xs: 'h-control-xs px-control-px-sm py-0',
   sm: 'h-control-sm px-control-px-sm py-0',
   md: 'h-control-md px-control-px-sm py-0',
   lg: 'h-control-lg px-control-px-sm py-0',
+  xl: 'h-control-xl px-control-px-sm py-0',
+  '2xl': 'h-control-2xl px-control-px-sm py-0',
 };
 
 const Select = SelectPrimitive.Root;
@@ -25,6 +27,52 @@ const SelectValue = SelectPrimitive.Value;
 
 // Option density of the open list, set by SelectContent and read by the options.
 const SelectDensityContext = React.createContext<'default' | 'touch'>('default');
+
+// Class list of the field-like trigger (also used by the EntityPicker trigger, a button that opens a search): same height, padding and field text as Select and Input in each preset.
+export const selectTriggerClasses = ({ zero, effectiveSize, smallType, clamp = false, compact = false, appearance = 'default', success = false }: { zero: boolean; effectiveSize?: InputSize; smallType: boolean; clamp?: boolean; compact?: boolean; appearance?: 'default' | 'readonly'; success?: boolean }) =>
+  cn(
+    'flex',
+    'w-full',
+    'items-center',
+    'justify-between',
+    'gap-2',
+    'rounded-control',
+    'border',
+    'border-solid',
+    'border-input',
+    'bg-background',
+    'px-4',
+    // Same vertical rhythm as Input (py-2 + typography-input-text/leading-normal), so a Select
+    // and an Input in one form row are the same height.
+    'py-2',
+    'text-select-foreground-default',
+    // Default and larger: the field text (16px, 13px in zero), at least 16px below sm like Input and the other fields of a form row.
+    !smallType && 'typography-input-text',
+    !smallType && 'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
+    smallType && 'text-ui font-normal',
+    'leading-normal',
+    transitionBase,
+    // Hover: darker border + soft field shadow (no background tint).
+    'hover:border-border-bold',
+    'hover:shadow-field-hover',
+    !zero && focusRingField,
+    // Open state mirrors the focus look, independent of :focus-visible (pointer open).
+    !zero && openRing,
+    // Invalid state: driven by `aria-invalid` (set by <FormControl>); arbitrary-variant form
+    // because `aria-invalid` is not in Tailwind's built-in aria allow-list.
+    invalidRing,
+    '[&>span]:line-clamp-1',
+    'data-[placeholder]:text-text-subtle',
+    'disabled:cursor-not-allowed',
+    'disabled:opacity-disabled',
+    { 'text-clamp': clamp },
+    { 'leading-clamp': clamp },
+    zero && fieldHaloZero,
+    compact && !effectiveSize && 'h-8 px-3 py-1',
+    effectiveSize && TRIGGER_SIZE[effectiveSize],
+    appearance === 'readonly' && 'cursor-default bg-muted hover:border-input hover:shadow-none',
+    success && 'border-border-success',
+  );
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
@@ -67,50 +115,7 @@ const SelectTrigger = React.forwardRef<
         }
         onKeyDown?.(event);
       }}
-      className={cn(
-        'flex',
-        'w-full',
-        'items-center',
-        'justify-between',
-        'gap-2',
-        'rounded-control',
-        'border',
-        'border-solid',
-        'border-input',
-        'bg-background',
-        'px-4',
-        // Same vertical rhythm as Input (py-2 + typography-input-text/leading-normal), so a Select
-        // and an Input in one form row are the same height.
-        'py-2',
-        'text-select-foreground-default',
-        // Default and larger: the field text (16px, 13px in zero), at least 16px below sm like Input and the other fields of a form row.
-        !smallType && 'typography-input-text',
-        !smallType && 'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
-        smallType && 'text-ui font-normal',
-        'leading-normal',
-        transitionBase,
-        // Hover: darker border + soft field shadow (no background tint).
-        'hover:border-border-bold',
-        'hover:shadow-field-hover',
-        !zero && focusRingField,
-        // Open state mirrors the focus look, independent of :focus-visible (pointer open).
-        !zero && openRing,
-        // Invalid state: driven by `aria-invalid` (set by <FormControl>); arbitrary-variant form
-        // because `aria-invalid` is not in Tailwind's built-in aria allow-list.
-        invalidRing,
-        '[&>span]:line-clamp-1',
-        'data-[placeholder]:text-text-subtle',
-        'disabled:cursor-not-allowed',
-        'disabled:opacity-disabled',
-        { 'text-clamp': clamp },
-        { 'leading-clamp': clamp },
-        zero && fieldHaloZero,
-        compact && !effectiveSize && 'h-8 px-3 py-1',
-        effectiveSize && TRIGGER_SIZE[effectiveSize],
-        appearance === 'readonly' && 'cursor-default bg-muted hover:border-input hover:shadow-none',
-        success && 'border-border-success',
-        className,
-      )}
+      className={cn(selectTriggerClasses({ zero, effectiveSize, smallType, clamp, compact, appearance, success }), className)}
       {...props}
     >
       {leading ? (
@@ -130,6 +135,33 @@ const SelectTrigger = React.forwardRef<
   );
 });
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
+
+// Shown by Radix only while the list continues in that direction, so a capped list says that it scrolls (UX-KETTE69-01, DR-176-01)
+const scrollButtonClasses = 'flex h-6 cursor-default items-center justify-center text-muted-foreground';
+
+const SelectScrollUpButton = React.forwardRef<React.ElementRef<typeof SelectPrimitive.ScrollUpButton>, React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>>(
+  ({ className, ...props }, ref) => {
+    const zero = usePreset() === 'zero';
+    return (
+      <SelectPrimitive.ScrollUpButton ref={ref} data-select-scroll="up" className={cn(scrollButtonClasses, className)} {...props}>
+        <ChevronUp aria-hidden className={zero ? 'h-icon-xs w-icon-xs' : 'h-4 w-4'} />
+      </SelectPrimitive.ScrollUpButton>
+    );
+  },
+);
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
+
+const SelectScrollDownButton = React.forwardRef<React.ElementRef<typeof SelectPrimitive.ScrollDownButton>, React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>>(
+  ({ className, ...props }, ref) => {
+    const zero = usePreset() === 'zero';
+    return (
+      <SelectPrimitive.ScrollDownButton ref={ref} data-select-scroll="down" className={cn(scrollButtonClasses, className)} {...props}>
+        <ChevronDown aria-hidden className={zero ? 'h-icon-xs w-icon-xs' : 'h-4 w-4'} />
+      </SelectPrimitive.ScrollDownButton>
+    );
+  },
+);
+SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
@@ -158,6 +190,8 @@ const SelectContent = React.forwardRef<
           'data-[side=right]:slide-in-from-left-2',
           'data-[side=top]:slide-in-from-bottom-2',
           position === 'popper' && 'data-[side=bottom]:translate-y-1',
+          // Popper mode: cap the list at the space Radix measures between the trigger and the viewport edge (minus the collision padding), so a long list never runs off screen; the viewport below scrolls instead.
+          position === 'popper' && 'max-h-[var(--radix-select-content-available-height)]',
           'data-[side=left]:-translate-x-1',
           'data-[side=right]:translate-x-1',
           'data-[side=top]:-translate-y-1',
@@ -170,16 +204,19 @@ const SelectContent = React.forwardRef<
         position={position}
         {...props}
       >
+        <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           className={cn(
             'p-1',
             position === 'popper' && 'h-[var(--radix-select-trigger-height)]',
             'w-full',
             'min-w-[var(--radix-select-trigger-width)]',
+            'overscroll-contain',
           )}
         >
           <SelectDensityContext.Provider value={density}>{children}</SelectDensityContext.Provider>
         </SelectPrimitive.Viewport>
+        <SelectScrollDownButton />
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
@@ -251,4 +288,4 @@ const SelectSeparator = React.forwardRef<
 ));
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 
-export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue };
+export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue };

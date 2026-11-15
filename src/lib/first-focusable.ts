@@ -23,6 +23,13 @@ export function focusLast(root: HTMLElement): boolean {
   return false;
 }
 
+// True when `root` holds an element a keyboard user can reach with Tab.
+export function hasFocusable(root: HTMLElement): boolean {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).some(
+    (el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled && !el.closest('[hidden], [inert], fieldset:disabled') && isRendered(el, root),
+  );
+}
+
 export function focusFirst(root: HTMLElement, skip?: Element | null): boolean {
   const candidates = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
   for (const el of candidates) {

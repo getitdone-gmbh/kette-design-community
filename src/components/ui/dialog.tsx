@@ -10,6 +10,7 @@ import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from './../../l
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from './../../lib/sticky-inset';
 import { displayVoice } from '../../lib/recipes';
 import { cn } from './../../lib/utils';
+import { AutosaveScopeReset } from './autosave-scope';
 import { useLabels, usePreset } from './labels-context';
 
 // Remembers the modal flag so DialogContent can make the page behind inert only for modal dialogs.
@@ -122,14 +123,18 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof Dialo
   hideClose?: boolean;
   // Accessible name of the close button. Wins over the provider text.
   closeLabel?: string;
+  // Extra classes for the corner close button, for example a `top-*` that centres it on a search row.
+  closeClassName?: string;
   // `first-field` moves initial focus to the first form control (input, select, textarea, radio, checkbox, switch) in DOM order, before tabs, links and buttons, also in dialogs without DialogBody. Default `auto` keeps the Radix default for those dialogs. A `scrollable` DialogBody always uses this priority.
   initialFocus?: 'auto' | 'first-field';
+  // `alertdialog` is for a dialog that interrupts to ask for an answer (confirm, discard, delete). It sets role="alertdialog", keeps focus trapped, starts focus on the element marked `data-autofocus` (put it on the safe action, usually Cancel) and is not closed by a click outside, so the user has to answer or press Escape. Default `dialog`.
+  role?: 'dialog' | 'alertdialog';
   // Runs once the dialog is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener.
   onAfterClose?: () => void;
 }
 
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
-  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, initialFocus = 'auto', onAfterClose, onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, ...props }, ref) => {
+  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, closeClassName, initialFocus = 'auto', role = 'dialog', onAfterClose, onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, onInteractOutside, ...props }, ref) => {
   const returnFocus = useReturnFocusFallback(onCloseAutoFocus);
   const l = useLabels({ close: closeLabel });
   const zero = usePreset() === 'zero';
@@ -150,14 +155,29 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
   const size = sizeProp ?? (zero ? 'sm' : undefined);
   return (
   <DialogPortal>
-    <DialogOverlay />
+    {/* A press on the scrim of an alert dialog must not move focus out of it. */}
+    <DialogOverlay onMouseDown={role === 'alertdialog' ? (event) => event.preventDefault() : undefined} />
     <DialogPrimitive.Content
       data-slot="dialog-content"
       ref={setRefs}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
-        if (!event.defaultPrevented) focusInitial(event, initialFocus === 'first-field');
+        if (event.defaultPrevented) return;
+        // An alert dialog starts on its safe action: the element marked data-autofocus.
+        const safe = role === 'alertdialog' ? (event.target as HTMLElement | null)?.querySelector<HTMLElement>('[data-autofocus]') : null;
+        if (safe) {
+          event.preventDefault();
+          safe.focus();
+          return;
+        }
+        focusInitial(event, initialFocus === 'first-field');
       }}
+      onInteractOutside={(event) => {
+        onInteractOutside?.(event);
+        // The user has to answer an alert dialog: a click outside does not close it.
+        if (role === 'alertdialog') event.preventDefault();
+      }}
+      role={role}
       onCloseAutoFocus={(event) => {
         returnFocus.onCloseAutoFocus(event);
         afterClose.run();
@@ -210,11 +230,12 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
       {...props}
     >
       <OpenerCapture onCapture={returnFocus.remember} />
-      {children}
+      <AutosaveScopeReset>{children}</AutosaveScopeReset>
       {hideClose ? null : (
         <DialogPrimitive.Close data-slot="dialog-close" className={cn('absolute right-3 top-3 inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary',
           // Same fixed 40px square as the Sheet close, independent of theme and preset.
           'h-10 w-10',
+          closeClassName,
         )}>
           <X className="h-icon-md w-icon-md" aria-hidden="true" />
           <span className="sr-only">{l.close}</span>
@@ -248,6 +269,7 @@ const DialogHeader = React.forwardRef<HTMLDivElement, DialogHeaderProps>(({ clas
 ));
 DialogHeader.displayName = 'DialogHeader';
 
+// Footer of a dialog: the destructive or confirming action on the right, Cancel as `outline` to its left. In a sheet footer Cancel is `ghost` (see SheetFooter).
 const DialogFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
   <div ref={useStickyInset<HTMLDivElement>('bottom', ref)} className={cn('flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
 ));

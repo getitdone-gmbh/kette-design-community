@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 
+import { HelpIcon } from './help-icon';
 import { KpiStrip, MetricItem } from './metric';
 import { DesignSystemProvider } from './design-system-provider';
 
@@ -154,7 +155,7 @@ export const CardWithFooterAction: Story = {
   },
 };
 
-// Below md the strip wraps into two columns; narrow the viewport to see it.
+// A strip narrower than 560px wraps into two columns; on a phone that is the whole width.
 export const WrapsOnPhone: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   render: (args) => (
@@ -165,6 +166,58 @@ export const WrapsOnPhone: Story = {
       <MetricItem label="Fill rate" value="62 %" delta="0" />
       <MetricItem label="Interviews" value="31" />
     </KpiStrip>
+  ),
+};
+
+// The layout follows the width of the strip, not the viewport: 480px (an open push sheet) gives two columns, 720px one row. Drag the corner of the frame to resize.
+export const StripByContainerWidth: StoryObj<typeof KpiStrip> = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      {[480, 720].map((width) => (
+        <div key={width} className="max-w-full overflow-auto" style={{ width, resize: 'horizontal', minWidth: 280 }}>
+          <KpiStrip aria-label={`Month summary ${width}px`}>
+            <MetricItem label="Revenue net" value="€48,200" delta="+6 % vs. August" deltaTone="success" />
+            <MetricItem label="Revenue gross" value="€57,358" delta="incl. 19 % VAT" />
+            <MetricItem label="Hours" value="412 h" delta="380 h billable" />
+            <MetricItem label="Documents" value="7" delta="€44,100 invoiced" />
+          </KpiStrip>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+// columns={2} keeps two columns at every width, for a sheet or a side column. A last odd figure takes the full row.
+export const StripTwoColumns: StoryObj<typeof KpiStrip> = {
+  render: () => (
+    <div className="max-w-full" style={{ width: 640 }}>
+      <KpiStrip aria-label="Month summary" columns={2}>
+        <MetricItem label="Company revenue" value="€96,400" delta="your finance projects" />
+        <MetricItem label="Your share" value="€48,200" delta="hours x member rate" />
+        <MetricItem label="Part of revenue" value="50.0 %" delta="your share in these projects" />
+        <MetricItem label="Hours" value="412 h" delta="380 h billable" />
+        <MetricItem label="Documents" value="7" delta="€44,100 invoiced" />
+      </KpiStrip>
+    </div>
+  ),
+};
+
+// labelAddon gives a HelpIcon its own place after the label: a long label truncates, the help stays whole.
+export const LabelWithHelp: StoryObj<typeof KpiStrip> = {
+  render: () => (
+    <div className="max-w-full" style={{ width: 480 }}>
+      <KpiStrip aria-label="Month summary">
+        <MetricItem
+          label="Part of revenue in your finance projects"
+          labelAddon={<HelpIcon label="How part of revenue is calculated" content="Your share over the revenue of the projects with the Finance right." />}
+          value="50.0 %"
+          delta="your share in these projects"
+        />
+        <MetricItem label="Hours" labelAddon={<HelpIcon label="How hours are counted" content="Booked hours of the month, billable and not." />} value="412 h" delta="380 h billable" />
+        <MetricItem label="Revenue net" value="€48,200" />
+        <MetricItem label="Documents" value="7" />
+      </KpiStrip>
+    </div>
   ),
 };
 

@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expectTypeOf, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type MouseEvent as ReactMouseEvent } from 'react';
 
-import { KpiStrip, MetricItem, type MetricItemProps } from './metric';
+import { KpiStrip, MetricItem, type KpiStripProps, type MetricItemProps } from './metric';
 
 describe('MetricItem', () => {
   it('only requires label and value, variant and density stay optional (type level)', () => {
@@ -180,7 +182,7 @@ describe('KpiStrip', () => {
 
 
 describe('KpiStrip wrapping and MetricItem slots', () => {
-  it('wraps into two columns below md and stays a single bar from md', () => {
+  it('wraps into two columns in a narrow strip and shares one row in a wide one (container query)', () => {
     render(
       <KpiStrip aria-label="KPIs">
         <MetricItem label="a" value="1" />
@@ -188,7 +190,7 @@ describe('KpiStrip wrapping and MetricItem slots', () => {
         <MetricItem label="c" value="3" />
       </KpiStrip>,
     );
-    expect(screen.getByRole('group', { name: 'KPIs' })).toHaveClass('grid', 'grid-cols-2', 'md:flex');
+    expect(screen.getByRole('group', { name: 'KPIs' })).toHaveClass('@container/kpi-strip', 'flex', 'flex-wrap', '[@container_kpi-strip_(max-width:559px)]:[&>*]:basis-1/2');
   });
 
   it('renders a caption under the value in every variant', () => {
@@ -220,5 +222,82 @@ describe('KpiStrip wrapping and MetricItem slots', () => {
     rerender(<MetricItem variant="card" density="compact" label="a" value="1" />);
     expect(container.firstElementChild).toHaveClass('p-4');
     expect(container.firstElementChild).not.toHaveClass('p-6');
+  });
+});
+
+describe('KpiStrip layout by container width (KETTE-63)', () => {
+  const strip = (props: KpiStripProps = {}) =>
+    render(
+      <KpiStrip aria-label="KPIs" {...props}>
+        <MetricItem label="a" value="1" />
+        <MetricItem label="b" value="2" />
+        <MetricItem label="c" value="3" />
+        <MetricItem label="d" value="4" />
+      </KpiStrip>,
+    );
+
+  it('is a named size container and switches to one row from the 560px container screen, not the viewport', () => {
+    strip();
+    const group = screen.getByRole('group', { name: 'KPIs' });
+    expect(group).toHaveAttribute('data-columns', 'auto');
+    expect(group).toHaveClass('@container/kpi-strip', 'flex', 'flex-wrap');
+    expect(group).toHaveClass('[@container_kpi-strip_(max-width:559px)]:[&>*]:basis-1/2');
+    expect(group.className).not.toMatch(/(^|\s)(md|max-md):/);
+  });
+
+  it('columns={2} keeps two columns at every width', () => {
+    strip({ columns: 2 });
+    const group = screen.getByRole('group', { name: 'KPIs' });
+    expect(group).toHaveAttribute('data-columns', '2');
+    expect(group).toHaveClass('[&>*]:basis-1/2');
+    expect(group.className).not.toContain('@container_kpi-strip');
+  });
+
+  it('a last odd figure takes the full row in the two column layout', () => {
+    strip({ columns: 2 });
+    expect(screen.getByRole('group', { name: 'KPIs' })).toHaveClass('[&>:last-child:nth-child(odd)]:basis-full');
+  });
+
+  it('writes every narrow class out in the source, so Tailwind generates it in apps and dist', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/components/ui/metric.tsx'), 'utf8');
+    strip();
+    const narrow = screen.getByRole('group', { name: 'KPIs' }).className.split(/\s+/).filter((c) => c.startsWith('[@container'));
+    expect(narrow.length).toBeGreaterThan(5);
+    for (const c of narrow) expect(source).toContain(`'${c}'`);
+  });
+
+  it('hides the dividers that start a row and rules the rows itself, consumers need no internal selector', () => {
+    strip();
+    const group = screen.getByRole('group', { name: 'KPIs' });
+    const narrow = '[@container_kpi-strip_(max-width:559px)]:';
+    expect(group).toHaveClass(`${narrow}[&>:nth-child(odd)_[data-kpi-divider]]:hidden`, `${narrow}[&>:nth-child(n+3)]:border-t`, '[&>:first-child_[data-kpi-divider]]:hidden');
+    // No unconditional rule hides a divider of the one row layout, so no override has to win a cascade order
+    expect(group.className.split(/\s+/).filter((c) => c.startsWith('[&>:nth-child(odd)'))).toEqual([]);
+  });
+});
+
+describe('MetricItem labelAddon (KETTE-63)', () => {
+  it('renders the addon after the label, outside the truncated text', () => {
+    render(<MetricItem label="Part of revenue" value="12 %" labelAddon={<button type="button">Help</button>} />);
+    const label = screen.getByText('Part of revenue');
+    const addon = screen.getByRole('button', { name: 'Help' });
+    expect(label).toHaveClass('truncate');
+    expect(label).not.toContainElement(addon);
+    const wrap = addon.parentElement as HTMLElement;
+    expect(wrap).toHaveClass('shrink-0');
+    expect(wrap.parentElement).toBe(label.parentElement);
+    expect(label.parentElement).toHaveClass('flex', 'min-w-0', 'items-center');
+  });
+
+  it('keeps the addon next to the label of an item with an icon and while loading', () => {
+    const { rerender } = render(<MetricItem label="Hours" value="1" icon={<svg />} labelAddon={<span data-testid="addon" />} />);
+    expect(screen.getByTestId('addon')).toBeInTheDocument();
+    rerender(<MetricItem label="Hours" value="1" loading labelAddon={<span data-testid="addon" />} />);
+    expect(screen.getByTestId('addon')).toBeInTheDocument();
+  });
+
+  it('renders the label as before without an addon', () => {
+    render(<MetricItem label="Plain" value="1" />);
+    expect(screen.getByText('Plain').parentElement).not.toHaveClass('items-center');
   });
 });

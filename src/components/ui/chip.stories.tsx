@@ -363,24 +363,42 @@ export const MutedStrongText: Story = { args: { label: 'Quiet tag', variant: 'mu
 export const NeutralSelected: Story = { args: { label: 'Neutral', variant: 'neutral', selected: true, onClick: () => undefined } as ChipProps };
 export const TintedSelectedWithCount: Story = { args: { label: 'Open', variant: 'info', tinted: true, selected: true, count: 5, onClick: () => undefined } as ChipProps };
 
+// The skill categories shared by the Weighted and SkillSoft stories; mobile, security and infrastructure exist as soft chips only
+const SKILL_CHIPS = [
+  ['design-ux', 'Design & UX'],
+  ['frontend', 'Frontend'],
+  ['data-ai', 'Data & AI'],
+  ['project-management', 'Project management'],
+  ['business-strategy', 'Business & strategy'],
+  ['backend', 'Backend'],
+  ['devops-cloud', 'DevOps & Cloud'],
+  ['testing-qa', 'Testing & QA'],
+  ['mobile', 'Mobile'],
+  ['security', 'Security'],
+  ['infrastructure', 'Infrastructure'],
+  ['fallback', 'Other'],
+] as const;
+const SOFT_ONLY = new Set<string>(['mobile', 'security', 'infrastructure']);
+
 export const Weighted: Story = {
   args: {} as any,
   render: () => (
     <div className="flex flex-wrap items-center gap-2">
-      {(
-        [
-          ['design-ux', 'Design & UX'],
-          ['frontend', 'Frontend'],
-          ['data-ai', 'Data & AI'],
-          ['project-management', 'Project management'],
-          ['business-strategy', 'Business & strategy'],
-          ['backend', 'Backend'],
-          ['devops-cloud', 'DevOps & Cloud'],
-          ['testing-qa', 'Testing & QA'],
-          ['fallback', 'Other'],
-        ] as const
-      ).map(([skill, label]) => (
+      {SKILL_CHIPS.filter(([skill]) => !SOFT_ONLY.has(skill)).map(([skill, label]) => (
         <Chip key={skill} chipStyle="weighted" size="small" skill={skill} label={label} weight="weight 3" />
+      ))}
+    </div>
+  ),
+};
+
+// Soft skill chip (prototype sk-c): tinted category fill, category text colour and a dot in the category colour.
+export const SkillSoft: Story = {
+  parameters: { layout: 'padded' },
+  args: { label: 'Frontend', chipStyle: 'skillSoft', skill: 'frontend' } as ChipProps,
+  render: () => (
+    <div className="flex flex-wrap gap-2">
+      {SKILL_CHIPS.map(([skill, label]) => (
+        <Chip key={skill} chipStyle="skillSoft" size="small" skill={skill} label={label} />
       ))}
     </div>
   ),

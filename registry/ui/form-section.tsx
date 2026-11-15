@@ -3,6 +3,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
+import { displayVoice } from '@/lib/recipes';
 import { cn } from '@/lib/utils';
 
 // Figma: FormSection 10157:2055 (Layout One-column | Two-column (intro, gap space/6, fields) | Two-column fields (fields in a 2-column grid) | Sheet).
@@ -41,7 +42,7 @@ const FormSection = React.forwardRef<HTMLDivElement, FormSectionProps>(
     const split = resolved === 'two-column' || resolved === 'two-column-fields';
     const intro = (
       <div className={cn('flex flex-col gap-1', split && '@3xl:w-form-intro @3xl:shrink-0')}>
-        <Title id={id} className={resolved === 'sheet' ? 'typography-ui-medium text-text-default' : 'typography-ui-lg-semibold text-text-default'}>
+        <Title id={id} className={cn(resolved === 'sheet' ? 'typography-ui-medium text-text-default' : 'typography-ui-lg-semibold text-text-default', resolved !== 'sheet' && displayVoice)}>
           {title}
         </Title>
         {description ? <p className="typography-ui text-text-subtle">{description}</p> : null}

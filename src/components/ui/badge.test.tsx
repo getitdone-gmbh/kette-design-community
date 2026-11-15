@@ -168,3 +168,34 @@ describe('Badge in narrow containers', () => {
     expect(container.firstElementChild).not.toHaveAttribute('title');
   });
 });
+
+describe('Badge icon position (Lead glyph)', () => {
+  it('puts the icon after the label with iconPosition="end" and colours it with iconClassName', () => {
+    render(
+      <Badge icon={<svg data-testid="glyph" />} iconPosition="end" iconClassName="text-icon-success">
+        Paid
+      </Badge>,
+    );
+    const badge = badgeEl('Paid');
+    const slots = Array.from(badge.children).map((child) => child.getAttribute('data-slot'));
+    expect(slots).toEqual(['label', 'icon']);
+    expect(badge).toHaveAttribute('data-icon-position', 'end');
+    expect(screen.getByTestId('glyph').parentElement).toHaveClass('text-icon-success');
+  });
+
+  it('keeps the icon first by default', () => {
+    render(<Badge icon={<svg />}>Open</Badge>);
+    const slots = Array.from(badgeEl('Open').children).map((child) => child.getAttribute('data-slot'));
+    expect(slots).toEqual(['icon', 'label']);
+  });
+
+  it('shows the dot (leading) instead of a trailing icon when both are set', () => {
+    render(
+      <Badge dot icon={<svg />} iconPosition="end">
+        Dot
+      </Badge>,
+    );
+    const slots = Array.from(badgeEl('Dot').children).map((child) => child.getAttribute('data-slot'));
+    expect(slots).toEqual(['dot', 'label']);
+  });
+});

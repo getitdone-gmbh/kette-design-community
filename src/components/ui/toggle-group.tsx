@@ -48,7 +48,7 @@ const toggleGroupVariants = cva(
   },
 );
 
-type ToggleGroupContextValue = Omit<VariantProps<typeof toggleGroupVariants>, 'preset'> & { fullWidth?: boolean };
+type ToggleGroupContextValue = Omit<VariantProps<typeof toggleGroupVariants>, 'preset'> & { fullWidth?: boolean; selectOnArrow?: React.MutableRefObject<number> | null };
 
 // Group-level defaults for `variant`/`size` (shadcn pattern). Items read these and may override them.
 const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({});
@@ -62,17 +62,45 @@ const ToggleGroup = React.forwardRef<
     }
 >(({ className, variant, size, fullWidth = false, children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  // A segmented single-select group is a radio group: one option is always chosen (a click on the chosen one does not clear it), the arrow keys move focus and choose, one tab stop. Every other group keeps the Radix toggle behaviour (a toggle can be switched off).
+  const radio = props.type === 'single' && variant === 'segmented';
+  // Time of the last arrow, Home or End key: Radix moves focus a tick later, and a focus that follows one of these keys chooses the option.
+  const arrowRef = React.useRef(Number.NEGATIVE_INFINITY);
+  const controlled = radio && (props as { value?: string }).value !== undefined;
+  const [inner, setInner] = React.useState<string | undefined>(radio ? (props as { defaultValue?: string }).defaultValue : undefined);
+  const radioProps = radio
+    ? (() => {
+        const { value, defaultValue, onValueChange, ...rest } = props as { value?: string; defaultValue?: string; onValueChange?: (value: string) => void };
+        void defaultValue;
+        return {
+          ...rest,
+          role: 'radiogroup' as const,
+          value: controlled ? value : inner ?? '',
+          onValueChange: (next: string) => {
+            // Radix reports '' when the chosen option is clicked again: keep the choice.
+            if (next === '') return;
+            if (!controlled) setInner(next);
+            onValueChange?.(next);
+          },
+          onKeyDownCapture: (event: React.KeyboardEvent<HTMLDivElement>) => {
+            (props as { onKeyDownCapture?: (e: React.KeyboardEvent<HTMLDivElement>) => void }).onKeyDownCapture?.(event);
+            if (/^Arrow(Left|Right|Up|Down)$|^(Home|End)$/.test(event.key)) arrowRef.current = performance.now();
+          },
+        };
+      })()
+    : null;
   // Standard controlled/uncontrolled dual-mode: forward value/defaultValue/onValueChange
   // straight through to Radix, which already implements this correctly via
   // useControllableState. Do NOT shadow `value` with local state here - doing so
   // permanently uncontrols the component and discards any consumer-supplied value.
+  // The segmented radio group is the one exception: it must refuse the empty value, so it owns the state of an uncontrolled group.
   return (
     // The Root is a layout container, not a toggle button: `toggleGroupVariants` (height, padding,
     // hover/on states) styles the ITEMS only. The Root forwards `className` and shares
     // `variant`/`size` with its items via context. No base classes are added, so unstyled
     // groups render exactly as before.
     <ToggleGroupPrimitive.Root
-      {...props}
+      {...((radioProps ?? props) as typeof props)}
       className={cn(variant === 'segmented' && 'inline-flex items-center gap-0 rounded-control bg-muted', variant === 'segmented' && (fullWidth ? 'w-full' : 'w-fit'), variant === 'segmented' && (zero ? 'p-micro' : 'p-[3px]'),
         // Sized track outside zero: total height equals the Button height (sm 32, md and lg 40). Without size the 38px legacy track stays.
         variant === 'segmented' && !zero && size && size !== 'default' && (size === 'sm' ? 'h-control-sm' : 'h-control-md'),
@@ -80,7 +108,7 @@ const ToggleGroup = React.forwardRef<
       )}
       ref={ref}
     >
-      <ToggleGroupContext.Provider value={{ variant, size, fullWidth }}>{children}</ToggleGroupContext.Provider>
+      <ToggleGroupContext.Provider value={{ variant, size, fullWidth, selectOnArrow: radio ? arrowRef : null }}>{children}</ToggleGroupContext.Provider>
     </ToggleGroupPrimitive.Root>
   );
 });
@@ -99,13 +127,19 @@ const ToggleGroupItem = React.forwardRef<
        */
       unreachable?: boolean;
     }
->(({ className, variant, size, children, unreachable, onClick, ...props }, ref) => {
+>(({ className, variant, size, children, unreachable, onClick, onFocus, ...props }, ref) => {
   const context = React.useContext(ToggleGroupContext);
   const zero = usePreset() === 'zero';
+  // the inner span is inline-flex so an icon sits beside the label instead of stacking above it
   return (
     <ToggleGroupPrimitive.Item
       {...props}
       {...(unreachable ? { 'aria-disabled': true, 'data-unreachable': true } : {})}
+      onFocus={(event) => {
+        onFocus?.(event);
+        // Radio group: the arrow keys choose the option that takes focus (selection follows focus).
+        if (context.selectOnArrow && performance.now() - context.selectOnArrow.current < 150 && !unreachable && event.currentTarget.getAttribute('aria-checked') === 'false') event.currentTarget.click();
+      }}
       onClick={(event) => {
         if (unreachable) {
           event.preventDefault();
@@ -119,7 +153,7 @@ const ToggleGroupItem = React.forwardRef<
       )}
       ref={ref}
     >
-      <span>{children}</span>
+      <span className="inline-flex items-center gap-1 leading-none">{children}</span>
     </ToggleGroupPrimitive.Item>
   );
 });

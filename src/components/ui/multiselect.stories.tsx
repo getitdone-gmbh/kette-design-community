@@ -1,11 +1,13 @@
+import { expect } from '@storybook/jest';
 import { PlusIcon } from '@radix-ui/react-icons';
 import type { Meta, StoryObj } from '@storybook/react';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
 import { DesignSystemProvider } from './design-system-provider';
 import { ListFilter } from 'lucide-react';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
-import { MultiSelect, MultiSelectOption, MultiSelectProps, MultiSelectProvider } from './multiselect';
+import { MultiSelect, MultiSelectContext, MultiSelectOption, MultiSelectProps, MultiSelectProvider } from './multiselect';
 import { Spacing } from './spacing';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
@@ -1009,12 +1011,87 @@ export const PersistentModeWithCustomCallbacks: Story = {
   },
 };
 
+// Without a MultiSelectProvider (the path a single listing field uses): the field keeps its own open state. The context is reset to none here, so the story shows that path although the other stories sit inside the provider.
+const StandaloneDemo = () => {
+  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <MultiSelectContext.Provider value={null}>
+      <MultiSelect
+        id="categories"
+        label="Categories"
+        placeholder="Search categories"
+        options={[
+          { label: 'Developer tools', id: 'dev' },
+          { label: 'Web', id: 'web' },
+          { label: 'Data', id: 'data' },
+        ]}
+        selected={selected}
+        onChange={setSelected}
+      />
+    </MultiSelectContext.Provider>
+  );
+};
+
+export const Standalone: Story = {
+  render: () => <StandaloneDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const field = canvas.getByRole('combobox', { name: 'Categories' });
+    await expect(canvas.getAllByRole('combobox')).toHaveLength(1);
+    await userEvent.click(field);
+    await waitFor(() => expect(field).toHaveAttribute('aria-expanded', 'true'));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(field).toHaveAttribute('aria-expanded', 'false'));
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(field).toHaveAttribute('aria-expanded', 'true'));
+    await userEvent.keyboard('web');
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(canvas.getByRole('option', { name: /Web/ })).toHaveAttribute('aria-checked', 'true'));
+    await userEvent.keyboard('{Escape}');
+    await expect(field).toHaveValue('');
+  },
+};
+
+// The field sits at the bottom of a short view, so the list opens upwards. The card keeps its full height and its surface (it hangs from `bottom`, not from `top` as well).
+const OpensUpDemo = () => {
+  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <MultiSelectContext.Provider value={null}>
+      <div style={{ height: 'calc(100vh - 32px)', display: 'flex', alignItems: 'flex-end' }}>
+        <div className="w-full">
+          <MultiSelect
+            id="opens-up"
+            label="Categories"
+            placeholder="Search categories"
+            options={['Developer tools', 'Web', 'Data', 'Design', 'Search', 'Security', 'Cloud', 'Files'].map((label) => ({ label, id: label }))}
+            selected={selected}
+            onChange={setSelected}
+          />
+        </div>
+      </div>
+    </MultiSelectContext.Provider>
+  );
+};
+
+export const OpensUpwards: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => <OpensUpDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Categories' }));
+    const list = await canvas.findByRole('listbox', { name: 'Categories' });
+    const card = list.closest('.card') as HTMLElement;
+    await waitFor(() => expect(card.getBoundingClientRect().height).toBeGreaterThan(list.getBoundingClientRect().height - 1));
+    expect(getComputedStyle(card).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+  },
+};
+
 export const KeyboardNavigationDemo: Story = {
   args: {
     ...defaultArgs,
     label: 'Keyboard Navigation Demo',
     placeholder: 'Type to search, Tab to navigate...',
-    description: 'Try: Type "de" → Tab → Space → Tab → Clear search → Type "ot" → Tab → Enter',
+    description: 'Try: type "de", ArrowDown to the match, Space or Enter to toggle it, Escape to close. Tab closes the list and moves on to the next control.',
     options: [
       { label: 'Design', id: 'design' },
       { label: 'Development', id: 'development' },
@@ -1349,7 +1426,7 @@ const SizeSmDemo = () => {
   ];
   return (
     <MultiSelectProvider>
-      <div className="flex w-[480px] flex-col gap-4">
+      <div className="flex w-full max-w-[480px] flex-col gap-4">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <MultiSelect id="sm-a" ariaLabel="Job type, small" size="sm" chipsInside options={opts} selected={a} onChange={setA} onUpdateOrder={() => {}} disableAddNew />
@@ -1369,4 +1446,51 @@ const SizeSmDemo = () => {
 export const SizeSm: Story = {
   args: {} as any,
   render: () => <SizeSmDemo />,
+};
+
+const MaxSelectedDemo = () => {
+  const [selected, setSelected] = useState<string[]>(['design', 'development']);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'other', label: 'Other' },
+    { id: 'testing', label: 'Testing' },
+  ];
+  return (
+    <MultiSelectProvider>
+      <MultiSelect id="max-selected" label="Job type (at most 2)" options={opts} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} maxSelected={2} disableAddNew hideAutosaveHint />
+    </MultiSelectProvider>
+  );
+};
+
+// With `maxSelected` the unchosen options are disabled once the limit is reached and a hint says why. Check All is hidden, Uncheck All stays. `hideAutosaveHint` removes the "(autosave)" text behind Close.
+export const MaxSelected: Story = {
+  args: {} as any,
+  render: () => <MaxSelectedDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByPlaceholderText('Search...'));
+    await waitFor(() => expect(canvas.getByText('Maximum of 2 selected')).toBeInTheDocument());
+  },
+};
+
+const ClearSearchOnSelectDemo = () => {
+  const [selected, setSelected] = useState<string[]>([]);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'devops', label: 'DevOps' },
+    { id: 'testing', label: 'Testing' },
+  ];
+  return (
+    <MultiSelectProvider>
+      <MultiSelect id="clear-search" label="Job type" options={opts} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} clearSearchOnSelect disableAddNew />
+    </MultiSelectProvider>
+  );
+};
+
+// `clearSearchOnSelect`: after a pick the search text is cleared, so the whole list is back for the next one. Type "dev", pick an option, the list shows all options again.
+export const ClearSearchOnSelect: Story = {
+  args: {} as any,
+  render: () => <ClearSearchOnSelectDemo />,
 };

@@ -85,10 +85,12 @@ describe('focus return to the menu trigger', () => {
     await user.keyboard('{Enter}');
     await user.click(await screen.findByRole('menuitem', { name: 'Open overlay' }));
     await flush();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // A confirm dialog is an alert dialog since 0.33.0.
+    const role = kind === 'confirm' ? 'alertdialog' : 'dialog';
+    expect(screen.getByRole(role)).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await flush();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole(role)).toBeNull();
     expect(trigger).toHaveFocus();
   });
 

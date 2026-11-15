@@ -73,6 +73,8 @@ export interface MetricItemProps
     // Partial keeps both optional whatever cva version the consumer resolves (cva 0.7.1 types defaulted variants as required).
     Partial<Pick<VariantProps<typeof metricItemVariants>, 'variant' | 'density'>> {
   label: React.ReactNode;
+  // Room after the label for a HelpIcon or a similar small addon. It sits outside the truncated label text, so it is never cut off. Use it on static tiles: a button or link tile must not hold another control.
+  labelAddon?: React.ReactNode;
   value: React.ReactNode;
   // Change vs. a previous period, e.g. "+3 vs last week".
   delta?: React.ReactNode;
@@ -107,6 +109,7 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
       variant = 'strip',
       density = 'default',
       label,
+      labelAddon,
       value,
       delta,
       deltaTone = 'neutral',
@@ -134,6 +137,16 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
     const classes = cn(metricItemVariants({ variant, density, interactive, selected, disabled, link: isLink }), className);
 
     const labelClass = cn('block truncate', isStrip || variant === 'compact' ? 'typography-kpi-label' : 'typography-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle');
+    // With an addon the label truncates on its own and the addon keeps its size next to it.
+    const addon = labelAddon ? <span className="inline-flex shrink-0 items-center">{labelAddon}</span> : null;
+    const labelRow = addon ? (
+      <span className="flex min-w-0 items-center gap-1">
+        <span className={cn(labelClass, 'min-w-0')}>{label}</span>
+        {addon}
+      </span>
+    ) : (
+      <span className={labelClass}>{label}</span>
+    );
     const valueClass = isStrip || variant === 'compact' ? 'typography-kpi-value' : 'typography-kpi-value-lg';
     // Skeleton bars keep the loaded line geometry: with the same type role, and the real text as transparent filler when the consumer passes it while loading, they wrap and measure exactly like the loaded item. Without text they fall back to a fixed width.
     const bar = 'rounded-item bg-overlay-skeleton-default text-transparent motion-reduce:animate-none select-none';
@@ -142,7 +155,7 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
     const body = loading ? (
       <>
         {icon && variant === 'card' ? <span className="mb-2 flex h-avatar-lg w-avatar-lg items-center justify-center rounded-full bg-background-brand-subtle text-icon-brand">{icon}</span> : null}
-        <span className={labelClass}>{label}</span>
+        {labelRow}
         <span className="flex items-baseline gap-2 max-md:flex-wrap" aria-hidden="true">
           <span className={valueClass}>{filler(value, 'w-16')}</span>
           <span className="typography-kpi-label break-words md:truncate">{filler(delta, 'w-12')}</span>
@@ -157,10 +170,11 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
             <span aria-hidden="true" className="inline-flex shrink-0 text-icon-subtle [&>svg]:h-icon-md [&>svg]:w-icon-md">
               {icon}
             </span>
-            <span className={cn('block truncate typography-kpi-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle')}>{label}</span>
+            <span className={cn('block min-w-0 truncate typography-kpi-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle')}>{label}</span>
+            {addon}
           </span>
         ) : (
-          <span className={labelClass}>{label}</span>
+          labelRow
         )}
         <span className="flex items-baseline gap-2 max-md:flex-wrap">
           <span className={cn('text-text-default', valueClass)}>{value}</span>
@@ -244,29 +258,52 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
 );
 MetricItem.displayName = 'MetricItem';
 
-// KPI strip: one bordered bar holding several strip metric items separated by dividers. Below md the items wrap into two columns.
+// KPI strip: one bordered bar holding several strip metric items separated by dividers. The layout follows the width of the strip itself (a size container), not the viewport: below the `area-sm` container screen (560px) the items wrap into two columns, from there they share one row.
 export interface KpiStripProps extends React.HTMLAttributes<HTMLDivElement> {
   // Fill of the strip. `card` (default) is the card surface. `raised` is for a strip on a `background-subtle` section: in dark the card fill can be darker than that section (zero theme), so `raised` uses the `surface-strip-raised` role (card in light, muted in dark) and never sinks below its surroundings.
   surface?: 'card' | 'raised';
+  // `auto` (default): two columns below a 560px wide strip, one row from there. `2`: two columns at every width, for a sheet or a narrow side column.
+  columns?: 'auto' | 2;
 }
 
-const KpiStrip = React.forwardRef<HTMLDivElement, KpiStripProps>(({ className, surface = 'card', ...props }, ref) => {
+// Two columns: each item takes half the row, rows after the first get a top rule, the item that starts a row has no left divider and a last odd item takes the full row.
+const twoColumns = [
+  '[&>*]:basis-1/2',
+  '[&>*]:py-3',
+  '[&>:nth-child(n+3)]:border-t',
+  '[&>:nth-child(n+3)]:border-solid',
+  '[&>:nth-child(n+3)]:border-border',
+  '[&>:nth-child(odd)_[data-kpi-divider]]:hidden',
+  '[&>:last-child:nth-child(odd)]:basis-full',
+];
+// `auto` applies the two columns only while the strip is narrower than the `area-sm` container screen (560px); from there the items share one row (their own flex-1) and every divider but the first shows. Written out in full, so Tailwind finds every class in the source and in dist.
+const twoColumnsWhenNarrow = [
+  '[@container_kpi-strip_(max-width:559px)]:[&>*]:basis-1/2',
+  '[@container_kpi-strip_(max-width:559px)]:[&>*]:py-3',
+  '[@container_kpi-strip_(max-width:559px)]:[&>:nth-child(n+3)]:border-t',
+  '[@container_kpi-strip_(max-width:559px)]:[&>:nth-child(n+3)]:border-solid',
+  '[@container_kpi-strip_(max-width:559px)]:[&>:nth-child(n+3)]:border-border',
+  '[@container_kpi-strip_(max-width:559px)]:[&>:nth-child(odd)_[data-kpi-divider]]:hidden',
+  '[@container_kpi-strip_(max-width:559px)]:[&>:last-child:nth-child(odd)]:basis-full',
+];
+
+const KpiStrip = React.forwardRef<HTMLDivElement, KpiStripProps>(({ className, surface = 'card', columns = 'auto', ...props }, ref) => {
   const zero = usePreset() === 'zero';
   return (
-  <div
-    ref={ref}
-    role="group"
-    className={cn(
-      'grid w-full grid-cols-2 items-stretch overflow-hidden rounded-surface border border-solid border-border md:flex',
-      surface === 'raised' ? 'bg-surface-strip-raised' : 'bg-card',
-      zero && 'md:min-h-[var(--size-kpi-strip)]',
-      '[&>:first-child_[data-kpi-divider]]:hidden',
-      // Below md the grid wraps: rows get a top rule, the first item of a row has no left divider.
-      'max-md:[&>*]:py-3 max-md:[&>:nth-child(n+3)]:border-t max-md:[&>:nth-child(n+3)]:border-solid max-md:[&>:nth-child(n+3)]:border-border max-md:[&>:nth-child(odd)_[data-kpi-divider]]:hidden',
-      className,
-    )}
-    {...props}
-  />
+    <div
+      ref={ref}
+      role="group"
+      data-columns={columns}
+      className={cn(
+        '@container/kpi-strip flex w-full flex-wrap items-stretch overflow-hidden rounded-surface border border-solid border-border',
+        surface === 'raised' ? 'bg-surface-strip-raised' : 'bg-card',
+        zero && 'min-h-[var(--size-kpi-strip)]',
+        '[&>*]:min-w-0 [&>:first-child_[data-kpi-divider]]:hidden',
+        columns === 2 ? twoColumns : twoColumnsWhenNarrow,
+        className,
+      )}
+      {...props}
+    />
   );
 });
 KpiStrip.displayName = 'KpiStrip';

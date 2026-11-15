@@ -311,4 +311,4 @@ const TabsContent = React.forwardRef<
 ));
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
-export { Tabs, TabsContent, TabsCount, TabsList, tabsListVariants, TabsTrigger, tabsTriggerVariants };
+export { Tabs, TabsContent, TabsCount, TabsList, tabsListVariants, TabsTrigger, tabsTriggerVariants, useEdgeFade };

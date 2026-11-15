@@ -44,7 +44,7 @@ describe('Chip additions', () => {
 const badgeEl = (name: string) => screen.getByText(name).closest('div') as HTMLElement;
 
 describe('Badge product variants', () => {
-  it.each(['backoffice', 'workstream', 'vacancy', 'jobsearch', 'coldcall'] as const)('product-%s uses its subtle pair', (product) => {
+  it.each(['backoffice', 'workstream', 'vacancy', 'jobsearch', 'coldcall', 'meeting'] as const)('product-%s uses its subtle pair', (product) => {
     render(<Badge variant={`product-${product}`}>Label</Badge>);
     expect(badgeEl('Label')).toHaveClass(`bg-product-${product}-subtle`, 'text-foreground', 'border-transparent');
   });

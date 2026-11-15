@@ -295,3 +295,34 @@ describe('DropdownMenu component', () => {
     });
   });
 });
+
+describe('DropdownMenuItem href (ZERO-575)', () => {
+  it('renders a navigating row as a link that keeps the menu item role', async () => {
+    const user = userEvent.setup();
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button>More</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem href="/settings">Settings</DropdownMenuItem>
+          <DropdownMenuItem href="https://example.com/docs" target="_blank">
+            Docs
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => undefined}>Sign out</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    await user.click(screen.getByRole('button', { name: 'More' }));
+    const settings = await screen.findByRole('menuitem', { name: 'Settings' });
+    expect(settings.tagName).toBe('A');
+    expect(settings).toHaveAttribute('href', '/settings');
+    const docs = screen.getByRole('menuitem', { name: /^Docs/ });
+    expect(docs).toHaveAttribute('target', '_blank');
+    expect(docs).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(docs.querySelector('svg')).not.toBeNull();
+    expect(docs).toHaveTextContent('opens in a new tab');
+    expect(settings.querySelector('svg')).toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'Sign out' }).tagName).toBe('DIV');
+  });
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -12,6 +12,8 @@ export interface FilterChipItem {
   id: string;
   // "Key: value" text, for example "Status: open".
   label: string;
+  // Link mode: the chip is an anchor that removes the filter by navigating to this URL (the listing without this filter). Works without JavaScript. The remove button is not rendered for a chip with `href`; the chip's accessible name is the removal text.
+  href?: string;
 }
 
 export interface FilterChipBarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
@@ -22,6 +24,8 @@ export interface FilterChipBarProps extends Omit<React.HTMLAttributes<HTMLDivEle
   reset?: boolean;
   resetLabel?: string;
   onReset?: () => void;
+  // Link mode: the reset control is a real link (`<a href>`) to the listing without any filter, so it works without JavaScript (pair it with chips that have `href`). Wins over `onReset` as the element. The label is `resetLabel`, for example "Clear all".
+  resetHref?: string;
   // Renders the dashed "add filter" chip when provided.
   onAdd?: () => void;
   addLabel?: string;
@@ -42,6 +46,7 @@ const FilterChipBar = React.forwardRef<HTMLDivElement, FilterChipBarProps>(
       reset = true,
       resetLabel: resetLabelProp,
       onReset,
+      resetHref,
       onAdd,
       addLabel: addLabelProp,
       placement = 'above-list',
@@ -68,16 +73,30 @@ const FilterChipBar = React.forwardRef<HTMLDivElement, FilterChipBarProps>(
         className={cn('flex flex-wrap items-center gap-2', placement === 'in-action-bar' && 'flex-nowrap overflow-x-auto', className)}
         {...props}
       >
-        {items.map((chip) => (
-          <Chip
-            key={chip.id}
-            variant="outline"
-            size="control"
-            label={chip.label}
-            removeLabel={l.removeFilter(chip.label)}
-            onRemove={onRemove ? () => onRemove(chip.id) : undefined}
-          />
-        ))}
+        {items.map((chip) =>
+          chip.href ? (
+            <Chip
+              key={chip.id}
+              variant="outline"
+              size="control"
+              href={chip.href}
+              label={chip.label}
+              aria-label={l.removeFilter(chip.label)}
+              data-filter-chip-link=""
+            >
+              <X aria-hidden="true" className="-mr-1 h-icon-xs w-icon-xs shrink-0 text-icon-subtle" />
+            </Chip>
+          ) : (
+            <Chip
+              key={chip.id}
+              variant="outline"
+              size="control"
+              label={chip.label}
+              removeLabel={l.removeFilter(chip.label)}
+              onRemove={onRemove ? () => onRemove(chip.id) : undefined}
+            />
+          ),
+        )}
         {onAdd ? (
           <Chip
             size="control"
@@ -88,7 +107,11 @@ const FilterChipBar = React.forwardRef<HTMLDivElement, FilterChipBarProps>(
             onClick={onAdd}
           />
         ) : null}
-        {reset && count > 0 && onReset ? (
+        {reset && count > 0 && resetHref ? (
+          <Button asChild variant="link" size="no-size" className="typography-ui text-text-brand underline-offset-4">
+            <a href={resetHref}>{resetLabel}</a>
+          </Button>
+        ) : reset && count > 0 && onReset ? (
           <Button type="button" variant="link" size="no-size" className="typography-ui text-text-brand underline-offset-4" onClick={onReset}>
             {resetLabel}
           </Button>

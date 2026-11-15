@@ -141,6 +141,23 @@
       ]
     },
     {
+      "name": "autosave-scope",
+      "type": "registry:ui",
+      "title": "Autosave Scope",
+      "description": "Helper used by the Get IT Done components.",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://zero-design.itdone.de/r/autosave-status.json",
+        "https://zero-design.itdone.de/r/theme.json"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/autosave-scope.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "autosave-status",
       "type": "registry:ui",
       "title": "Autosave Status",
@@ -150,6 +167,7 @@
         "lucide-react@^0.379.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/autosave-scope.json",
         "https://zero-design.itdone.de/r/button.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/popover.json",
@@ -486,6 +504,7 @@
         "https://zero-design.itdone.de/r/data-state-panel.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/recipes.json",
+        "https://zero-design.itdone.de/r/skill-category.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -900,6 +919,7 @@
         "lucide-react@^0.379.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/autosave-scope.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/modal-inert.json",
         "https://zero-design.itdone.de/r/nested-layer.json",
@@ -1158,6 +1178,7 @@
         "class-variance-authority@^0.7.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -1340,6 +1361,7 @@
       "description": "Inline Cta from the Get IT Done design system.",
       "dependencies": [],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -2053,6 +2075,7 @@
         "@radix-ui/react-popover@^1.3.1"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/autosave-scope.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
@@ -2338,6 +2361,7 @@
         "class-variance-authority@^0.7.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -2417,6 +2441,7 @@
         "lucide-react@^0.379.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/autosave-scope.json",
         "https://zero-design.itdone.de/r/autosave-status.json",
         "https://zero-design.itdone.de/r/button.json",
         "https://zero-design.itdone.de/r/code-snippet.json",
@@ -2426,6 +2451,7 @@
         "https://zero-design.itdone.de/r/link.json",
         "https://zero-design.itdone.de/r/modal-inert.json",
         "https://zero-design.itdone.de/r/nested-layer.json",
+        "https://zero-design.itdone.de/r/opened-by-activation.json",
         "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/return-focus.json",
         "https://zero-design.itdone.de/r/skeleton.json",
@@ -2919,6 +2945,7 @@
       "registryDependencies": [
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/modal-inert.json",
+        "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -3190,6 +3217,22 @@
       "files": [
         {
           "path": "registry/lib/nested-layer.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "opened-by-activation",
+      "type": "registry:lib",
+      "title": "Opened By Activation",
+      "description": "Helper used by the Get IT Done components.",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://zero-design.itdone.de/r/theme.json"
+      ],
+      "files": [
+        {
+          "path": "registry/lib/opened-by-activation.ts",
           "type": "registry:lib"
         }
       ]

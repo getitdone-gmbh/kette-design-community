@@ -4,7 +4,7 @@ import { ChevronsUpDown, GripVertical, Loader2, PlusIcon, X } from 'lucide-react
 import { Dispatch, FC, ReactNode, SetStateAction, createContext, useContext, useEffect, useRef, useState } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { compositeFieldDefault, compositeFieldZero } from '@/lib/recipes';
+import { compositeFieldDefault, compositeFieldZero, overlaySurface, overlaySurfaceZero } from '@/lib/recipes';
 import { cn } from '@/lib/utils';
 import { isMobileDevice } from '@/lib/is-mobile';
 import { Button } from '@/components/ui/button';
@@ -46,14 +46,22 @@ const isSelectedValueInvalid = (options: MultiSelectOption[] | undefined, id: Mu
   return Boolean(option.invalid) || Boolean(invalidValues?.includes(id)) || isValueInvalid?.(id) === true;
 };
 
+// Word-start match for `filterMode="prefix"`: 1 for a match at the start of the label, a little less for a later word start, 0 for none.
+const prefixFilter = (value: string, search: string) => {
+  const text = value.toLowerCase();
+  const query = search.toLowerCase().trim();
+  if (!query) return 1;
+  if (text.startsWith(query)) return 1;
+  const at = text.search(new RegExp(`[\\s/._-]${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  return at >= 0 ? 0.5 + 1 / (at + 3) / 10 : 0;
+};
+
 // Create a context for managing the currently open MultiSelect
+// Without a MultiSelectProvider each field keeps its own open state, so a standalone MultiSelect still opens.
 export const MultiSelectContext = createContext<{
   openId: string | null;
   setOpenId: Dispatch<SetStateAction<string | null>>;
-}>({
-  openId: null,
-  setOpenId: () => {},
-});
+} | null>(null);
 
 interface MultiSelectProviderProps {
   children: React.ReactNode;
@@ -90,6 +98,8 @@ export interface MultiSelectProps {
   useSheet?: boolean;
   useDragAndDrop?: boolean;
   dropdownClassName?: string;
+  // How the search text matches options. `fuzzy` (default) is the cmdk fuzzy match. `prefix` keeps only options with a word that starts with the text and ranks earlier word starts first.
+  filterMode?: 'fuzzy' | 'prefix';
   chipsAsCol?: boolean;
   disableCheckbox?: boolean;
   hideCheckedItems?: boolean;
@@ -106,6 +116,14 @@ export interface MultiSelectProps {
   useSheetText?: string;
   useSheetTrigger?: React.ReactNode;
   disableCheckAll?: boolean;
+  // Upper limit of chosen values. At the limit the unchosen options are disabled and a hint says why; Check All is hidden (Uncheck All stays). Counts the chosen values, also in persistent mode.
+  maxSelected?: number;
+  // Text of the limit hint. Wins over the provider text (`maxSelectedHint`).
+  maxSelectedText?: string;
+  // Clears the search text after an option is chosen, so the full list is back for the next pick. The list stays open.
+  clearSearchOnSelect?: boolean;
+  // Hides the "(autosave)" hint behind the Close button, without a provider label override. Persistent mode has no such hint.
+  hideAutosaveHint?: boolean;
   highlightChipById?: MultiSelectOptionId[];
   isMobile?: boolean;
   icon?: ReactNode;
@@ -136,14 +154,16 @@ export interface MultiSelectProps {
 }
 
 const multiSelectLabelId = (id?: string) => (id ? `${id}-label` : undefined);
+const limitHintId = (id: string) => `${id}-limit-hint`;
 
-const MultiSelectLabel: FC<{ label?: string; disabled?: boolean; htmlFor?: string }> = ({
+const MultiSelectLabel: FC<{ label?: string; disabled?: boolean; htmlFor?: string; controlId?: string }> = ({
   label,
   disabled = false,
   htmlFor = 'multiselect',
+  controlId,
 }) =>
   label ? (
-    <Label id={multiSelectLabelId(htmlFor)} htmlFor={htmlFor} aria-disabled={disabled || undefined} className={cn('leading-4', disabled && 'opacity-disabled')}>
+    <Label id={multiSelectLabelId(htmlFor)} htmlFor={controlId ?? htmlFor} aria-disabled={disabled || undefined} className={cn('leading-4', disabled && 'opacity-disabled')}>
       {label}
     </Label>
   ) : (
@@ -220,19 +240,32 @@ const MultiSelectInput: FC<
   const sm = size === 'sm';
   const invalidProps = { invalidValues, isValueInvalid, loading };
   const anyValueInvalid = (selected ?? []).some((id) => isSelectedValueInvalid(options, id, invalidProps));
+  // The search input is the one combobox (ARIA 1.2). Only a field without it (sheet trigger, search disabled) puts the role on the surface.
+  const hasInput = !useSheet && !disableSearch;
+  const surfaceProps = hasInput
+    ? {}
+    : {
+        role: 'combobox' as const,
+        'aria-expanded': open,
+        'aria-haspopup': 'listbox' as const,
+        'aria-labelledby': label ? multiSelectLabelId(id) : undefined,
+        'aria-label': label ? undefined : (ariaLabel ?? placeholder ?? l.selectOptions),
+        'aria-invalid': invalid || anyValueInvalid || undefined,
+        'aria-describedby': ariaDescribedBy,
+      };
   return (
   <div
     ref={comboboxRef}
     // eslint-disable-next-line jsx-a11y/role-has-required-aria-props -- ARIA 1.2: aria-controls is required only while the lazily mounted list is expanded
-    role="combobox"
-    aria-expanded={open}
-    aria-haspopup="listbox"
-    aria-labelledby={label ? multiSelectLabelId(id) : undefined}
-    aria-disabled={disabled || undefined}
-    aria-label={label ? undefined : (ariaLabel ?? placeholder ?? l.selectOptions)}
-    aria-invalid={invalid || anyValueInvalid || undefined}
-    aria-describedby={ariaDescribedBy}
+    {...surfaceProps}
+    aria-disabled={hasInput ? undefined : disabled || undefined}
+    // the surface lost aria-invalid to the input, so the error border of the composite recipe follows data-field-invalid (chips use data-invalid)
+    data-field-invalid={hasInput && (invalid || anyValueInvalid) ? true : undefined}
     data-id={id}
+    // The field answers to its own id (an error summary link `#id` lands here) and hands focus to the search input.
+    id={hasInput ? id : undefined}
+    tabIndex={hasInput ? -1 : undefined}
+    onFocus={hasInput ? (event) => { if (event.target === event.currentTarget) inputRef.current?.focus(); } : undefined}
     className={cn(
       'z-20',
       'flex',
@@ -244,6 +277,9 @@ const MultiSelectInput: FC<
       'border',
       'border-solid',
       ...(zero ? compositeFieldZero : compositeFieldDefault),
+      zero
+        ? 'data-[field-invalid=true]:border-destructive data-[field-invalid=true]:focus-within:ring-focus data-[field-invalid=true]:focus-within:ring-destructive data-[field-invalid=true]:focus-within:border-destructive'
+        : 'data-[field-invalid=true]:border-error data-[field-invalid=true]:focus-within:ring-destructive',
       // Size sm: min height is the control-sm token (border included), after the composite recipe so it wins.
       { 'min-h-[var(--size-control-sm)]': sm },
       { 'cursor-text': !useSheet },
@@ -308,7 +344,11 @@ const MultiSelectInput: FC<
       {!useSheet && !disableSearch && (
         <CommandInput
           icon={icon}
-          id={'multiselect-input' + id}
+          expanded={open}
+          borderless
+          aria-invalid={invalid || anyValueInvalid || undefined}
+          aria-describedby={ariaDescribedBy}
+          aria-disabled={disabled || undefined}
           placeholder={placeholder}
           value={search}
           onValueChange={handleSearchChange}
@@ -549,6 +589,9 @@ const MultiSelectDropdownActions: FC<{
   setOpenId: Dispatch<SetStateAction<string | null>>;
   useSheet?: boolean;
   disableCheckAll?: boolean;
+  maxSelected?: number;
+  hideAutosaveHint?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement>;
   options: MultiSelectOption[];
   selected: MultiSelectOptionId[];
   onChange: Dispatch<SetStateAction<string[]>>;
@@ -571,6 +614,9 @@ const MultiSelectDropdownActions: FC<{
   setOpenId,
   useSheet,
   disableCheckAll,
+  maxSelected,
+  hideAutosaveHint,
+  inputRef,
   options,
   selected,
   onChange,
@@ -585,6 +631,9 @@ const MultiSelectDropdownActions: FC<{
   customAddAction,
 }) => {
   const l = useLabels();
+  const zero = usePreset() === 'zero';
+  // The Check All label starts on the same edge as the option checkboxes below: option padding (8, zero 12) plus the checkbox margin (8) is the button padding, and the button sits on the list edge (4).
+  const checkAllClass = cn('text-sm border-0', zero ? 'px-5' : 'px-4');
   const handleCheckAll = () => {
     const allSelected = options.map((option) => option.id);
     onChange(allSelected);
@@ -592,6 +641,8 @@ const MultiSelectDropdownActions: FC<{
 
   const handleUncheckAll = () => {
     onChange([]);
+    // With a limit the Uncheck All button disappears once nothing is chosen: focus goes to the search field so it is not lost.
+    if (maxSelected != null) inputRef?.current?.focus();
   };
 
   const getCheckboxState = () => {
@@ -606,23 +657,29 @@ const MultiSelectDropdownActions: FC<{
 
   return (
     <>
+      <div
+        onKeyDown={(event) => {
+          // Enter and Space on a list button run that button, not the highlighted option (cmdk selects the active item on Enter from anywhere in the list).
+          if ((event.key === 'Enter' || event.key === ' ') && (event.target as HTMLElement).closest('button')) event.stopPropagation();
+        }}
+      >
       <Spacing alignItems="center" direction="row" justifyContent="between">
         <Spacing direction="row" alignItems="center" justifyContent="start">
-          {!disableCheckAll && (
-            <div className="flex justify-end">
-              {getCheckboxState() === 'checked' ? (
+          {!disableCheckAll && (maxSelected == null || selected.length > 0) && (
+            <div className="flex justify-start ml-1">
+              {getCheckboxState() === 'checked' || maxSelected != null ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleUncheckAll}
                   disabled={disabled}
-                  className="text-sm px-2"
+                  className={checkAllClass}
                 >
                   {l.uncheckAll}
                 </Button>
               ) : (
-                <Button type="button" variant="ghost" size="sm" onClick={handleCheckAll} disabled={disabled} className="text-sm px-2">
+                <Button type="button" variant="ghost" size="sm" onClick={handleCheckAll} disabled={disabled} className={checkAllClass}>
                   {getCheckboxState() === 'indeterminate'
                     ? l.checkAll
                     : getCheckboxState() === 'unchecked'
@@ -653,7 +710,7 @@ const MultiSelectDropdownActions: FC<{
           )}
           {customAddAction}
         </Spacing>
-        <Spacing direction="row" className="self-end" alignItems="center">
+        <Spacing direction="row" className="self-end" alignItems="center" justifyContent="end">
           {mode === 'persistent' ? (
             <>
               <Button type="button" variant="outline" size="sm" onClick={onCancel} className="text-sm px-2 mr-2">
@@ -667,19 +724,20 @@ const MultiSelectDropdownActions: FC<{
             <>
               {useSheet ? (
                 <SheetClose asChild>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
-                    {l.close} <span className="ml-1 font-regular">{l.autosaveHint}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2 max-sm:grow-0">
+                    {l.close}{!hideAutosaveHint && <span className="ml-1 font-regular">{l.autosaveHint}</span>}
                   </Button>
                 </SheetClose>
               ) : (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setOpenId(null)} className="text-sm px-2">
-                  {l.close} <span className="ml-1 font-regular">{l.autosaveHint}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setOpenId(null); inputRef?.current?.focus(); }} className="text-sm px-2 max-sm:grow-0">
+                  {l.close}{!hideAutosaveHint && <span className="ml-1 font-regular">{l.autosaveHint}</span>}
                 </Button>
               )}
             </>
           )}
         </Spacing>
       </Spacing>
+      </div>
       {/*
         `text-general-warning-hover` — the same warning-role token Alert's `warning` variant
         uses for its text (alert.tsx), not a raw `amber-600` swatch (SELECT-MAT-04).
@@ -709,6 +767,8 @@ const MultiSelectDropdown: FC<
     loading?: boolean;
     open: boolean;
     topDistances: () => number | undefined;
+    // Distance from the bottom edge of the card's containing block up to the top edge of the field, so an upward card ends exactly at the field.
+    upwardBottom: () => number | undefined;
     height: number[];
     inputRef: React.RefObject<HTMLInputElement>;
     setOpenId: Dispatch<SetStateAction<string | null>>;
@@ -722,8 +782,16 @@ const MultiSelectDropdown: FC<
     cancelButtonText?: string;
     disableBackdropClose?: boolean;
     customAddAction?: React.ReactNode;
+    dropdownClassName?: string;
+    listLabel?: string;
   }
 > = ({
+  dropdownClassName,
+  listLabel,
+  maxSelected,
+  maxSelectedText,
+  clearSearchOnSelect,
+  hideAutosaveHint,
   id,
   options,
   selected,
@@ -739,6 +807,7 @@ const MultiSelectDropdown: FC<
   loading,
   open,
   topDistances,
+  upwardBottom,
   height,
   inputRef,
   setOpenId,
@@ -761,11 +830,18 @@ const MultiSelectDropdown: FC<
   customAddAction,
 }) => {
   const l = useLabels();
+  const zero = usePreset() === 'zero';
   const isVisible = useSheet ? true : open;
+
+  const limitReached = maxSelected != null && selected.length >= maxSelected;
+  const limitHint = maxSelectedText ?? (maxSelected != null ? l.maxSelectedHint(maxSelected) : '');
 
   const multiSelectDropdownActionsProps = {
     disableAddNew,
     disableCheckAll,
+    maxSelected,
+    hideAutosaveHint,
+    inputRef,
     disabled,
     loading,
     handleDialogSubmit,
@@ -800,6 +876,8 @@ const MultiSelectDropdown: FC<
     renderItem,
     onlyCheckOnCheckbox,
     isMobile,
+    maxSelected,
+    clearSearchOnSelect,
   };
 
   const sortedOptions = orderCheckedOnTop
@@ -823,25 +901,33 @@ const MultiSelectDropdown: FC<
           { '!px-0': useSheet },
           { '!py-2': useSheet },
           'z-30',
-          { absolute: !useSheet },
-          { 'shadow-lg': !useSheet },
+          // Pinned to both edges of the field, so the list is exactly as wide as the field and never widens the page (it started 4px in from the list padding and overhung by as much).
+          { 'absolute left-0 right-0 !w-auto': !useSheet },
+          // The open list is a popover surface like Select, Popover and the menus: popover fill, hairline border and popover shadow, so it has an edge in dark mode too. The Card is transparent here so its own fill, border and shadow do not compete.
+          !useSheet && [...overlaySurface, '!rounded-popover', zero && overlaySurfaceZero],
           { 'mt-[-4px] z-10': useSheet },
           `transition-all duration-300  ${
             isVisible ? 'animate-[fadeInGrow_0.3s_ease-out_forwards]' : 'animate-[fadeOutShrink_0.3s_ease-in_forwards]'
           }`,
         )}
         style={{
-          top: topDistances() || 0,
-          bottom: dropdownDirection === 'up' ? height[0] : undefined,
+          // Opening upwards the card hangs from `bottom`; a `top` as well would collapse it to the gap between the two.
+          top: dropdownDirection === 'up' ? undefined : (topDistances() ?? 0),
+          bottom: dropdownDirection === 'up' ? (upwardBottom() ?? height[0]) : undefined,
         }}
         noBorder={useSheet}
+        transparent={!useSheet}
         ref={dropdownRef}
-        shadow={!useSheet}
       >
         <div>
           <MultiSelectDropdownActions {...multiSelectDropdownActionsProps} />
 
-          <CommandList>
+          {limitReached && (
+            <p id={limitHintId(id)} data-slot="multiselect-limit-hint" className={cn('ml-1 pb-2 text-sm text-text-subtle', zero ? 'px-5' : 'px-4')}>
+              {limitHint}
+            </p>
+          )}
+          <CommandList className={dropdownClassName} label={listLabel}>
             <CommandEmpty className="px-2 pt-2 pb-4 text-sm text-text-subtle text-center">
               <Spacing direction="column">
                 <span>{l.notFound}</span>
@@ -874,6 +960,8 @@ const MultiSelectCommandItem: FC<{
   renderItem?: (option: MultiSelectOption) => React.ReactNode;
   onlyCheckOnCheckbox?: boolean;
   isMobile?: boolean;
+  maxSelected?: number;
+  clearSearchOnSelect?: boolean;
 }> = ({
   option,
   selected,
@@ -887,9 +975,18 @@ const MultiSelectCommandItem: FC<{
   renderItem,
   onlyCheckOnCheckbox,
   isMobile,
+  maxSelected,
+  clearSearchOnSelect,
 }) => {
+  const isSelected = selected?.includes(option.id);
+  // At the limit an unchosen option cannot be added; a chosen one can always be removed.
+  const atLimit = maxSelected != null && !isSelected && (selected?.length ?? 0) >= maxSelected;
   return (
     <CommandItem
+      disabled={atLimit}
+      aria-describedby={atLimit ? limitHintId(id) : undefined}
+      // An explicit value: cmdk reads the text of an item that is mounted while a search is active as empty (it renders null until matched), so a list opened by typing would show nothing.
+      value={option.label}
       className={cn(
         // Selected/checked item — same token pairing as Select's own
         // `data-[state=checked]:bg-background-accent` (SELECT-MAT-04). The previous
@@ -898,36 +995,46 @@ const MultiSelectCommandItem: FC<{
         // `aria-selected:bg-menu-background-hover aria-selected:text-foreground-accent` for
         // the keyboard/pointer-highlighted row, and Checkbox already carries its own
         // `border-checkbox-border-default` token for the unchecked state — no override needed.
-        { 'bg-background-accent text-foreground-accent': !onlyCheckOnCheckbox && selected?.includes(option.id) },
+        // The checked state is shown by the checkbox, never by a row background: the background and the inset ring belong to the keyboard-active row only.
+        'aria-selected:ring-focus aria-selected:ring-inset aria-selected:ring-ring-default',
         { '!bg-transparent !cursor-text': onlyCheckOnCheckbox },
         'w-full',
       )}
       key={option.id}
-      onSelect={
+      aria-checked={selected?.includes(option.id)}
+      // With `onlyCheckOnCheckbox` a click on the row (its label) must not toggle, only a click on the checkbox or Enter on the highlighted option does.
+      onClickCapture={
         onlyCheckOnCheckbox
-          ? undefined
-          : () => {
-              if (!disabled) {
-                onChange((prevSelected) =>
-                  prevSelected.includes(option.id)
-                    ? prevSelected.filter((item) => item !== option.id)
-                    : [...prevSelected, option.id],
-                );
-                // Keep search and selection state
-                setOpenId(id);
-              }
+          ? (e) => {
+              // The inert box takes no pointer events itself, so a click counts as a click on the box when it lands inside its rectangle.
+              const box = e.currentTarget.querySelector('[data-slot="option-check"]')?.getBoundingClientRect();
+              const onBox = Boolean((e.target as HTMLElement).closest('[data-slot="option-check"]')) || (Boolean(box?.width) && e.clientX >= box!.left && e.clientX <= box!.right && e.clientY >= box!.top && e.clientY <= box!.bottom);
+              if (!onBox) e.stopPropagation();
             }
+          : undefined
       }
+      onSelect={() => {
+        if (!disabled && !atLimit) {
+          onChange((prevSelected) =>
+            prevSelected.includes(option.id) ? prevSelected.filter((item) => item !== option.id) : [...prevSelected, option.id],
+          );
+          if (clearSearchOnSelect) setSearch('');
+          // Keep selection state
+          setOpenId(id);
+        }
+      }}
       onKeyDown={(e) => {
         if (e.key === ' ' && !disabled) {
           // Space key - toggle selection
           e.preventDefault();
           e.stopPropagation();
+          if (atLimit) return;
           onChange((prevSelected) =>
             prevSelected.includes(option.id)
               ? prevSelected.filter((item) => item !== option.id)
               : [...prevSelected, option.id],
           );
+          if (clearSearchOnSelect) setSearch('');
           setOpenId(id);
         } else if (e.key === 'Tab' && !e.shiftKey) {
           // Tab - return to search
@@ -938,28 +1045,12 @@ const MultiSelectCommandItem: FC<{
         // Let cmdk handle Enter and arrow keys
       }}
     >
-      <Spacing direction="row" alignItems="center" gap="2" wrap="nowrap" className="w-full">
+      <Spacing direction="row" alignItems="center" gap="2" wrap="nowrap" className="w-full max-sm:[&>*]:!grow-0">
         {!disableCheckbox && (
-          <Checkbox
-            className="ml-2"
-            checked={selected?.includes(option.id)}
-            disabled={disabled}
-            onClick={
-              onlyCheckOnCheckbox
-                ? () => {
-                    if (!disabled) {
-                      onChange((prevSelected) =>
-                        prevSelected.includes(option.id)
-                          ? prevSelected.filter((item) => item !== option.id)
-                          : [...prevSelected, option.id],
-                      );
-                      // Keep search and selection state when clicking checkbox
-                      setOpenId(id);
-                    }
-                  }
-                : undefined
-            }
-          />
+          // The option carries the state (aria-checked) and its name; the box is a visual only. It sits in an inert wrapper, so it is no tab stop, no nameless control and no interactive element nested in the option. Keyboard: Enter on the highlighted option toggles it.
+          <span data-slot="option-check" aria-hidden="true" className="ml-2 inline-flex" {...{ inert: '' }}>
+            <Checkbox tabIndex={-1} checked={selected?.includes(option.id)} disabled={disabled} />
+          </span>
         )}
         {renderItem ? (
           renderItem(option)
@@ -997,6 +1088,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   useSheet = false,
   useDragAndDrop = false,
   dropdownClassName = '[&_[cmdk-list-sizer]]:max-h-[250px]',
+  filterMode = 'fuzzy',
   chipsAsCol = false,
   disableCheckbox = false,
   hideCheckedItems = false,
@@ -1013,6 +1105,10 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   useSheetText,
   useSheetTrigger,
   disableCheckAll = false,
+  maxSelected,
+  maxSelectedText,
+  clearSearchOnSelect = false,
+  hideAutosaveHint = false,
   highlightChipById = [],
   isMobile = false,
   icon,
@@ -1035,8 +1131,12 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   const placeholder = placeholderProp ?? l.searchEllipsis;
   const applyButtonText = applyButtonTextProp ?? l.apply;
   const cancelButtonText = cancelButtonTextProp ?? l.cancel;
-  const { openId, setOpenId } = useContext(MultiSelectContext);
+  const shared = useContext(MultiSelectContext);
+  const [ownOpenId, setOwnOpenId] = useState<string | null>(null);
+  const { openId, setOpenId } = shared ?? { openId: ownOpenId, setOpenId: setOwnOpenId };
   const [search, setSearch] = useState(defaultValue);
+  const [announcement, setAnnouncement] = useState('');
+  const previousSelected = useRef<MultiSelectOptionId[]>(selected);
   const [height, setHeight] = useState<number[]>([]);
   const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down');
   const labelHeight = label ? 36 : 0;
@@ -1044,6 +1144,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   const chipWrapperRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const tabbingRef = useRef(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newItemLabel, setNewItemLabel] = useState('');
   const initialHeight = size === 'sm' ? 32 : 44;
@@ -1053,6 +1154,12 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
 
   const open = openId === id;
+
+  // The search input keeps the id the command list generates for it; the visible label points at that id so it names the field.
+  const [controlId, setControlId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    setControlId(inputRef.current?.id || undefined);
+  }, [open, useSheet, disableSearch]);
 
   // Update temp selections when selected prop changes (for persistent mode)
   useEffect(() => {
@@ -1070,13 +1177,16 @@ const MultiSelectField: FC<MultiSelectProps> = ({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (e.target instanceof Element && !e.target.closest('.command')) {
+      // A target that left the page while the click was handled (the Uncheck All button unmounts) is not a click outside.
+      if (e.target instanceof Element && e.target.isConnected && !e.target.closest('.command')) {
         setOpenId(null);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Escape from a list button (Check All, Uncheck All, Close) hands focus back to the search input before the list unmounts.
+        if (!useSheet && dropdownRef.current?.contains(document.activeElement)) inputRef.current?.focus();
         setOpenId(null);
       }
     };
@@ -1088,7 +1198,8 @@ const MultiSelectField: FC<MultiSelectProps> = ({
       document.removeEventListener('click', handleClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [setOpenId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setOpenId, useSheet]);
 
   useEffect(() => {
     if (useSheet) return;
@@ -1153,6 +1264,11 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     };
   }, [open, selected, disableAddNew, useSheet, initialHeight]);
 
+  // The filter text is not a value: it is cleared when the list closes (choice, Escape, Tab, click away).
+  useEffect(() => {
+    if (!open && !useSheet) setSearch('');
+  }, [open, useSheet]);
+
   useEffect(() => {
     const isMobileDev = isMobileDevice();
     if (open && inputRef.current && !isMobileDev && !useSheet) {
@@ -1174,6 +1290,19 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     }
   }, [tempSelected, selected, mode]);
 
+  const currentSelected = mode === 'persistent' ? tempSelected : selected;
+  useEffect(() => {
+    const before = previousSelected.current;
+    previousSelected.current = currentSelected;
+    const added = currentSelected.filter((item) => !before.includes(item));
+    const removed = before.filter((item) => !currentSelected.includes(item));
+    const labelOf = (item: MultiSelectOptionId) => resolveSelectedOption(options, item).label;
+    const limitText = maxSelected != null && currentSelected.length >= maxSelected ? (maxSelectedText ?? l.maxSelectedHint(maxSelected)) : '';
+    if (added.length > 0) setAnnouncement([added.map((item) => l.optionSelected(labelOf(item))).join(', '), limitText].filter(Boolean).join('. '));
+    else if (removed.length > 0) setAnnouncement(removed.map((item) => l.optionRemoved(labelOf(item))).join(', '));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSelected]);
+
   const handleUnselect = (item: MultiSelectOptionId) => {
     if (mode === 'persistent') {
       setTempSelected((prevSelected) => prevSelected.filter((i) => i !== item));
@@ -1186,6 +1315,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     onChange(tempSelected);
     if (!disableBackdropClose) {
       setOpenId(null);
+      if (!useSheet) inputRef.current?.focus();
     }
     setHasChanges(false);
   };
@@ -1197,6 +1327,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
       onCancel();
     } else if (!disableBackdropClose) {
       setOpenId(null);
+      if (!useSheet) inputRef.current?.focus();
     }
   };
 
@@ -1231,6 +1362,13 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // ArrowDown or ArrowUp opens a closed list (ARIA combobox), Escape is handled for the document.
+    if (!open && !disabled && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      setOpenId(id);
+      return;
+    }
+    // Tab moves on through the open list's buttons (Check All, Close); the list closes when focus leaves the field (see onBlur on the command).
     if (e.key === 'Backspace' && search === '') {
       e.preventDefault();
       if (mode === 'persistent') {
@@ -1253,6 +1391,12 @@ const MultiSelectField: FC<MultiSelectProps> = ({
 
     // Note: Arrow keys are handled by cmdk itself for navigation
     // We don't need to handle them manually
+  };
+
+  const upwardBottom = () => {
+    const field = comboboxRef.current;
+    const parent = field?.offsetParent as HTMLElement | null;
+    return field && parent ? parent.clientHeight - field.offsetTop : undefined;
   };
 
   const topDistances = () => {
@@ -1354,12 +1498,18 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     loading,
     open,
     topDistances,
+    upwardBottom,
     height,
     inputRef,
     setOpenId,
     useSheet,
     useDragAndDrop,
     dropdownClassName,
+    listLabel: label ?? ariaLabel ?? placeholder ?? l.selectOptions,
+    maxSelected,
+    maxSelectedText,
+    clearSearchOnSelect,
+    hideAutosaveHint,
     disableCheckbox,
     hideCheckedItems,
     renderItem,
@@ -1385,11 +1535,11 @@ const MultiSelectField: FC<MultiSelectProps> = ({
           <Spacing direction="column" gap="2" wrap="nowrap">
             {customAction ? (
               <Spacing direction="row" justifyContent="between" alignItems="center">
-                <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} />
+                <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} controlId={controlId} />
                 {customAction}
               </Spacing>
             ) : (
-              <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} />
+              <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} controlId={controlId} />
             )}
             {description && <span className="text-sm text-text-subtle leading-lg">{description}</span>}
             {!chipsInside && <MultiSelectChips {...multiSelectChipsProps} />}
@@ -1424,7 +1574,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
             </SheetHeader>
             <Spacing direction="column" gap="2" className="relative" wrap="nowrap">
               {!chipsInside && <MultiSelectChips {...multiSelectChipsProps} />}
-              <Command className="w-full command" vimBindings={false} {...{ [PERSISTENT_LIST]: '' }}>
+              <Command className="w-full command" filter={filterMode === 'prefix' ? prefixFilter : undefined} vimBindings={false} label={label ?? ariaLabel ?? placeholder ?? l.selectOptions} {...{ [PERSISTENT_LIST]: '' }}>
                 <MultiSelectInput {...multiSelectInputProps} useSheet={false} noButton />
                 <CommandGroup className="[&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:nowrap">
                   <MultiSelectDropdown {...multiSelectDropdownProps} useSheet={true} />
@@ -1446,24 +1596,44 @@ const MultiSelectField: FC<MultiSelectProps> = ({
         <Spacing direction="column" gap="2" className="relative" wrap="nowrap">
           {customAction ? (
             <Spacing direction="row" justifyContent="between" alignItems="center">
-              <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} />
+              <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} controlId={controlId} />
               {customAction}
             </Spacing>
           ) : (
-            <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} />
+            <MultiSelectLabel label={label} disabled={disabled} htmlFor={id} controlId={controlId} />
           )}
           {description && <span className="text-sm text-text-subtle leading-lg">{description}</span>}
           {!chipsInside && <MultiSelectChips {...multiSelectChipsProps} />}
-          <Command className="w-full command" vimBindings={false}>
+          <Command
+            className="w-full command overflow-visible"
+            filter={filterMode === 'prefix' ? prefixFilter : undefined}
+            vimBindings={false}
+            label={label ?? ariaLabel ?? placeholder ?? l.selectOptions}
+            onKeyDownCapture={(event) => {
+              tabbingRef.current = event.key === 'Tab';
+            }}
+            onMouseDown={() => {
+              tabbingRef.current = false;
+            }}
+            onBlur={(event) => {
+              // Focus moving on to something outside the field (Tab past Close, Shift+Tab to the chips) closes the list. The add dialog and a click on a non-focusable spot do not: with no related target only a Tab key counts (focus left for the browser).
+              const next = event.relatedTarget as Node | null;
+              if (!open || dialogOpen || (next && event.currentTarget.contains(next))) return;
+              if (next || tabbingRef.current) setOpenId(null);
+            }}
+          >
             <MultiSelectInput {...multiSelectInputProps} />
-            <CommandList className={dropdownClassName}>
+            {open ? (
               <CommandGroup>
                 <MultiSelectDropdown {...multiSelectDropdownProps} />
               </CommandGroup>
-            </CommandList>
+            ) : null}
           </Command>
         </Spacing>
       )}
+      <span role="status" className="sr-only">
+        {announcement}
+      </span>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild></DialogTrigger>
         {/* Escape closes the dialog like Cancel; focus goes back into the field, since the dialog trigger is empty. */}

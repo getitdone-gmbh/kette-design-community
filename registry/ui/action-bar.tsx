@@ -108,6 +108,8 @@ export interface BatchBarAction {
   icon?: React.ReactNode;
   // Not needed when `render` opens a popover instead.
   onSelect?: () => void;
+  // The action goes to another page: it renders as a real link (an `<a>` in the More menu, a link styled as the outline button inline) instead of a button with a click handler. `onSelect` still runs first.
+  href?: string;
   destructive?: boolean;
   disabled?: boolean;
   // Render slot for inline actions. Receives the action button, returns what to render in its place, e.g. a `Popover` whose `PopoverTrigger asChild` wraps the button. Actions in the More menu ignore it.
@@ -192,7 +194,14 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
         <ActionBarSpacer />
         <div className="flex flex-wrap items-center justify-end gap-2">
           {inline.map((action) => {
-            const button = (
+            const destructiveClass = action.destructive && 'border-border-destructive-subtle text-text-destructive-on-subtle hover:bg-background-destructive-subtle';
+            const button = action.href !== undefined && !action.disabled ? (
+              <Button key={action.id} asChild variant="outline" size="control-sm" icon={action.icon as React.ReactElement | undefined} className={cn(destructiveClass)}>
+                <a href={action.href} onClick={action.onSelect}>
+                  {action.label}
+                </a>
+              </Button>
+            ) : (
               <Button
                 key={action.id}
                 type="button"
@@ -201,10 +210,7 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
                 icon={action.icon as React.ReactElement | undefined}
                 disabled={action.disabled}
                 onClick={action.onSelect}
-                className={cn(
-                  action.destructive &&
-                    'border-border-destructive-subtle text-text-destructive-on-subtle hover:bg-background-destructive-subtle',
-                )}
+                className={cn(destructiveClass)}
               >
                 {action.label}
               </Button>
@@ -231,6 +237,7 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
                   <DropdownMenuItem
                     key={action.id}
                     disabled={action.disabled}
+                    href={action.disabled ? undefined : action.href}
                     onSelect={action.onSelect}
                     className={cn(action.destructive && 'text-text-destructive')}
                   >

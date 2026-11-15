@@ -5,6 +5,7 @@ import { createRef } from 'react';
 import { vi } from 'vitest';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
+import { DesignSystemProvider } from './design-system-provider';
 
 describe('Card component', () => {
   it('renders children', () => {
@@ -385,5 +386,26 @@ describe('Card disabled click guard (0.28.1)', () => {
     render(<Card disabled onClick={onClick}>Body</Card>);
     fireEvent.click(screen.getByText('Body'));
     expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('CardDescription line height (KETTE-63)', () => {
+  it.each(['default', 'zero'] as const)('sets its own line height token in the %s preset instead of inheriting it', (preset) => {
+    render(
+      <DesignSystemProvider preset={preset}>
+        <div className="leading-none">
+          <CardDescription>A lead that runs over two lines in a narrow sheet.</CardDescription>
+        </div>
+      </DesignSystemProvider>,
+    );
+    const el = screen.getByText('A lead that runs over two lines in a narrow sheet.');
+    expect(el).toHaveClass('text-sm', 'leading-ui-relaxed');
+  });
+
+  it('a consumer line height still wins', () => {
+    render(<CardDescription className="leading-normal">Text</CardDescription>);
+    const el = screen.getByText('Text');
+    expect(el).toHaveClass('leading-normal');
+    expect(el).not.toHaveClass('leading-ui-relaxed');
   });
 });

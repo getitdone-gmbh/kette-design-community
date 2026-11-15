@@ -297,7 +297,8 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
     // `text-muted-foreground`, which this design system never defines as a utility (same
     // undefined-class issue already fixed on Table's empty-state caption, see table.tsx) and so
     // silently rendered with no color at all.
-    <p ref={ref} className={cn('text-sm text-card-foreground-muted [[data-selected=true]_&]:text-text-default [[data-today=true]_&]:text-text-default', className)} {...props} />
+    // Own line height token (19px at 14px), never the one of the container: a sheet sets 16px on its text, too tight for a lead over two lines.
+    <p ref={ref} className={cn('text-sm leading-ui-relaxed text-card-foreground-muted [[data-selected=true]_&]:text-text-default [[data-today=true]_&]:text-text-default', className)} {...props} />
   ),
 );
 CardDescription.displayName = 'CardDescription';

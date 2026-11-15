@@ -29,7 +29,7 @@ const readToken = (css: string, mode: 'light' | 'dark', name: string): Rgb => {
   return [Number(hit[1]), Number(hit[2]), Number(hit[3])];
 };
 
-// Indicator class to the token behind it.
+// Indicator class to the token behind it. 0.33.0: the warning light worst case follows the amber warning text of kette-tokens 5.28.0 (4.73 before).
 const indicators = {
   default: { token: 'colors-general-ring-default', cls: 'bg-general-ring-default', track: { light: 4.34, dark: 3.98 } },
   success: { token: 'semantic-text-success', cls: 'bg-text-success', track: { light: 5.01, dark: 7.61 } },

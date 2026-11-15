@@ -7,7 +7,7 @@ import { DesignSystemProvider } from './design-system-provider';
 import { Button } from './button';
 import { CookieConsent } from './cookie-consent';
 import { usePreset } from './labels-context';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetNavLink, SheetTitle, SheetTrigger } from './sheet';
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetNavLink, SheetTitle, SheetTrigger } from './sheet';
 
 const meta = {
   id: 'primitives-sheet',
@@ -317,6 +317,64 @@ export const FocusOnOpenFalse: Story = {
     await waitFor(() => expect(dialog).toHaveFocus());
     await expect(dialog).toHaveAttribute('tabindex', '-1');
   },
+};
+
+// A read-only sheet with a scrolling SheetBody: focusOnOpen={false} focuses the body (no ring for that focus, a body of text stays a tab stop), so Page Down, Space, the arrow keys and End scroll the text at once, without a Tab first.
+export const FocusOnOpenFalseScrollBody: Story = {
+  args: {} as any,
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button>Open sheet</Button>
+      </SheetTrigger>
+      <SheetContent focusOnOpen={false} mode="overlay" padded={false}>
+        <SheetHeader>
+          <SheetTitle>Month report</SheetTitle>
+          <SheetDescription>Read only, scroll with the keyboard.</SheetDescription>
+        </SheetHeader>
+        <SheetBody data-testid="scroll-body" className="gap-4 p-5">
+          {Array.from({ length: 30 }, (_, i) => (
+            <p key={i} className="m-0">
+              Paragraph {i + 1}: hours, rates and documents of the month.
+            </p>
+          ))}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Open sheet' }));
+    const body = await within(document.body).findByTestId('scroll-body');
+    await waitFor(() => expect(body).toHaveFocus());
+    // Text only: the body stays a tab stop, the focus the sheet set draws no ring
+    await expect(body).toHaveAttribute('tabindex', '0');
+    await expect(body).toHaveAttribute('data-sheet-autofocus');
+  },
+};
+
+// Phone: below 640px the sheet fills the viewport (Figma Slide out menu, Mobile=Full screen); from 640px up it is the overlay panel.
+export const MobileFullscreen: Story = {
+  args: {} as any,
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button>Open month</Button>
+      </SheetTrigger>
+      <SheetContent mode="overlay" padded={false} mobileFullscreen>
+        <SheetHeader>
+          <SheetTitle>March 2026</SheetTitle>
+          <SheetDescription>Revenue and credit notes of the month.</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="gap-3 p-5">
+          <p className="m-0">12.400 € invoiced, 9.800 € received.</p>
+        </SheetBody>
+        <SheetFooter>
+          <Button>Done</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  ),
 };
 
 // Stress case, not a model: a title this long runs to three lines or more in a narrow sheet. Real titles stay within two lines. What it shows is that the text wraps before the close button, at least 8px between the text and the button.

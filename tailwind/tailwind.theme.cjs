@@ -240,6 +240,46 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-chip-foreground-selected))`
                         : `rgb(var(--colors-chip-foreground-selected) / ${opacityValue})`,
+                'code-placeholder-background': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-code-placeholder-background))`
+                        : `rgb(var(--colors-code-placeholder-background) / ${opacityValue})`,
+                'code-placeholder-foreground': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-code-placeholder-foreground))`
+                        : `rgb(var(--colors-code-placeholder-foreground) / ${opacityValue})`,
+                'console-background': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-background))`
+                        : `rgb(var(--colors-console-background) / ${opacityValue})`,
+                'console-foreground': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-foreground))`
+                        : `rgb(var(--colors-console-foreground) / ${opacityValue})`,
+                'console-muted': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-muted))`
+                        : `rgb(var(--colors-console-muted) / ${opacityValue})`,
+                'console-series-1': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-series-1))`
+                        : `rgb(var(--colors-console-series-1) / ${opacityValue})`,
+                'console-series-2': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-series-2))`
+                        : `rgb(var(--colors-console-series-2) / ${opacityValue})`,
+                'console-series-3': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-series-3))`
+                        : `rgb(var(--colors-console-series-3) / ${opacityValue})`,
+                'console-series-4': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-series-4))`
+                        : `rgb(var(--colors-console-series-4) / ${opacityValue})`,
+                'console-series-5': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-console-series-5))`
+                        : `rgb(var(--colors-console-series-5) / ${opacityValue})`,
                 'data-avatar-1-default': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-data-avatar-1-default))`
@@ -989,6 +1029,22 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-general-border-default))`
                         : `rgb(var(--colors-general-border-default) / ${opacityValue})`,
+                'general-brand-gradient-fill-from': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-brand-gradient-fill-from))`
+                        : `rgb(var(--colors-general-brand-gradient-fill-from) / ${opacityValue})`,
+                'general-brand-gradient-fill-to': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-brand-gradient-fill-to))`
+                        : `rgb(var(--colors-general-brand-gradient-fill-to) / ${opacityValue})`,
+                'general-brand-gradient-text-from': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-brand-gradient-text-from))`
+                        : `rgb(var(--colors-general-brand-gradient-text-from) / ${opacityValue})`,
+                'general-brand-gradient-text-to': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-brand-gradient-text-to))`
+                        : `rgb(var(--colors-general-brand-gradient-text-to) / ${opacityValue})`,
                 'general-brand-active': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-general-brand-active))`
@@ -1057,6 +1113,14 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-general-destructive-on-fill))`
                         : `rgb(var(--colors-general-destructive-on-fill) / ${opacityValue})`,
+                'general-edition-enterprise-default': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-edition-enterprise-default))`
+                        : `rgb(var(--colors-general-edition-enterprise-default) / ${opacityValue})`,
+                'general-edition-enterprise-subtle': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-general-edition-enterprise-subtle))`
+                        : `rgb(var(--colors-general-edition-enterprise-subtle) / ${opacityValue})`,
                 'general-error-active': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-general-error-active))`
@@ -1437,6 +1501,22 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--colors-product-jobsearch-subtle))`
                         : `rgb(var(--colors-product-jobsearch-subtle) / ${opacityValue})`,
+                'product-meeting-border': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-product-meeting-border))`
+                        : `rgb(var(--colors-product-meeting-border) / ${opacityValue})`,
+                'product-meeting-default': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-product-meeting-default))`
+                        : `rgb(var(--colors-product-meeting-default) / ${opacityValue})`,
+                'product-meeting-on': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-product-meeting-on))`
+                        : `rgb(var(--colors-product-meeting-on) / ${opacityValue})`,
+                'product-meeting-subtle': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--colors-product-meeting-subtle))`
+                        : `rgb(var(--colors-product-meeting-subtle) / ${opacityValue})`,
                 'product-record-border': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--colors-product-record-border))`
@@ -2046,6 +2126,10 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-subtle-8))`
                         : `rgb(var(--semantic-chart-subtle-8) / ${opacityValue})`,
+                'chart-subtle-non-working': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-chart-subtle-non-working))`
+                        : `rgb(var(--semantic-chart-subtle-non-working) / ${opacityValue})`,
                 'chart-1': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-1))`
@@ -2110,6 +2194,10 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-8-on))`
                         : `rgb(var(--semantic-chart-8-on) / ${opacityValue})`,
+                'chart-absence': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-chart-absence))`
+                        : `rgb(var(--semantic-chart-absence) / ${opacityValue})`,
                 'chart-brand': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-brand))`
@@ -2182,6 +2270,10 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-destructive-on))`
                         : `rgb(var(--semantic-chart-destructive-on) / ${opacityValue})`,
+                'chart-guideline': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-chart-guideline))`
+                        : `rgb(var(--semantic-chart-guideline) / ${opacityValue})`,
                 'chart-neutral': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-neutral))`
@@ -2190,6 +2282,14 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-neutral-on))`
                         : `rgb(var(--semantic-chart-neutral-on) / ${opacityValue})`,
+                'chart-non-working': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-chart-non-working))`
+                        : `rgb(var(--semantic-chart-non-working) / ${opacityValue})`,
+                'chart-projection': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-chart-projection))`
+                        : `rgb(var(--semantic-chart-projection) / ${opacityValue})`,
                 'chart-success': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-chart-success))`
@@ -2850,6 +2950,7 @@ module.exports = {
                 'gap-control': 'var(--size-gap-control)',
                 'gap-label': 'var(--size-gap-label)',
                 'icon-tile': 'var(--size-icon-tile)',
+                'icon-tile-lg': 'var(--size-icon-tile-lg)',
                 'swatch-sm': 'var(--size-swatch-sm)',
                 'swatch-md': 'var(--size-swatch-md)',
                 'brand-mark-sm': 'var(--size-brand-mark-sm)',
@@ -2939,6 +3040,7 @@ module.exports = {
                 'sheet-md': 'var(--size-sheet-md)',
                 'sheet-lg': 'var(--size-sheet-lg)',
                 'sheet-xl': 'var(--size-sheet-xl)',
+                'measure-prose': 'var(--size-measure-prose)',
                 document: 'var(--size-document)',
                 'form-intro': 'var(--size-form-intro)',
                 'form-one-column': 'var(--size-form-one-column)',
@@ -3027,6 +3129,7 @@ module.exports = {
             maxHeight: {
                 content: 'calc(100dvh - var(--size-topbar))',
                 menu: 'var(--size-menu-max-h)',
+                snippet: 'var(--size-snippet-max-height)',
                 'sheet-card': 'var(--size-sheet-card)',
                 'command-palette-list': 'var(--size-command-palette-list)',
             },

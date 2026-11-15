@@ -20,8 +20,10 @@ const RadioGroupItem = React.forwardRef<
     size?: 'default' | 'md';
     // `filled` paints the checked radio solid with a light dot (Figma checked-filled); default keeps ring + dot.
     appearance?: 'default' | 'filled';
+    // Grows the pointer hit area to the touch-target token (44px) around the unchanged visible radio, for a standalone radio on a touch screen. Off by default.
+    comfortable?: boolean;
   }
->(({ className, children, size = 'default', appearance = 'default', ...props }, ref) => {
+>(({ className, children, size = 'default', appearance = 'default', comfortable = false, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Item
       ref={ref}
@@ -47,8 +49,11 @@ const RadioGroupItem = React.forwardRef<
         'focus-visible:border-ring',
         'disabled:cursor-not-allowed',
         'disabled:opacity-disabled',
+        // Comfortable touch target: the visible box stays the same, an invisible centred hit area grows to the touch-target token (44 px).
+        comfortable && ['relative', "after:content-['']", 'after:absolute', 'after:left-1/2', 'after:top-1/2', 'after:-translate-x-1/2', 'after:-translate-y-1/2', 'after:h-[var(--size-touch-target-lg)]', 'after:w-[var(--size-touch-target-lg)]'],
         className,
       )}
+      data-comfortable={comfortable || undefined}
       {...props}
     >
       <RadioGroupPrimitive.Indicator className={cn('flex', 'items-center', 'justify-center')}>

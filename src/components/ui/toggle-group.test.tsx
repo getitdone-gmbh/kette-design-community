@@ -314,4 +314,77 @@ describe('ToggleGroup segmented width (0.28)', () => {
     );
     expect(screen.getByRole('radiogroup', { name: 'Plain' })).not.toHaveClass('w-fit');
   });
+
+  it('lays an icon and the label out in one row (DR-544-06)', () => {
+    render(
+      <ToggleGroup type="single" aria-label="Icon">
+        <ToggleGroupItem value="a">
+          <svg data-testid="ic" aria-hidden />
+          Grid
+        </ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    const content = screen.getByTestId('ic').parentElement as HTMLElement;
+    expect(content).toHaveClass('inline-flex', 'items-center', 'gap-1', 'leading-none');
+  });
+
+  it('is a named radiogroup when single, whose arrow keys move between the options (ZERO-575)', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToggleGroup type="single" variant="segmented" defaultValue="a" aria-label="Unit">
+        <ToggleGroupItem value="a">Points</ToggleGroupItem>
+        <ToggleGroupItem value="b">Hours</ToggleGroupItem>
+        <ToggleGroupItem value="c">Days</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('radiogroup', { name: 'Unit' })).toBeInTheDocument();
+    const radios = screen.getAllByRole('radio');
+    radios[0].focus();
+    await user.keyboard('{ArrowRight}');
+    expect(radios[1]).toHaveFocus();
+  });
+
+  it('segmented: clicking the chosen option keeps it, an uncontrolled group owns its value', async () => {
+    const user = userEvent.setup();
+    const onValueChange = jest.fn();
+    render(
+      <ToggleGroup type="single" variant="segmented" defaultValue="a" aria-label="Unit" onValueChange={onValueChange}>
+        <ToggleGroupItem value="a">Points</ToggleGroupItem>
+        <ToggleGroupItem value="b">Hours</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    await user.click(screen.getByRole('radio', { name: 'Points' }));
+    expect(screen.getByRole('radio', { name: 'Points' })).toHaveAttribute('aria-checked', 'true');
+    expect(onValueChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('radio', { name: 'Hours' }));
+    expect(screen.getByRole('radio', { name: 'Hours' })).toHaveAttribute('aria-checked', 'true');
+    expect(onValueChange).toHaveBeenCalledWith('b');
+  });
+
+  it('segmented: the arrow keys choose the option that takes focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToggleGroup type="single" variant="segmented" defaultValue="a" aria-label="Unit">
+        <ToggleGroupItem value="a">Points</ToggleGroupItem>
+        <ToggleGroupItem value="b">Hours</ToggleGroupItem>
+        <ToggleGroupItem value="c">Days</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    screen.getByRole('radio', { name: 'Points' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Hours' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Hours' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Points' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('a plain single group keeps the Radix toggle behaviour (the chosen option can be switched off)', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToggleGroup type="single" aria-label="Plain" defaultValue="a">
+        <ToggleGroupItem value="a">A</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    await user.click(screen.getByRole('radio', { name: 'A' }));
+    expect(screen.getByRole('radio', { name: 'A' })).toHaveAttribute('aria-checked', 'false');
+  });
 });

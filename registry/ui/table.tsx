@@ -17,6 +17,7 @@ import {
   type ThHTMLAttributes,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -35,6 +36,9 @@ type SortDirection = 'asc' | 'desc' | false;
 // Where a sticky header sticks. `container` (default) clamps the table height and scrolls inside it; `parent` fills a parent that has a height; `page` sticks under the app top bar while the page scrolls.
 type TableStickyMode = 'container' | 'parent' | 'page';
 
+// Width of the right edge fade in px (w-8). The fade shows only while at least this much of the table is hidden to the right, so it never covers cell text of a table that overflows by a few pixels.
+const FADE_WIDTH = 32;
+
 interface TableContextValue {
   density?: TableDensity;
   striped?: boolean;
@@ -45,6 +49,11 @@ interface TableContextValue {
   rowHover?: TableRowHover;
   // Width of the visible scroll area (the scroll container without its border) in px, measured by the Table. Unset until measured.
   visibleWidth?: number;
+  // The scroll area overflows sideways (or is an always-on region): a caption then sticks to the start edge of the visible area instead of centring over the full table width.
+  captionSticky?: boolean;
+  // `scrollRegion="always"`: id that the caption takes and the scroll region is named by, and the callback with which a mounted caption reports itself.
+  captionId?: string;
+  registerCaption?: (id: string | undefined) => void;
 }
 
 // `muted` paints the header band with the muted surface; `table` hovers rows with the dedicated table hover token.
@@ -89,6 +98,8 @@ interface TableProps extends HTMLAttributes<HTMLTableElement>, VariantProps<type
   elevated?: boolean;
   /** Accessible name of the scroll container. While the table overflows, the container is a tab stop; with a name it is exposed as a region, so a screen reader announces what the tab stop is. */
   scrollLabel?: string;
+  // `auto` (default): the container is a tab stop only while the table overflows. `always`: the container is a named, focusable region at every width (`role="region"`, `tabindex="0"`), named by `scrollLabel` or, without it, by the `TableCaption` (`aria-labelledby`). The table keeps its native table semantics: nothing here changes the display of table parts, there is no stacked mode.
+  scrollRegion?: 'auto' | 'always';
 }
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
@@ -104,11 +115,15 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       rowHover = 'default',
       elevated = false,
       scrollLabel,
+      scrollRegion = 'auto',
       maxHeight,
       ...props
     },
     ref,
   ) => {
+    const regionAlways = scrollRegion === 'always';
+    const generatedCaptionId = useId();
+    const [captionId, setCaptionId] = useState<string | undefined>(undefined);
     const zeroPreset = usePreset() === 'zero';
     // The zero preset defaults to the zero density (rows 44, head 34, cell padding 12), other presets to `default`. An explicit density always wins.
     const density: TableDensity = densityProp ?? (zeroPreset ? 'zero' : 'default');
@@ -117,6 +132,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     // A scroll area with nothing focusable inside must be reachable by keyboard (WCAG 2.1.1), so it becomes a tab stop only while it really overflows.
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const [overflowing, setOverflowing] = useState(false);
+    // More content to the right of the visible area: the edge fade shows while true.
+    const [moreRight, setMoreRight] = useState(false);
     // Visible width of the scroll area, so a state row that spans every column (TableEmpty) can centre in what is on screen and not in the full table width.
     const [visibleWidth, setVisibleWidth] = useState<number | undefined>(undefined);
     useEffect(() => {
@@ -125,6 +142,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       const measure = () => {
         setOverflowing(node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight);
         setVisibleWidth(node.clientWidth > 0 ? node.clientWidth : undefined);
+        setMoreRight(node.scrollWidth - node.clientWidth - node.scrollLeft >= FADE_WIDTH);
       };
       measure();
       if (typeof ResizeObserver === 'undefined') return;
@@ -134,7 +152,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       return () => observer.disconnect();
     }, []);
     return (
-    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover, visibleWidth }}>
+    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover, visibleWidth, captionSticky: overflowing || regionAlways, captionId: generatedCaptionId, registerCaption: setCaptionId }}>
       {/* `overflow-x-auto` is unconditional so a wide table always scrolls within its own bounded
           container (WCAG 1.4.10 Reflow) regardless of `stickyHeader`, instead of overflowing the
           page. Only the vertical clamp (`max-h`/`overflow-y-auto`) is gated on `stickyHeader`,
@@ -146,14 +164,19 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       <div className={cn('relative isolate w-full', stickyHeader && stickyMode === 'parent' && 'h-full min-h-0')}>
       <div
         ref={wrapperRef}
-        tabIndex={overflowing ? 0 : undefined}
-        role={overflowing && scrollLabel ? 'region' : undefined}
-        aria-label={overflowing && scrollLabel ? scrollLabel : undefined}
+        tabIndex={overflowing || regionAlways ? 0 : undefined}
+        role={regionAlways ? 'region' : overflowing && scrollLabel ? 'region' : undefined}
+        aria-label={(overflowing || regionAlways) && scrollLabel ? scrollLabel : undefined}
+        // The generated id is the caption's default id, so the name exists on the first render; a caption with its own id replaces it once registered.
+        aria-labelledby={regionAlways && !scrollLabel ? (captionId ?? generatedCaptionId) : undefined}
+        data-scroll-region={regionAlways || undefined}
         data-scrolled-x={scrolledX || undefined}
         style={maxHeight && stickyHeader && stickyMode === 'container' ? { maxHeight } : undefined}
         onScroll={(event) => {
           const next = event.currentTarget.scrollLeft > 0;
           if (next !== scrolledX) setScrolledX(next);
+          const more = event.currentTarget.scrollWidth - event.currentTarget.clientWidth - event.currentTarget.scrollLeft >= FADE_WIDTH;
+          if (more !== moreRight) setMoreRight(more);
         }}
         className={cn(
           'peer relative w-full rounded-surface border border-solid focus-visible:outline-none',
@@ -168,6 +191,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         <table ref={ref} className={cn(tableVariants({ className }))} {...props} />
       </div>
       <div aria-hidden="true" className={cn('pointer-events-none absolute inset-0 z-sticky hidden rounded-surface peer-focus-visible:block', ...scrollRegionRing)} />
+      {/* Edge fade: tells that the table continues to the right while it overflows. It fades out at the end of the scroll. */}
+      {overflowing && moreRight ? <div aria-hidden="true" data-slot="table-scroll-fade" className="pointer-events-none absolute inset-y-px right-px z-sticky w-8 rounded-r-surface bg-gradient-to-l from-background to-transparent" /> : null}
       </div>
     </TableContext.Provider>
     );
@@ -663,9 +688,26 @@ TableLeadCell.displayName = 'TableLeadCell';
 markTableCell(TableLeadCell);
 
 const TableCaption = forwardRef<HTMLTableCaptionElement, HTMLAttributes<HTMLTableCaptionElement>>(
-  ({ className, ...props }, ref) => (
-    <caption ref={ref} className={cn('typography-table-item mt-4 text-text-subtle', className)} {...props} />
-  ),
+  ({ className, id: idProp, ...props }, ref) => {
+    const { captionId, registerCaption, captionSticky, visibleWidth } = useContext(TableContext);
+    const id = idProp ?? captionId;
+    // Reports the caption id to the Table, so `scrollRegion="always"` can name the region by it.
+    useEffect(() => {
+      registerCaption?.(id);
+      return () => registerCaption?.(undefined);
+    }, [id, registerCaption]);
+    // In a scroll area the caption would centre over the full table width and run out of view. It then starts at the start edge, as wide as the visible area, and sticks there while the table scrolls.
+    const { style, ...rest } = props;
+    return (
+      <caption
+        ref={ref}
+        id={id}
+        className={cn('typography-table-item mt-4 text-text-subtle', captionSticky && 'sticky left-0 px-control-px-sm text-left', className)}
+        style={captionSticky && visibleWidth ? { width: visibleWidth, ...style } : style}
+        {...rest}
+      />
+    );
+  },
 );
 TableCaption.displayName = 'TableCaption';
 

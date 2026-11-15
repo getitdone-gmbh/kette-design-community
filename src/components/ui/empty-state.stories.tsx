@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './button';
 import { EmptyState } from './empty-state';
 import { Illustration } from './illustration';
-import { Search } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 
 const meta = {
   id: 'patterns-empty-state',
@@ -30,6 +30,19 @@ const actions = (
 export const FirstUse: Story = { args: { variant: 'first-use', actions } };
 export const NoResults: Story = { args: { variant: 'no-results', title: 'No matches', description: 'Reset the filters or change the search.', actions: <Button variant="outline" size="sm">Reset filters</Button> } };
 export const Error: Story = { args: { variant: 'error', title: 'Could not load companies', description: 'Try again; if it keeps failing, contact support.', actions: <Button variant="outline" size="sm">Try again</Button> } };
+// Locked by plan (prototype "Matches gesperrt"): the no-access state keeps the tabs of the page, says what stays free and offers one primary action that leads to the plans.
+export const Locked: Story = {
+  args: {
+    variant: 'no-access',
+    title: 'Recommended is part of jobsearch.zero',
+    description: 'Your profile, your CV and 50 CV imports a month stay free.',
+    actions: (
+      <Button variant="primary" size="md" icon={<ArrowRight aria-hidden />}>
+        Choose jobsearch.zero
+      </Button>
+    ),
+  },
+};
 export const NoAccess: Story = { args: { variant: 'no-access', title: 'No access', description: 'Ask an admin for access.', actions: <Button variant="outline" size="sm">Request access</Button> } };
 export const Default: Story = { args: { variant: 'default', title: 'No projects found', description: 'Your search did not match any projects.', actions } };
 export const DefaultPrimaryLarge: Story = { args: { variant: 'default', size: 'lg', tone: 'primary', title: 'No projects found', actions } };

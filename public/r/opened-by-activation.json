@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "opened-by-activation",
+  "title": "Opened By Activation",
+  "description": "Helper used by the Get IT Done components.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/lib/opened-by-activation.ts",
+      "content": "// Tells whether the overlay that is opening right now was opened by a user activation (a click, or Enter and Space on a control, which browsers turn into a click).\n// A docked sheet opened programmatically (a selection changes, a route loads) must keep the page focus. One opened by a click takes focus, because the user asked for it.\n// A single capture listener on the document stores the time of the last click. It is installed when this module loads in a browser.\nconst WINDOW_MS = 1000;\nlet lastActivation = Number.NEGATIVE_INFINITY;\n\nif (typeof document !== 'undefined') {\n  document.addEventListener(\n    'click',\n    (event) => {\n      // Only a click on the page itself counts, not a synthetic click without a target.\n      if (event.target instanceof Element) lastActivation = performance.now();\n    },\n    true,\n  );\n}\n\nexport const openedByActivation = (): boolean => performance.now() - lastActivation <= WINDOW_MS;\n\n// Test hook: forgets the last activation.\nexport const resetOpenedByActivation = () => {\n  lastActivation = Number.NEGATIVE_INFINITY;\n};\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

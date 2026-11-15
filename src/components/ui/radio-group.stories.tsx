@@ -48,3 +48,17 @@ export const FilledAndLarge: Story = {
     </RadioGroup>
   ),
 };
+
+/** `comfortable` keeps the radio as it is and grows the pointer hit area to the touch-target token (44px), for a standalone radio on a touch screen. The dashed frames show the area. */
+export const Comfortable: Story = {
+  render: () => (
+    <RadioGroup defaultValue="a" className="flex gap-4">
+      <span className="inline-flex h-11 w-11 items-center justify-center border border-dashed border-border">
+        <RadioGroupItem value="a" aria-label="Comfortable A" comfortable />
+      </span>
+      <span className="inline-flex h-11 w-11 items-center justify-center border border-dashed border-border">
+        <RadioGroupItem value="b" aria-label="Comfortable B" size="md" comfortable />
+      </span>
+    </RadioGroup>
+  ),
+};

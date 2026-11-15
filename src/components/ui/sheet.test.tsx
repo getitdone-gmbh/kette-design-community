@@ -1,10 +1,13 @@
 import * as React from 'react';
 import { vi } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
+import { resetOpenedByActivation } from '../../lib/opened-by-activation';
+import { AutosaveStatus } from './autosave-status';
 import { Button } from './button';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { DesignSystemProvider } from './design-system-provider';
 import {
   Sheet,
@@ -284,6 +287,7 @@ describe('Docked non-modal Sheet focus and Escape (0.15)', () => {
   );
 
   it('does not steal focus on open when non-modal', async () => {
+    resetOpenedByActivation();
     const page = document.createElement('button');
     document.body.appendChild(page);
     page.focus();
@@ -292,6 +296,31 @@ describe('Docked non-modal Sheet focus and Escape (0.15)', () => {
     expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(false);
     expect(document.activeElement).toBe(page);
     page.remove();
+  });
+
+  it('takes focus when a click opened the docked push sheet (ZERO-575)', async () => {
+    const user = userEvent.setup();
+    const Opener = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open details
+          </button>
+          <Sheet open={open} onOpenChange={setOpen} modal={false}>
+            <SheetContent mode="push">
+              <SheetTitle>Details</SheetTitle>
+              <SheetDescription>Docked</SheetDescription>
+              <button type="button">Inside</button>
+            </SheetContent>
+          </Sheet>
+        </>
+      );
+    };
+    render(<Opener />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
   });
 
   it('still moves focus in for modal sheets and when focusOnOpen is set', async () => {
@@ -626,6 +655,7 @@ describe('Sheet 0.29', () => {
   });
 
   it('keeps the page focus for a docked sheet by default', () => {
+    resetOpenedByActivation();
     render(
       <>
         <button type="button">Page</button>
@@ -805,5 +835,195 @@ describe('SheetNavLink history and focus', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(screen.getByRole('region', { name: 'A' })).toHaveFocus();
+  });
+});
+
+describe('Sheet statusPlacement footer (ZERO-575)', () => {
+  const Demo = ({ statusPlacement, footer = 'zero', onRetry }: { statusPlacement?: 'any' | 'footer'; footer?: 'zero' | 'default'; onRetry?: () => void }) => (
+    <Sheet open>
+      <SheetContent padded={false} state="default" statusPlacement={statusPlacement}>
+        <SheetHeader>
+          <SheetTitle>Edit company</SheetTitle>
+          <SheetDescription>Record</SheetDescription>
+          <SheetMeta>
+            <AutosaveStatus state={onRetry ? 'error' : 'dirty'} onRetry={onRetry} />
+          </SheetMeta>
+        </SheetHeader>
+        <SheetFooter variant={footer}>
+          <button type="button">Save</button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
+  it('draws every status by default', () => {
+    render(<Demo />);
+    expect(screen.getAllByRole('status')).toHaveLength(2);
+  });
+
+  it('draws the status once, in the footer, with the state of the status it replaces', () => {
+    render(<Demo statusPlacement="footer" />);
+    const statuses = screen.getAllByRole('status');
+    expect(statuses).toHaveLength(1);
+    const footerStatus = screen.getByRole('dialog').querySelector('div.min-h-sheet-footer [data-state]');
+    expect(footerStatus).toHaveAttribute('data-state', 'dirty');
+  });
+
+  it('hands the retry of the hidden status to the footer', async () => {
+    const onRetry = vi.fn();
+    render(<Demo statusPlacement="footer" onRetry={onRetry} />);
+    const footer = screen.getByRole('dialog').querySelector('div.min-h-sheet-footer') as HTMLElement;
+    await userEvent.click(within(footer).getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the status where it is placed when no zero footer shows it', () => {
+    render(<Demo statusPlacement="footer" footer="default" />);
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('dialog').querySelector('[data-state="dirty"]')?.closest('header, div')).not.toBeNull();
+  });
+
+  it('a status in a dialog or popover opened from the sheet is not hidden', async () => {
+    const user = userEvent.setup();
+    render(
+      <Sheet open>
+        <SheetContent padded={false} statusPlacement="footer">
+          <SheetTitle>Edit company</SheetTitle>
+          <SheetDescription>Record</SheetDescription>
+          <Popover>
+            <PopoverTrigger>Info</PopoverTrigger>
+            <PopoverContent>
+              <AutosaveStatus state="saved" />
+            </PopoverContent>
+          </Popover>
+          <SheetFooter variant="zero">
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Info' }));
+    expect(await screen.findAllByRole('status')).toHaveLength(2);
+  });
+});
+
+describe('Sheet focusOnOpen false with a SheetBody (KETTE-61)', () => {
+  it('focuses the first SheetBody, so Page Down, Space, arrows and End scroll it without a Tab first', async () => {
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body-1">
+          <button type="button">Inside</button>
+        </SheetBody>
+        <SheetBody data-testid="body-2">Second</SheetBody>
+      </Example>,
+    );
+    const body = screen.getByTestId('body-1');
+    await waitFor(() => expect(body).toHaveFocus());
+    expect(body).toHaveAttribute('data-slot', 'sheet-body');
+    // Holds a control, so it only takes the programmatic focus
+    expect(body).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByTestId('body-2')).not.toHaveAttribute('tabindex');
+  });
+
+  it('a body of text stays a tab stop, so the keyboard can come back to scroll it', async () => {
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body">Only text</SheetBody>
+      </Example>,
+    );
+    const body = screen.getByTestId('body');
+    await waitFor(() => expect(body).toHaveFocus());
+    expect(body).toHaveAttribute('tabindex', '0');
+  });
+
+  it('draws no ring for the focus the sheet sets itself, a later keyboard focus gets the ring', async () => {
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body">Text</SheetBody>
+        <button type="button">Outside body</button>
+      </Example>,
+    );
+    const body = screen.getByTestId('body');
+    await waitFor(() => expect(body).toHaveFocus());
+    expect(body).toHaveAttribute('data-sheet-autofocus');
+    expect(body).toHaveClass('focus-visible:ring-focus', 'focus-visible:ring-inset', '[&[data-sheet-autofocus]:focus-visible]:ring-0');
+    act(() => screen.getByRole('button', { name: 'Outside body' }).focus());
+    expect(body).not.toHaveAttribute('data-sheet-autofocus');
+  });
+
+  it('keeps a tabIndex the consumer set on the body', async () => {
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body" tabIndex={-1}>
+          Text
+        </SheetBody>
+      </Example>,
+    );
+    const body = screen.getByTestId('body');
+    await waitFor(() => expect(body).toHaveFocus());
+    expect(body).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('Tab from the focused body moves to its first control', async () => {
+    const user = userEvent.setup();
+    render(
+      <Example focusOnOpen={false}>
+        <SheetBody data-testid="body">
+          <button type="button">First in body</button>
+        </SheetBody>
+      </Example>,
+    );
+    await waitFor(() => expect(screen.getByTestId('body')).toHaveFocus());
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'First in body' })).toHaveFocus();
+  });
+
+  it('still focuses the container when there is no SheetBody', async () => {
+    render(
+      <Example focusOnOpen={false}>
+        <p>Plain</p>
+      </Example>,
+    );
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveFocus());
+  });
+
+  it('a docked sheet with focusOnOpen false still keeps the page focus', async () => {
+    render(
+      <>
+        <button type="button">Page</button>
+        <Sheet open modal={false}>
+          <SheetContent mode="push" focusOnOpen={false}>
+            <SheetTitle>Docked</SheetTitle>
+            <SheetDescription>Rows</SheetDescription>
+            <SheetBody data-testid="body">Text</SheetBody>
+          </SheetContent>
+        </Sheet>
+      </>,
+    );
+    const page = screen.getByRole('button', { name: 'Page' });
+    page.focus();
+    await screen.findByText('Docked');
+    expect(screen.getByTestId('body')).not.toHaveFocus();
+  });
+});
+
+describe('SheetContent mobileFullscreen', () => {
+  it('fills the viewport below sm and keeps its size from sm up', () => {
+    render(<Example size="md" mode="overlay" mobileFullscreen />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('data-sheet-mobile', 'fullscreen');
+    expect(dialog).toHaveClass('w-sheet-md', 'max-sm:inset-0', 'max-sm:w-full', 'max-sm:h-full', 'max-sm:rounded-none', 'max-sm:border-0');
+  });
+
+  it('also undoes the centred translate of a centred card', () => {
+    render(<Example mode="centered" mobileFullscreen />);
+    expect(screen.getByRole('dialog')).toHaveClass('-translate-x-1/2', 'max-sm:translate-x-0', 'max-sm:translate-y-0');
+  });
+
+  it('is off by default', () => {
+    render(<Example />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).not.toHaveAttribute('data-sheet-mobile');
+    expect(dialog).not.toHaveClass('max-sm:inset-0');
   });
 });

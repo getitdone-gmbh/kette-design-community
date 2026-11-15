@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
+import { Button } from './button';
 import { FacetFilter, FacetGroup, FacetOption } from './facet-filter';
 import { DesignSystemProvider } from './design-system-provider';
 
@@ -87,4 +88,23 @@ export const ZeroPreset: Story = {
       </DesignSystemProvider>
     ),
   ],
+};
+
+// Native form: `name` and `value` render a real checkbox, so a GET form submits the filter without JavaScript. A count of 0 stays visible, a selected option with count 0 stays enabled.
+export const NativeGetForm: Story = {
+  render: () => (
+    <form method="get" action="#" className="max-w-xs">
+      <FacetFilter>
+        <FacetGroup label="Check state">
+          <FacetOption label="Responds" name="state" value="open" count={1284} defaultChecked />
+          <FacetOption label="Sign-in required" name="state" value="protected" count={312} />
+          <FacetOption label="Timed out" name="state" value="timeout" count={0} defaultChecked />
+          <FacetOption label="Not reachable" name="state" value="unreachable" count={0} disabled />
+        </FacetGroup>
+        <Button type="submit" className="mt-4">
+          Apply filters
+        </Button>
+      </FacetFilter>
+    </form>
+  ),
 };

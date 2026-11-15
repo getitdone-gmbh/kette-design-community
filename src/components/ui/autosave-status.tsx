@@ -6,6 +6,7 @@ import * as React from 'react';
 
 import { focusRing } from './../../lib/recipes';
 import { cn } from './../../lib/utils';
+import { AutosaveScopeContext } from './autosave-scope';
 import { useLabels, usePreset } from './labels-context';
 import { Button } from './button';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
@@ -65,6 +66,15 @@ const AutosaveStatus = React.forwardRef<HTMLSpanElement, AutosaveStatusProps>(
     const tooltip = typeof label === 'string' ? label : label === undefined ? l.autosaveStates[current] : undefined;
     const needsAction = current === 'error' || current === 'offline';
     const retry = needsAction && onRetry ? { onRetry, label: retryLabel ?? l.tryAgain } : null;
+    // In a sheet with statusPlacement="footer" this status hands its state and retry to the footer and draws nothing, as long as a footer that shows it is mounted.
+    const scope = React.useContext(AutosaveScopeContext);
+    const hand = scope?.footerOnly ? scope.hand : null;
+    React.useEffect(() => {
+      if (!hand) return undefined;
+      hand({ state: current, label, onRetry, retryLabel });
+      return () => hand(null);
+    }, [hand, current, label, onRetry, retryLabel]);
+    if (scope?.footerOnly && scope.footerShown) return null;
     return (
       <>
         <span

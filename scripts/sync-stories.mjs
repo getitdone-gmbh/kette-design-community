@@ -34,6 +34,21 @@ const patches = {
     }
     return src;
   },
+  // TableProjectCell and TableFigureCell (library 0.36.0, project revenue) are not in this package, so the ProjectAndFigures story goes.
+  'table-cells.stories.tsx': (src, file) => {
+    src = replaceOnce(src, ', TableProjectCell, TableFigureCell }', ' }', file);
+    const start = src.indexOf('// Project revenue (ZERO-626)');
+    if (start < 0) throw new Error(`Patch for ${file} no longer matches: ProjectAndFigures story`);
+    const end = src.indexOf('\n};\n', start) + 4;
+    return src.slice(0, start).replace(/\n+$/, '\n') + src.slice(end);
+  },
+  // MaterialIcon is not in this package; the matching lucide glyph keeps the icon and label story.
+  'toggle-group.stories.tsx': (src, file) => {
+    src = replaceOnce(src, "import { MaterialIcon } from '../icons/Icon';\n", "import { LayoutDashboard } from 'lucide-react';\n", file);
+    return src.split('<MaterialIcon name="dashboard" ').join('<LayoutDashboard ');
+  },
+  // The story named Error shadows the global Error inside this file.
+  'sheet-zero.stories.tsx': (src, file) => replaceOnce(src, "throw new Error('Focus did not move into the push sheet')", "throw new globalThis.Error('Focus did not move into the push sheet')", file),
   'drawer.stories.tsx': (src, file) => {
     src = replaceOnce(src, "import { Bar, BarChart, ResponsiveContainer } from 'recharts';\n", '', file);
     src = replaceOnce(src, "import { Button } from './button';", "import { Button } from './button';\nimport { Sparkline } from './chart';", file);

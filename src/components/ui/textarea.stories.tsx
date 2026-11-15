@@ -68,3 +68,9 @@ export const WithCharacterCount: Story = {
 export const MinRows: Story = {
   args: { minRows: 2, placeholder: 'Write a message...' } as TextareaProps,
 };
+
+// Grows with the text, one row to start (sentence fields, composers)
+export const AutoResize: Story = {
+  name: 'Auto resize',
+  args: { autoResize: true, minRows: 1, defaultValue: 'Senior React, TypeScript and Playwright, Scrum, 3 years e-commerce, from November, Hamburg or remote, 4 days per week' } as TextareaProps,
+};

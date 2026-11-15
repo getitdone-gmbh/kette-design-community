@@ -145,3 +145,22 @@ export const SizeSm: Story = {
     </div>
   ),
 };
+
+// Link mode: every control is a real link to getPageHref(page). Works without JavaScript and is crawlable. The current page carries aria-current="page", the first Previous and last Next are disabled.
+export const LinkMode: Story = {
+  args: { pageCount: 24, page: 4, getPageHref: (page: number) => `?page=${page}` } as any,
+  render: (args) => (
+    <div className="flex flex-col gap-8">
+      {(['page', 'card-minimal', 'card-button-group', 'compact'] as PaginationVariant[]).map((v) => (
+        <div key={v} className="flex flex-col gap-2">
+          <span className="typography-text-extra-small text-text-subtle">{`${v}, link mode`}</span>
+          <Pagination {...args} variant={v} aria-label={`Pagination, ${v}, links`} total={480} pageSize={20} />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+export const LinkModeFirstPage: Story = {
+  args: { pageCount: 24, page: 1, getPageHref: (page: number) => `?page=${page}` } as any,
+};

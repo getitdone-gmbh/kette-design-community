@@ -140,3 +140,5 @@ export type { Labels, DesignSystemLocale, LabelProp, LabelOverrides } from './co
 export { useScrollRegion } from './components/ui/use-scroll-region';
 export { cn } from './lib/utils';
 export { reportToastInset, useToastInset, type UseToastInsetOptions } from './lib/toast-inset';
+// Field state recipe of the zero preset (focus and open ring, invalid border) for hand-built field triggers
+export { fieldHaloZero } from './lib/recipes';

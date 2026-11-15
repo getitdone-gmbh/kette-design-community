@@ -544,3 +544,26 @@ export const InsetFromStickyBarAfterScrolling: Story = {
     await waitFor(() => expect(inset()).toBe(''));
   },
 };
+
+// Action slot as data: `toast({ action: { label, onClick } })`. The action sits before the close button, takes focus in tab order and pauses the timeout while it has focus. A toast with an action stays open for 10 seconds by default.
+export const ActionSlot: Story = {
+  render: (args, context) => {
+    const { toast } = context.value;
+    return (
+      <Button
+        variant="outline"
+        onClick={() => {
+          toast({ title: 'Checks disabled', description: 'The server is no longer probed.', action: { label: 'Undo', altText: 'Undo disabling checks', onClick: () => undefined } });
+        }}
+      >
+        Disable checks
+      </Button>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Disable checks' }));
+    const undo = await within(document.body).findByRole('button', { name: 'Undo' });
+    undo.focus();
+    await expect(undo).toHaveFocus();
+  },
+};

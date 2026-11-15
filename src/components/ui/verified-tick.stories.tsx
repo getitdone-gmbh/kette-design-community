@@ -32,3 +32,16 @@ export const NextToName: Story = {
     </span>
   ),
 };
+
+/** `tone` picks the colour pair. `info` (default) is the Figma look, `brand` follows the theme brand colour, `success` and `neutral` fit lists where blue would read as a link. */
+export const Tones: Story = {
+  render: () => (
+    <div className="flex items-center gap-4">
+      {(['info', 'brand', 'success', 'neutral'] as const).map((tone) => (
+        <span key={tone} className="typography-ui-medium inline-flex items-center gap-1 text-text-default">
+          {tone} <VerifiedTick tone={tone} size="lg" label={`Verified, ${tone}`} />
+        </span>
+      ))}
+    </div>
+  ),
+};

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { DesignSystemProvider } from './design-system-provider';
@@ -24,11 +24,16 @@ const setup = (props: Partial<React.ComponentProps<typeof ConfirmDialog>> = {}) 
 describe('ConfirmDialog', () => {
   it('renders title, text and right aligned actions without a body or input', () => {
     setup();
-    expect(screen.getByRole('dialog', { name: 'Delete Nordwind Handel?' })).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: 'Delete Nordwind Handel?' })).toBeInTheDocument();
     expect(screen.getByText('Cannot be undone.')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Confirm' }).parentElement).toHaveClass('sm:justify-end');
+  });
+
+  it('draws Cancel as outline: in a dialog it is outline, in a sheet footer it is ghost (KD-0015)', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute('data-variant', 'outline');
   });
 
   it('confirms and cancels', async () => {
@@ -90,5 +95,31 @@ describe('ConfirmDialog', () => {
   it('renders an optional body', () => {
     setup({ children: <p>12 contacts will be removed.</p> });
     expect(screen.getByText('12 contacts will be removed.')).toBeInTheDocument();
+  });
+
+  it('is an alert dialog that starts on Cancel, traps Tab and ignores a click outside (ZERO-575)', async () => {
+    const user = userEvent.setup();
+    const { onOpenChange } = setup();
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete Nordwind Handel?' });
+    expect(dialog).toHaveAccessibleDescription('Cannot be undone.');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // Tab cycles inside the dialog: Cancel, Confirm, Close, then back to Cancel.
+    await user.tab();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    fireEvent.pointerDown(document.body);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('starts on the confirm input when a value has to be typed, and can be a plain dialog', () => {
+    const { unmount } = render(<ConfirmDialog open title="Delete" confirmValue="Nordwind Handel" onConfirm={() => undefined} />);
+    expect(screen.getByRole('textbox')).toHaveFocus();
+    unmount();
+    render(<ConfirmDialog open role="dialog" title="Delete" onConfirm={() => undefined} />);
+    expect(screen.getByRole('dialog', { name: 'Delete' })).toBeInTheDocument();
   });
 });

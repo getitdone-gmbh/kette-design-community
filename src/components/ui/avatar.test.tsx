@@ -303,6 +303,62 @@ describe('AvatarOnlineIndicator', () => {
     expect(screen.getByTestId('online')).toHaveClass(hClass, wClass);
   });
 
+  it.each([
+    ['online', 'bg-general-success-default', 'Online'],
+    ['away', 'bg-general-warning-default', 'Away'],
+    ['call', 'bg-product-meeting-default', 'In a call'],
+    ['offline', 'ring-text-subtle', 'Offline'],
+  ] as const)('shows the %s presence with its colour and text', (status, bg, text) => {
+    render(
+      <Avatar>
+        <AvatarFallback>CN</AvatarFallback>
+        <AvatarOnlineIndicator status={status} data-testid="presence" />
+      </Avatar>,
+    );
+    const indicator = screen.getByTestId('presence');
+    expect(indicator).toHaveClass(bg);
+    expect(indicator).toHaveAttribute('data-status', status);
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it('tells the states apart by shape, not only by colour (DR-MZ-01, DR-MZ-15)', () => {
+    render(
+      <Avatar>
+        <AvatarFallback>CN</AvatarFallback>
+        <AvatarOnlineIndicator status="call" size="md" data-testid="call" />
+        <AvatarOnlineIndicator status="offline" size="md" data-testid="offline" />
+        <AvatarOnlineIndicator status="online" size="md" data-testid="online" />
+      </Avatar>,
+    );
+    // in a call: one size step larger with a phone glyph
+    expect(screen.getByTestId('call').querySelector('svg')).not.toBeNull();
+    expect(screen.getByTestId('call')).toHaveClass('h-3', 'w-3');
+    // offline: a ring on the surface, no fill
+    expect(screen.getByTestId('offline')).toHaveClass('ring-2', 'ring-inset', 'bg-surface-canvas');
+    expect(screen.getByTestId('online').querySelector('svg')).toBeNull();
+  });
+
+  it('keeps the offline ring open at the small sizes of the chat list (UX-MZ-L01)', () => {
+    render(
+      <Avatar size="xs">
+        <AvatarFallback>CN</AvatarFallback>
+        <AvatarOnlineIndicator status="offline" size="sm" data-testid="offline-sm" />
+      </Avatar>,
+    );
+    // one size step up like in a call, so 2 px border and 2 px ring still leave a hole
+    expect(screen.getByTestId('offline-sm')).toHaveClass('h-[10px]', 'w-[10px]');
+  });
+
+  it('keeps an explicit label over the status text', () => {
+    render(
+      <Avatar>
+        <AvatarFallback>CN</AvatarFallback>
+        <AvatarOnlineIndicator status="call" onlineLabel="Im Gespräch" />
+      </Avatar>,
+    );
+    expect(screen.getByText('Im Gespräch')).toBeInTheDocument();
+  });
+
   it('cuts out against the adaptive surface token, not a literal white', () => {
     render(
       <Avatar>

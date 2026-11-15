@@ -541,6 +541,27 @@ describe('Chip dense size', () => {
     });
   });
 
+  describe('chipStyle skillSoft', () => {
+    it('uses the tinted skill fill, the on-subtle text and a dot in the category colour', () => {
+      render(<Chip chipStyle="skillSoft" skill="frontend" label="Frontend" />);
+      const chip = screen.getByTitle('Frontend').closest('div');
+      expect(chip).toHaveClass('bg-data-skill-frontend-subtle', 'text-data-skill-frontend-on', 'border-transparent');
+      expect(chip?.querySelector('[data-chip-dot]')).toHaveClass('bg-data-skill-frontend-default');
+    });
+
+    it('falls back to the fallback skill and keeps an explicit dot colour', () => {
+      const { rerender } = render(<Chip chipStyle="skillSoft" label="Other" />);
+      expect(screen.getByTitle('Other').closest('div')).toHaveClass('bg-data-skill-fallback-subtle');
+      rerender(<Chip chipStyle="skillSoft" skill="backend" dotColor="bg-product-vacancy-default" label="Other" />);
+      expect(screen.getByTitle('Other').closest('div')?.querySelector('[data-chip-dot]')).toHaveClass('bg-product-vacancy-default');
+    });
+
+    it('drops the soft look when invalid', () => {
+      render(<Chip chipStyle="skillSoft" skill="backend" invalid label="Bad" />);
+      expect(screen.getByTitle('Bad').closest('div')).not.toHaveClass('bg-data-skill-backend-subtle');
+    });
+  });
+
   describe('control height and selected check', () => {
     it('medium shares the Button sm control height token', () => {
       render(<Chip size="medium" label="Chip" />);

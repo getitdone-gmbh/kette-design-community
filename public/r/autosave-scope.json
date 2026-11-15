@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "autosave-scope",
+  "title": "Autosave Scope",
+  "description": "Helper used by the Get IT Done components.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/autosave-status.json",
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/autosave-scope.tsx",
+      "content": "'use client';\n\nimport * as React from 'react';\n\nimport type { AutosaveStatusProps } from '@/components/ui/autosave-status';\n\n// What a status that is hidden by `SheetContent statusPlacement=\"footer\"` hands to the footer, so the footer shows the same state, label and retry.\nexport type HandedStatus = Pick<AutosaveStatusProps, 'state' | 'label' | 'onRetry' | 'retryLabel'>;\n\nexport interface AutosaveScope {\n  // The sheet draws its save status in the footer only.\n  footerOnly: boolean;\n  // A footer that draws the status is mounted. Without one the status stays where it is placed.\n  footerShown: boolean;\n  setFooterShown: (shown: boolean) => void;\n  handed: HandedStatus | null;\n  hand: (status: HandedStatus | null) => void;\n}\n\n// null: a status is drawn where it is placed. A footer, a dialog, a popover and a nested sheet reset the scope to null, because a portal keeps the React context of the sheet that opened it.\nexport const AutosaveScopeContext = React.createContext<AutosaveScope | null>(null);\n\nexport const AutosaveScopeReset = ({ children }: { children: React.ReactNode }) => <AutosaveScopeContext.Provider value={null}>{children}</AutosaveScopeContext.Provider>;\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

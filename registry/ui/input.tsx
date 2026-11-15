@@ -8,14 +8,26 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useLabels, usePreset } from '@/components/ui/labels-context';
 
-// Field heights: `xs` is the compact `--size-control-xs` height (28, 24 in zero), `sm`, `md` and `lg` follow the `--size-control-*` tokens (compact in zero). No size keeps the legacy field, and in the zero preset the `md` field.
-export type InputSize = 'xs' | 'sm' | 'md' | 'lg';
+// Field heights: `xs` is the compact `--size-control-xs` height (28, 24 in zero), `sm`, `md`, `lg`, `xl` and `2xl` follow the `--size-control-*` tokens (compact in zero), `xl` and `2xl` match the Button sizes of the same name (hero and home search). No size keeps the legacy field, and in the zero preset the `md` field.
+export type InputSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
+// `xl` and `2xl` also take the type step and the icon step of the Button of the same name (20px and 24px text, `icon-md` and 24px icon), so a field and a button in one row read as one scale. Weight stays the input weight.
 const SIZE_CLASS: Record<InputSize, string> = {
   xs: 'h-control-xs px-control-px-sm py-0',
   sm: 'h-control-sm px-control-px-sm py-0',
   md: 'h-control-md px-control-px-sm py-0',
   lg: 'h-control-lg px-control-px-sm py-0',
+  xl: 'h-control-xl px-control-px-sm py-0 text-ellipsis text-[length:var(--typo-button-xl-size)] leading-[var(--typo-button-xl-lh)] font-[number:var(--typo-input-text-weight)] tracking-[var(--typo-input-text-ls)]',
+  '2xl': 'h-control-2xl px-control-px-sm py-0 text-ellipsis text-[length:var(--typo-button-2xl-size)] leading-[var(--typo-button-2xl-lh)] font-[number:var(--typo-input-text-weight)] tracking-[var(--typo-input-text-ls)]',
+};
+const ICON_BOX: Partial<Record<InputSize, string>> = { xl: 'h-icon-md w-icon-md', '2xl': 'h-6 w-6' };
+const PAD_LEFT_BIG: Partial<Record<InputSize, string>> = {
+  xl: 'pl-[calc(theme(spacing.control-px-sm)+theme(spacing.icon-md)+theme(spacing.gap-control))]',
+  '2xl': 'pl-[calc(theme(spacing.control-px-sm)+theme(spacing.6)+theme(spacing.gap-control))]',
+};
+const PAD_RIGHT_BIG: Partial<Record<InputSize, string>> = {
+  xl: 'pr-[calc(theme(spacing.control-px-sm)+theme(spacing.icon-md)+theme(spacing.gap-control))]',
+  '2xl': 'pr-[calc(theme(spacing.control-px-sm)+theme(spacing.6)+theme(spacing.gap-control))]',
 };
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
@@ -99,6 +111,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const effectiveType = canReveal && revealed ? 'text' : type;
     const actionCount = (canReveal ? 1 : 0) + (trailingAction ? 1 : 0);
     const readonlyLook = appearance === 'readonly';
+    const big = effectiveSize === 'xl' || effectiveSize === '2xl';
+    const iconBox = (effectiveSize && ICON_BOX[effectiveSize]) || 'h-icon-xs w-icon-xs';
+    const padLeftSized = (effectiveSize && PAD_LEFT_BIG[effectiveSize]) || iconPadLeftSized;
+    const padRightSized = (effectiveSize && PAD_RIGHT_BIG[effectiveSize]) || iconPadRightSized;
     const trailing = loading ? (
       <Loader2 aria-hidden="true" className="h-icon-xs w-icon-xs animate-spin text-icon-subtle motion-reduce:animate-none" />
     ) : (
@@ -127,9 +143,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           'file:text-sm',
           'file:font-medium',
           'placeholder:text-input-foreground-placeholder',
-          'typography-input-text',
-          // Below sm the field text is at least 16px so iOS Safari does not zoom on focus.
-          'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
+          !big && 'typography-input-text',
+          // Below sm the field text is at least 16px so iOS Safari does not zoom on focus (xl and 2xl are larger already).
+          !big && 'max-sm:text-[max(16px,var(--typo-input-text-size,1rem))]',
           'leading-normal',
           transitionBase,
           // Hover: darker border + soft field shadow (no resting shadow, no background tint).
@@ -151,13 +167,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           effectiveSize && SIZE_CLASS[effectiveSize],
           readonlyLook && 'bg-muted hover:border-input hover:shadow-none',
           success && 'border-border-success',
-          leadingIcon && variant !== 'search' && (effectiveSize ? iconPadLeftSized : iconPadLeft),
-          trailing && !hasActions && (effectiveSize ? iconPadRightSized : iconPadRight),
+          leadingIcon && variant !== 'search' && (effectiveSize ? padLeftSized : iconPadLeft),
+          trailing && !hasActions && (effectiveSize ? padRightSized : iconPadRight),
           hasActions && actionPad[`${actionCount as 1 | 2}${trailing ? 'i' : ''}` as keyof typeof actionPad],
           leadingAddon && 'rounded-l-none',
           trailingAddon && 'rounded-r-none',
           // Room for the leading icon: field padding + icon + control gap, all from tokens.
-          variant === 'search' && (effectiveSize ? iconPadLeftSized : iconPadLeft),
+          variant === 'search' && (effectiveSize ? padLeftSized : iconPadLeft),
           variant === 'search' ? undefined : className,
           inputClassName,
         )}
@@ -174,7 +190,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {leadingAddon ? <span className={cn(addonBase, 'rounded-l-control border-r-0')}>{leadingAddon}</span> : null}
           <div className="relative min-w-0 flex-1">
             {leadingIcon ? (
-              <span aria-hidden="true" className={cn('pointer-events-none absolute top-1/2 flex h-icon-xs w-icon-xs -translate-y-1/2 items-center justify-center text-icon-subtle', effectiveSize ? 'left-control-px-sm' : 'left-4')}>
+              <span aria-hidden="true" className={cn('pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center justify-center text-icon-subtle', iconBox, effectiveSize ? 'left-control-px-sm' : 'left-4')}>
                 {leadingIcon}
               </span>
             ) : null}
@@ -201,7 +217,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 {trailingAction}
               </span>
             ) : trailing ? (
-              <span className={cn('absolute top-1/2 flex h-icon-xs w-icon-xs -translate-y-1/2 items-center justify-center text-icon-subtle', effectiveSize ? 'right-control-px-sm' : 'right-4')}>{trailing}</span>
+              <span className={cn('absolute top-1/2 flex -translate-y-1/2 items-center justify-center text-icon-subtle', iconBox, effectiveSize ? 'right-control-px-sm' : 'right-4')}>{trailing}</span>
             ) : null}
           </div>
           {trailingAddon ? <span className={cn(addonBase, 'rounded-r-control border-l-0')}>{trailingAddon}</span> : null}
@@ -215,9 +231,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <div className={cn('relative w-full', className)} data-input-search="">
         <span
           aria-hidden="true"
-          className={cn('pointer-events-none absolute top-1/2 flex h-icon-xs w-icon-xs -translate-y-1/2 items-center justify-center text-icon-subtle', effectiveSize ? 'left-control-px-sm' : 'left-4')}
+          className={cn('pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center justify-center text-icon-subtle', iconBox, effectiveSize ? 'left-control-px-sm' : 'left-4')}
         >
-          {leadingIcon ?? <Search className="h-icon-xs w-icon-xs" />}
+          {leadingIcon ?? <Search className={iconBox} />}
         </span>
         {field}
       </div>

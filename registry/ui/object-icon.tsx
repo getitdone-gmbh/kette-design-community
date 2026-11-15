@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { usePreset } from '@/components/ui/labels-context';
 
 // Full class strings so Tailwind's content scan finds every product token.
-// Extends SidebarObjectIcon (18px, five products) with the `record` object type and three sizes.
+// Extends SidebarObjectIcon (18px, six products) with the `record` object type and three sizes.
 const objectIconVariants = cva('grid shrink-0 place-items-center rounded-tight', {
   variants: {
     app: {
@@ -16,6 +16,7 @@ const objectIconVariants = cva('grid shrink-0 place-items-center rounded-tight',
       coldcall: 'bg-product-coldcall-default text-product-coldcall-on',
       vacancy: 'bg-product-vacancy-default text-product-vacancy-on',
       jobsearch: 'bg-product-jobsearch-default text-product-jobsearch-on',
+      meeting: 'bg-product-meeting-default text-product-meeting-on',
       record: 'bg-product-record-default text-product-record-on',
       // Follows the page product context (data-product on the root element).
       contextual: 'bg-product-accent-default text-product-accent-on',

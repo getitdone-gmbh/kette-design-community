@@ -969,3 +969,100 @@ describe('TableEmpty frame in the visible scroll area (RA-LIB-05)', () => {
     expect(ref.current).not.toHaveClass('px-0');
   });
 });
+
+// C-9: named, focusable scroll region with unchanged table semantics.
+describe('Table scrollRegion="always" (C-9)', () => {
+  const regionTable = (props: Partial<React.ComponentProps<typeof Table>> = {}) => (
+    <Table scrollRegion="always" {...props}>
+      <TableCaption>Tools</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Tool</TableHead>
+          <TableHead>Read-only</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow>
+          <TableCell>search</TableCell>
+          <TableCell>Yes</TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  );
+
+  it('is a focusable region at every width, named by the caption', () => {
+    render(regionTable());
+    const region = screen.getByRole('region', { name: 'Tools' });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(region).toHaveAttribute('data-scroll-region');
+    const caption = screen.getByText('Tools');
+    expect(region.getAttribute('aria-labelledby')).toBe(caption.id);
+    expect(region).not.toHaveAttribute('aria-label');
+  });
+
+  it('is reachable with the keyboard and shows the shared ring through the overlay', async () => {
+    const { container } = render(regionTable());
+    await userEvent.tab();
+    const region = screen.getByRole('region', { name: 'Tools' });
+    expect(region).toHaveFocus();
+    const overlay = region.nextElementSibling as HTMLElement;
+    expect(overlay).toHaveClass('peer-focus-visible:block', 'outline-2', 'outline-ring-default', '-outline-offset-2');
+    expect(container.querySelector('table')?.parentElement).toBe(region);
+  });
+
+  it('scrollLabel wins over the caption as the name', () => {
+    render(regionTable({ scrollLabel: 'Tool table' }));
+    const region = screen.getByRole('region', { name: 'Tool table' });
+    expect(region).toHaveAttribute('aria-label', 'Tool table');
+    expect(region).not.toHaveAttribute('aria-labelledby');
+  });
+
+  it('keeps native table semantics: no stacked mode and no display override on table parts', () => {
+    const { container } = render(regionTable());
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader')).toHaveLength(2);
+    expect(screen.getAllByRole('cell')).toHaveLength(2);
+    for (const el of container.querySelectorAll('table, thead, tbody, tr, th, td')) {
+      expect(el.className).not.toMatch(/(^|\s)(?:[^\s:]+:)*(block|flex|grid|inline-block|inline-flex|contents)(\s|$)/);
+    }
+    // The wrapper scrolls sideways inside itself, never the page.
+    expect(screen.getByRole('region', { name: 'Tools' })).toHaveClass('overflow-x-auto');
+  });
+
+  it('auto mode stays a plain wrapper while nothing overflows', () => {
+    render(<BasicTable />);
+    expect(screen.queryByRole('region')).toBeNull();
+  });
+
+  it('an always-on region starts its caption at the start edge and sticks it', () => {
+    render(
+      <Table scrollRegion="always">
+        <TableCaption>Tools of the server</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    );
+    expect(screen.getByText('Tools of the server')).toHaveClass('sticky', 'left-0', 'text-left');
+  });
+
+  it('a plain table keeps its caption as it was', () => {
+    render(
+      <Table>
+        <TableCaption>Plain</TableCaption>
+      </Table>,
+    );
+    expect(screen.getByText('Plain')).not.toHaveClass('sticky');
+  });
+
+  it('shows no edge fade while nothing is hidden to the right (jsdom has no layout)', () => {
+    const { container } = render(
+      <Table>
+        <TableCaption>Plain</TableCaption>
+      </Table>,
+    );
+    expect(container.querySelector('[data-slot="table-scroll-fade"]')).toBeNull();
+  });
+});

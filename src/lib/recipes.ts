@@ -123,19 +123,23 @@ export const menuItemDestructive = [
   'data-[highlighted]:bg-destructive/10',
 ] as const;
 
-// Zero preset field state: the 3px halo (`ring-halo`) at 15 percent (`--opacity-ring-halo`) on focus, open and invalid. Replaces focusRingField and openRing, it does not stack on them.
+// Zero preset field state: the shared 2px focus ring (`ring-focus`, full `ring-default` color, 3:1 or more against the page in every theme) plus the `ring` border colour on focus, open and invalid. Replaces focusRingField and openRing, it does not stack on them. (It was a 3px halo at 15 to 30 percent opacity, about 1.2:1 against the page.)
 export const fieldHaloZero = [
   'focus-visible:outline-none',
-  'focus-visible:ring-halo',
-  'focus-visible:ring-ring/ring-halo',
+  'focus-visible:ring-focus',
+  'focus-visible:ring-ring-default',
   'focus-visible:border-ring',
-  'data-[state=open]:ring-halo',
-  'data-[state=open]:ring-ring/ring-halo',
+  'data-[state=open]:ring-focus',
+  'data-[state=open]:ring-ring-default',
   'data-[state=open]:border-ring',
-  'aria-[invalid=true]:ring-halo',
-  'aria-[invalid=true]:ring-destructive/ring-halo',
-  'aria-[invalid=true]:focus-visible:ring-destructive/ring-halo',
-  'aria-[invalid=true]:data-[state=open]:ring-destructive/ring-halo',
+  // Invalid at rest is the destructive border only, the ring appears on focus and open
+  'aria-[invalid=true]:border-destructive',
+  'aria-[invalid=true]:focus-visible:ring-focus',
+  'aria-[invalid=true]:focus-visible:ring-destructive',
+  'aria-[invalid=true]:focus-visible:border-destructive',
+  'aria-[invalid=true]:data-[state=open]:ring-focus',
+  'aria-[invalid=true]:data-[state=open]:ring-destructive',
+  'aria-[invalid=true]:data-[state=open]:border-destructive',
 ] as const;
 
 /** Zero preset overrides for {@link overlaySurface}: default border role and the raised elevation. Append after `overlaySurface`. */
@@ -164,18 +168,19 @@ export const menuItemZero = [
   'data-[disabled]:opacity-disabled',
 ] as const;
 
-// Zero preset surface of the composite fields (SingleSelect, MultiSelect, DatePicker trigger): control height, control padding, the default border role and the focus halo. Use instead of the legacy border classes, do not stack.
+// Zero preset surface of the composite fields (SingleSelect, MultiSelect, DatePicker trigger): control height, control padding, the default border role and the 2px focus ring. Use instead of the legacy border classes, do not stack.
 export const compositeFieldZero = [
   'min-h-[var(--size-control-md)]',
   'pl-control-px-sm',
   'border-input',
   'hover:border-border-bold',
   'focus-within:border-ring',
-  'focus-within:ring-halo',
-  'focus-within:ring-ring/ring-halo',
+  'focus-within:ring-focus',
+  'focus-within:ring-ring-default',
   'aria-[invalid=true]:border-destructive',
-  'aria-[invalid=true]:ring-halo',
-  'aria-[invalid=true]:ring-destructive/ring-halo',
+  'aria-[invalid=true]:focus-within:ring-focus',
+  'aria-[invalid=true]:focus-within:ring-destructive',
+  'aria-[invalid=true]:focus-within:border-destructive',
 ] as const;
 
 // Legacy surface of the composite fields, kept for the default preset.
@@ -183,6 +188,14 @@ export const compositeFieldDefault = [
   'border-form-border-default',
   'hover:border-input-background-hover',
   'aria-[invalid=true]:border-error',
+  // Keyboard focus in the search field draws the shared focus ring around the surface (WCAG 2.4.7). The invalid state keeps the red border and takes the destructive ring colour.
+  'focus-within:ring-focus',
+  'focus-within:ring-ring-default',
+  'focus-within:ring-offset-focus',
+  'focus-within:ring-offset-background',
+  'aria-[invalid=true]:focus-within:ring-destructive',
+  // The field ring is the one focus indicator: the toggle button inside has no ring of its own (it stays focusable, and focus on it lights the field ring).
+  '[&_[data-select-toggle]:focus-visible]:![--tw-ring-shadow:0_0_#0000] [&_[data-select-toggle]:focus-visible]:![--tw-ring-offset-shadow:0_0_#0000] [&_[data-select-toggle]:focus-visible]:!shadow-none',
   'pl-2',
 ] as const;
 
