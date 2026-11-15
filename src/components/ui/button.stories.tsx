@@ -371,6 +371,26 @@ export const SizeScale: StoryObj<typeof Button> = {
   ),
 };
 
+/** `wrap` lets the label run over several lines, for a long label in a narrow column (a card action, a mobile form). The height is the minimum height of the size (control token, so a one-line label looks like the normal button), the line height stays the token of the size, and the label is centred and balanced. Everywhere else a button label stays on one line. */
+export const MultiLine: StoryObj<typeof Button> = {
+  render: () => (
+    <div className="flex w-72 flex-col gap-3 p-6">
+      <Button variant="outline" wrap>
+        Export the selected records with all linked documents
+      </Button>
+      <Button variant="primary" size="lg" wrap>
+        Continue to the review step and send for approval
+      </Button>
+      <Button variant="outline" size="sm" wrap>
+        Add a person to this project team
+      </Button>
+      <Button variant="outline" wrap>
+        Short label
+      </Button>
+    </div>
+  ),
+};
+
 /** Link variant: unpadded by default so it reads as inline text. `padded` keeps the horizontal padding of the size, for a link button next to other buttons in a toolbar or group. */
 export const LinkPadded: StoryObj<typeof Button> = {
   render: () => (

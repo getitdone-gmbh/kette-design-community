@@ -79,17 +79,17 @@ const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absol
         ...ALERT_LINK,
       ],
       success: [
-        'border-general-success-hover/70 bg-general-success-default/10',
+        'border-general-success-hover/70 bg-background-success-subtle',
         'text-general-success-hover [&>svg]:text-general-success-hover',
         ...ALERT_LINK,
       ],
       warning: [
-        'border-general-warning-hover/70 bg-general-warning-default/10',
+        'border-general-warning-hover/70 bg-background-warning-subtle',
         'text-general-warning-hover [&>svg]:text-general-warning-hover',
         ...ALERT_LINK,
       ],
       destructive: [
-        'border-general-error-hover/70 bg-general-error-default/10',
+        'border-general-error-hover/70 bg-background-destructive-subtle',
         // On-subtle text role: 5.0:1 or better on the tint in every theme and mode (the hover role fell to 3.9:1 in windows-95).
         'text-text-destructive-on-subtle [&>svg]:text-text-destructive-on-subtle',
         ...ALERT_LINK,

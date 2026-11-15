@@ -1,14 +1,16 @@
 'use client';
 
 import { BarChart3 } from 'lucide-react';
-import { forwardRef, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
+import { forwardRef, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
 
 import { overlaySurface } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import { DataStatePanel, SkeletonBar } from './data-state-panel';
 import { useLabels, useLocale, usePreset, type DesignSystemLocale } from './labels-context';
+import { skillCategoryFill, type SkillCategory } from './skill-category';
 
 // Tones
+// 1 to 8 are the categorical palette, brand and the status roles colour series, and guideline (ideal line), projection, absence (hatch) and non-working (edge and hatch of non-working days, its fill is `bg-chart-subtle-non-working`) are the planning roles of kette-tokens 5.28.0. The planning roles hold 3:1 as lines and hatches; they carry no label colour, so text on them uses the default text role.
 
 // Full class strings so Tailwind's content scan finds every chart token.
 const toneText = {
@@ -32,6 +34,10 @@ const toneText = {
   success: 'text-chart-success',
   destructive: 'text-chart-destructive',
   warning: 'text-text-warning',
+  guideline: 'text-chart-guideline',
+  projection: 'text-chart-projection',
+  absence: 'text-chart-absence',
+  'non-working': 'text-chart-non-working',
 } as const;
 
 const toneStroke = {
@@ -55,6 +61,10 @@ const toneStroke = {
   success: 'stroke-chart-success',
   destructive: 'stroke-chart-destructive',
   warning: 'stroke-text-warning',
+  guideline: 'stroke-chart-guideline',
+  projection: 'stroke-chart-projection',
+  absence: 'stroke-chart-absence',
+  'non-working': 'stroke-chart-non-working',
 } as const;
 
 const toneBg = {
@@ -78,6 +88,10 @@ const toneBg = {
   success: 'bg-chart-success',
   destructive: 'bg-chart-destructive',
   warning: 'bg-chart-warning',
+  guideline: 'bg-chart-guideline',
+  projection: 'bg-chart-projection',
+  absence: 'bg-chart-absence',
+  'non-working': 'bg-chart-subtle-non-working',
 } as const;
 
 // Label colour for text drawn on a chart fill (the `-on` roles of the chart tokens), keyed like toneBg.
@@ -102,6 +116,10 @@ const toneOn = {
   success: 'text-chart-success-on',
   destructive: 'text-chart-destructive-on',
   warning: 'text-chart-warning-on',
+  guideline: 'text-text-default',
+  projection: 'text-text-default',
+  absence: 'text-text-default',
+  'non-working': 'text-text-default',
 } as const;
 
 // Label colour for a custom `bg-*` fill: the project tiles have their own `-on` role, anything else keeps the on-brand label.
@@ -130,12 +148,53 @@ const topRoundedPath = (x: number, y: number, w: number, h: number, radius: numb
 const cycle: ChartTone[] = [1, 2, 3, 4, 5, 6, 7, 8];
 const toneAt = (i: number): ChartTone => cycle[i % cycle.length];
 
+// Line style of a series. Colour is never the only cue (WCAG 1.4.1): the ideal line (guideline) is dashed and the projection dotted unless the series sets its own style.
+export type ChartLineStyle = 'solid' | 'dashed' | 'dotted';
+const lineStyleOf = (tone: ChartTone | undefined, line?: ChartLineStyle): ChartLineStyle => line ?? (tone === 'guideline' ? 'dashed' : tone === 'projection' ? 'dotted' : 'solid');
+const DASH: Record<ChartLineStyle, string | undefined> = { solid: undefined, dashed: '6 4', dotted: '1 5' };
+// Absence and non-working days are drawn as hatching, not as a flat fill.
+const isHatched = (tone: ChartTone | undefined): tone is 'absence' | 'non-working' => tone === 'absence' || tone === 'non-working';
+
+// Hatch pattern of the two hatched roles. Lives in the svg `defs`; the pattern element carries the tone colour, because `currentColor` inside a pattern resolves from the pattern, not from the shape that uses it.
+const HatchPattern = ({ id, tone }: { id: string; tone: 'absence' | 'non-working' }) => (
+  <pattern id={id} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)" className={toneText[tone]}>
+    {tone === 'non-working' ? <rect width={6} height={6} className="fill-chart-subtle-non-working" /> : null}
+    <line x1={0} y1={0} x2={0} y2={6} stroke="currentColor" strokeWidth={2} />
+  </pattern>
+);
+
+// Legend key: a short line in the line style, a hatched square for the hatched roles, otherwise the filled swatch.
+const LegendKey = ({ tone, line, swatch }: { tone: ChartTone; line?: ChartLineStyle; swatch: string }) => {
+  const id = useId();
+  const style = lineStyleOf(tone, line);
+  if (style !== 'solid') {
+    return (
+      <svg aria-hidden="true" width={20} height={8} viewBox="0 0 20 8" focusable="false" className={cn('shrink-0', toneText[tone])}>
+        <line x1={1} y1={4} x2={19} y2={4} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeDasharray={DASH[style]} />
+      </svg>
+    );
+  }
+  if (isHatched(tone)) {
+    return (
+      <svg aria-hidden="true" width={12} height={12} viewBox="0 0 12 12" focusable="false" className="shrink-0">
+        <defs>
+          <HatchPattern id={id} tone={tone} />
+        </defs>
+        <rect width={12} height={12} fill={`url(#${id})`} className={cn(toneText[tone], 'stroke-current')} strokeWidth={1} />
+      </svg>
+    );
+  }
+  return <span aria-hidden="true" className={cn('shrink-0', swatch, toneBg[tone])} />;
+};
+
 // Legend
 
 export interface ChartLegendItem {
   id: string;
   label: ReactNode;
   tone?: ChartTone;
+  // Line style of the key. Defaults to the style of the tone (guideline dashed, projection dotted, otherwise solid).
+  line?: ChartLineStyle;
   // Custom swatch colour (user data): a CSS colour such as `var(--colors-data-project-3)` or a token utility such as `bg-data-project-3`. Wins over `tone`.
   color?: string;
 }
@@ -167,7 +226,7 @@ const ChartLegend = forwardRef<HTMLUListElement, ChartLegendProps>(({ className,
             style={item.color.startsWith('bg-') ? undefined : { backgroundColor: item.color }}
           />
         ) : (
-          <span aria-hidden="true" className={cn('shrink-0', swatch, toneBg[item.tone ?? toneAt(i)])} />
+          <LegendKey tone={item.tone ?? toneAt(i)} line={item.line} swatch={swatch} />
         )}
         <span>{item.label}</span>
       </li>
@@ -196,6 +255,10 @@ export interface ChartFrameProps extends Omit<HTMLAttributes<HTMLElement>, 'titl
   legend?: ChartLegendItem[];
   legendPosition?: 'top' | 'right' | 'bottom';
   state?: 'default' | 'loading' | 'empty' | 'error';
+  // The chart holds a keyboard focus target (LineBarChart with `tooltip`). The frame then has no role and no name of its own, because the children of an image are presentational and cannot hold focus: the focus target carries the name and the description.
+  interactive?: boolean;
+  // Id of the description paragraph, for a focus target that points `aria-describedby` at it. Defaults to a generated id.
+  descriptionId?: string;
   emptyTitle?: string;
   emptyDescription?: string;
   errorTitle?: string;
@@ -215,6 +278,8 @@ const ChartFrame = forwardRef<HTMLElement, ChartFrameProps>(
       legend,
       legendPosition = 'bottom',
       state = 'default',
+      interactive = false,
+      descriptionId,
       emptyTitle: emptyTitleProp,
       emptyDescription,
       errorTitle: errorTitleProp,
@@ -232,7 +297,7 @@ const ChartFrame = forwardRef<HTMLElement, ChartFrameProps>(
     const errorDescription = errorDescriptionProp ?? l.chartErrorDescription;
     const loadingLabel = loadingLabelProp ?? l.chartLoading;
     const id = useId();
-    const descId = description ? `${id}-desc` : undefined;
+    const descId = description ? (descriptionId ?? `${id}-desc`) : undefined;
     const tableMarkup = table ? (
       <table className={cn('typography-text-extra-small w-full text-left')}>
         {table.caption ? <caption className={cn(showTable && 'pb-2 text-left text-muted-foreground')}>{table.caption}</caption> : null}
@@ -278,7 +343,7 @@ const ChartFrame = forwardRef<HTMLElement, ChartFrameProps>(
           <>
             {legendPosition === 'top' ? legendNode : null}
             <div className={cn('flex min-w-0 gap-4', legendPosition === 'right' ? 'flex-row items-center' : 'flex-col')}>
-              <div role="img" aria-label={title} aria-describedby={descId} className="min-w-0 flex-1">
+              <div {...(interactive ? null : { role: 'img', 'aria-label': title, 'aria-describedby': descId })} className="min-w-0 flex-1">
                 {children}
               </div>
               {legendPosition === 'right' ? legendNode : null}
@@ -335,6 +400,16 @@ const niceMax = (max: number) => {
   return nice * exp;
 };
 
+// Whole-number axis for counts and hours: four steps of 1, 2 or 5 times a power of ten, never below 1.
+const integerMax = (max: number) => {
+  const raw = max / 4;
+  if (raw <= 1) return 4;
+  const exp = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / exp;
+  const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  return nice * exp * 4;
+};
+
 const formatNumber = (n: number, locale: DesignSystemLocale) =>
   new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', { maximumFractionDigits: 1 }).format(n);
 
@@ -344,6 +419,15 @@ const useNumberFormat = () => {
   return (n: number) => formatNumber(n, locale);
 };
 
+// Value formatter of a chart: `formatValue` wins, then `valueFormat` (Intl options in the provider locale, e.g. a currency), else the plain number format.
+const useValueFormat = (formatValue?: (value: number) => string, valueFormat?: Intl.NumberFormatOptions) => {
+  const locale = useLocale();
+  const plain = useNumberFormat();
+  const intl = useMemo(() => (valueFormat ? new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', valueFormat) : null), [locale, valueFormat]);
+  if (formatValue) return formatValue;
+  return intl ? (n: number) => intl.format(n) : plain;
+};
+
 // Line and bar chart
 
 export interface ChartSeries {
@@ -351,6 +435,8 @@ export interface ChartSeries {
   label: string;
   values: number[];
   tone?: ChartTone;
+  // Line style of a line chart series: solid, dashed or dotted. Defaults to the style of the tone (guideline dashed, projection dotted, otherwise solid).
+  line?: ChartLineStyle;
   // Per data point tone for bars (Figma Column chart, one colour per column). A missing entry falls back to the series tone.
   pointTones?: (ChartTone | undefined)[];
   // Per data point CSS colour for bars, for user data such as `var(--colors-data-project-3)`. Wins over `pointTones`.
@@ -459,9 +545,14 @@ export interface LineBarChartProps extends FrameShared {
   // First column header of the data table alternative. Defaults to the localized "Category".
   categoryLabel?: string;
   // Pointer tooltip with the values of the category under the pointer. Stays inside the chart, Escape hides it. The data table remains the assistive tech alternative.
+  // The plot is also a keyboard focus target: Tab reaches it, the left and right arrow keys (Home and End) move between the categories, the tooltip follows and the values are read in a polite live region. Escape or leaving the plot hides the tooltip.
   tooltip?: boolean;
   // Value label above each vertical bar (above the total on stacked bars).
   showValues?: boolean;
+  // Intl number options for the values: value labels and totals above the bars, tooltip, live region and data table. Money: `{ style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }` gives "1.500 €" (de) and "€1,500" (en). The axis ticks keep the plain number format, name the unit in `yTitle`.
+  valueFormat?: Intl.NumberFormatOptions;
+  // Formats every value shown for a data point, wins over `valueFormat`. Same places, the axis ticks excluded.
+  formatValue?: (value: number) => string;
   // Wraps long category labels onto several lines instead of letting them overlap. The plot gives up the room the extra lines need.
   wrapLabels?: boolean;
   // Widest a wrapped label may get, in chart units. Defaults to the width of one category band.
@@ -470,6 +561,8 @@ export interface LineBarChartProps extends FrameShared {
   labelMaxLines?: number;
   // Values computed per category, for example a conversion rate. Each one is a row in the tooltip and a column in the data table.
   derived?: ChartDerived | ChartDerived[];
+  // Whole-number y-axis for counts and hours: the four steps are 1, 2 or 5 times a power of ten (0 1 2 3 4, 0 5 10 15 20) instead of quarters of a nice maximum.
+  integerTicks?: boolean;
 }
 
 // Hover tooltip of a LineBarChart. It measures itself and clamps into the chart box so it never overflows.
@@ -506,7 +599,7 @@ const ChartTooltip = ({ title, rows, anchor, scale, containerRef }: { title: str
 
 const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
   (
-    { type = 'bar', categories, series, stacked = false, axisLabels = true, xTitle, yTitle, legend = false, legendPosition = 'bottom', width: widthProp = 600, height = 240, categoryLabel, tooltip = false, showValues: showValuesProp, wrapLabels = false, labelMaxWidth, labelMaxLines = 3, derived, ...frame },
+    { type = 'bar', categories, series, stacked = false, axisLabels = true, xTitle, yTitle, legend = false, legendPosition = 'bottom', width: widthProp = 600, height = 240, categoryLabel, tooltip = false, showValues: showValuesProp, valueFormat, formatValue, wrapLabels = false, labelMaxWidth, labelMaxLines = 3, derived, integerTicks = false, ...frame },
     ref,
   ) => {
     const l = useLabels();
@@ -515,6 +608,7 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
     const axisText = zero ? 'typography-kpi-label fill-current text-text-subtle' : 'typography-text-extra-small fill-current text-muted-foreground';
     const valueText = zero ? 'typography-kpi-label-strong fill-current text-text-default' : 'typography-text-extra-small fill-current text-muted-foreground';
     const format = useNumberFormat();
+    const formatPoint = useValueFormat(formatValue, valueFormat);
     const fluid = widthProp === 'auto';
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const [measureRef, measuredWidth] = useContainerWidth(fluid);
@@ -530,7 +624,7 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
     const stackedBars = stacked && type === 'bar';
     const totals = categories.map((_, i) => series.reduce((s, x) => s + (x.values[i] ?? 0), 0));
     const rawMax = stackedBars ? Math.max(0, ...totals) : Math.max(0, ...series.flatMap((s) => s.values));
-    const max = niceMax(rawMax);
+    const max = integerTicks ? integerMax(rawMax) : niceMax(rawMax);
     const ticks = [0, 1, 2, 3, 4].map((t) => (max / 4) * t);
     // The y-axis gutter grows with the widest tick label (8px gap to the plot, 8px to the edge), never below the 40px default.
     const widestTick = axisLabels ? Math.max(...ticks.map((t) => format(t).length)) * AXIS_CHAR_WIDTH : 0;
@@ -552,7 +646,15 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
     const barGroupW = band * 0.6;
 
     const toneOf = (s: ChartSeries, i: number): ChartTone => s.tone ?? toneAt(i);
+    const hatchTones = (['absence', 'non-working'] as const).filter((tone) => series.some((s, si) => toneOf(s, si) === tone || (s.pointTones ?? []).includes(tone)));
     const [active, setActive] = useState<number | null>(null);
+    // True while the keyboard drives the tooltip: only then the values are announced and the focus band is drawn.
+    const [keyboardActive, setKeyboardActive] = useState(false);
+    const hintId = useId();
+    const descId = useId();
+    const hatchId = useId();
+    // Last category the keyboard visited: after Escape the next arrow key continues from there.
+    const lastRef = useRef<number | null>(null);
     const [scale, setScale] = useState(1);
     useEffect(() => {
       if (active === null) return undefined;
@@ -565,7 +667,31 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
     const show = (i: number) => {
       const box = wrapRef.current?.clientWidth;
       setScale(box ? Math.min(1, box / width) : 1);
+      lastRef.current = i;
       setActive(i);
+    };
+    const keyboardMove = (next: number) => {
+      const clamped = Math.max(0, Math.min(categories.length - 1, next));
+      setKeyboardActive(true);
+      show(clamped);
+    };
+    const onPlotKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!tooltip || categories.length === 0) return;
+      // Escape hides the tooltip and stays inside the chart (a sheet or dialog around it keeps its own Escape for the next press); the position is kept.
+      if (event.key === 'Escape') {
+        if (active === null) return;
+        event.stopPropagation();
+        setActive(null);
+        setKeyboardActive(false);
+        return;
+      }
+      const at = active ?? lastRef.current ?? -1;
+      if (event.key === 'ArrowRight') keyboardMove(at + 1);
+      else if (event.key === 'ArrowLeft') keyboardMove(at < 0 ? 0 : at - 1);
+      else if (event.key === 'Home') keyboardMove(0);
+      else if (event.key === 'End') keyboardMove(categories.length - 1);
+      else return;
+      event.preventDefault();
     };
     const derivedList = derived ? (Array.isArray(derived) ? derived : [derived]) : [];
     const datumAt = (i: number): ChartDatum => ({
@@ -581,19 +707,73 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
       });
     const table: ChartTable = {
       columns: [categoryLabel ?? l.chartCategory, ...series.map((s) => s.label), ...derivedList.map((d) => d.label)],
-      rows: categories.map((c, i) => [c, ...series.map((s) => format(s.values[i] ?? 0)), ...derivedAt(i).map((d) => d.value)]),
+      rows: categories.map((c, i) => [c, ...series.map((s) => formatPoint(s.values[i] ?? 0)), ...derivedAt(i).map((d) => d.value)]),
     };
 
     return (
       <ChartFrame
         ref={ref}
         table={table}
-        legend={legend ? series.map((s, i) => ({ id: s.id, label: s.label, tone: toneOf(s, i) })) : undefined}
+        legend={legend ? series.map((s, i) => ({ id: s.id, label: s.label, tone: toneOf(s, i), line: s.line })) : undefined}
         legendPosition={legendPosition}
+        interactive={tooltip}
+        descriptionId={descId}
         {...frame}
       >
-        <div ref={setWrap} data-chart-fluid={fluid || undefined} className={cn(tooltip && 'relative max-w-full overflow-hidden [&>svg]:block', fluid && 'w-full min-w-0 max-w-full overflow-hidden [&>svg]:block')} onPointerLeave={tooltip ? () => setActive(null) : undefined}>
+        <div
+          ref={setWrap}
+          data-chart-fluid={fluid || undefined}
+          className={cn(
+            tooltip && 'relative max-w-full overflow-hidden [&>svg]:block',
+            // The focus ring hugs the plot: a fixed-width chart is as wide as its svg, a fluid one fills the frame.
+            tooltip && !fluid && 'w-fit',
+            tooltip && 'rounded-item focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-inset focus-visible:ring-ring-default',
+            fluid && 'w-full min-w-0 max-w-full overflow-hidden [&>svg]:block',
+          )}
+          onPointerLeave={tooltip ? () => setActive(null) : undefined}
+          {...(tooltip
+            ? {
+                // The plot is the focus target of the chart (WCAG 2.1.1): arrow keys read the data points one by one.
+                role: 'group' as const,
+                tabIndex: 0,
+                'aria-label': frame.title,
+                'aria-roledescription': 'chart',
+                'aria-describedby': frame.description ? `${descId} ${hintId}` : hintId,
+                'data-chart-tooltip-open': active !== null ? '' : undefined,
+                onKeyDown: onPlotKeyDown,
+                onFocus: (event: FocusEvent<HTMLDivElement>) => {
+                  if (event.target !== event.currentTarget || active !== null) return;
+                  let visible = true;
+                  try {
+                    visible = event.currentTarget.matches(':focus-visible');
+                  } catch {
+                    visible = true;
+                  }
+                  if (visible && categories.length > 0) keyboardMove(0);
+                },
+                onBlur: () => {
+                  setKeyboardActive(false);
+                  setActive(null);
+                },
+              }
+            : null)}
+        >
+        {tooltip ? (
+          <span id={hintId} className="sr-only">
+            {l.chartFocusHint}
+          </span>
+        ) : null}
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" focusable="false" className="h-auto max-w-full">
+          {hatchTones.length > 0 ? (
+            <defs>
+              {hatchTones.map((tone) => (
+                <HatchPattern key={tone} id={`${hatchId}-${tone}`} tone={tone} />
+              ))}
+            </defs>
+          ) : null}
+          {tooltip && keyboardActive && active !== null ? (
+            <rect data-chart-focus-band="" x={left + band * active} y={top} width={band} height={plotH} className="fill-muted" />
+          ) : null}
           <g className="text-border-subtle">
             {ticks.map((t) => (
               <line key={t} x1={left} x2={width - right} y1={y(t)} y2={y(t)} className="stroke-current" strokeWidth={1} />
@@ -642,10 +822,12 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
                       const pointColor = s.pointColors?.[i];
                       const pointTone = s.pointTones?.[i];
                       const lastSegment = !stackedBars || series.findLastIndex((x2) => (x2.values[i] ?? 0) > 0) === si;
+                      const barTone = pointTone ?? toneOf(s, si);
                       const barProps = {
                         'data-bar': '',
-                        className: cn('fill-current', toneText[pointTone ?? toneOf(s, si)]),
-                        style: pointColor ? { fill: pointColor } : undefined,
+                        className: cn('fill-current', toneText[barTone], isHatched(barTone) && 'stroke-current'),
+                        style: pointColor ? { fill: pointColor } : isHatched(barTone) ? { fill: `url(#${hatchId}-${barTone})` } : undefined,
+                        strokeWidth: isHatched(barTone) ? 1 : undefined,
                       };
                       return (
                         <g key={s.id}>
@@ -656,7 +838,7 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
                           )}
                           {showValues && !stackedBars ? (
                             <text data-bar-value="" x={bx + Math.max(0, w) / 2} y={by - 4} textAnchor="middle" className={valueText}>
-                              {format(v)}
+                              {formatPoint(v)}
                             </text>
                           ) : null}
                         </g>
@@ -664,7 +846,7 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
                     })}
                     {showValues && stackedBars ? (
                       <text data-bar-value="" x={x(i)} y={y(totals[i]) - 4} textAnchor="middle" className={valueText}>
-                        {format(totals[i])}
+                        {formatPoint(totals[i])}
                       </text>
                     ) : null}
                   </g>
@@ -676,6 +858,7 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
                     fill="none"
                     className={toneStroke[toneOf(s, si)]}
                     strokeWidth={2}
+                    strokeDasharray={DASH[lineStyleOf(toneOf(s, si), s.line)]}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     points={categories.map((_, i) => `${x(i)},${y(s.values[i] ?? 0)}`).join(' ')}
@@ -695,8 +878,15 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
                   width={band}
                   height={plotH}
                   fill="transparent"
-                  onPointerEnter={() => show(i)}
-                  onPointerMove={() => active !== i && show(i)}
+                  onPointerEnter={() => {
+                    setKeyboardActive(false);
+                    show(i);
+                  }}
+                  onPointerMove={() => {
+                    if (active === i) return;
+                    setKeyboardActive(false);
+                    show(i);
+                  }}
                 />
               ))
             : null}
@@ -707,8 +897,15 @@ const LineBarChart = forwardRef<HTMLElement, LineBarChartProps>(
             anchor={x(active)}
             scale={scale}
             containerRef={wrapRef}
-            rows={[...series.map((s, si) => ({ id: s.id, label: s.label, value: format(s.values[active] ?? 0), tone: toneOf(s, si) as ChartTone | undefined })), ...derivedAt(active)]}
+            rows={[...series.map((s, si) => ({ id: s.id, label: s.label, value: formatPoint(s.values[active] ?? 0), tone: toneOf(s, si) as ChartTone | undefined })), ...derivedAt(active)]}
           />
+        ) : null}
+        {tooltip ? (
+          <span role="status" aria-live="polite" aria-atomic="true" data-chart-live="" className="sr-only">
+            {keyboardActive && active !== null
+              ? [l.chartPoint(categories[active], active + 1, categories.length), ...series.map((s) => `${s.label} ${formatPoint(s.values[active] ?? 0)}`), ...derivedAt(active).map((d) => `${d.label} ${d.value}`)].join('. ')
+              : ''}
+          </span>
         ) : null}
         </div>
       </ChartFrame>
@@ -1054,6 +1251,8 @@ export interface HBarItem {
   tone?: ChartTone;
   // Custom colour (stage or project data): a CSS colour or a `bg-*` token class. Wins over `tone`. Ignored when the row has `segments`.
   color?: string;
+  // Skill category (as in SkillTree): fills the bar with the category colour. `color` wins over it, it wins over `tone`. Ignored when the row has `segments`.
+  skill?: SkillCategory;
   // Splits the bar into stacked parts (for example open, in progress, done). The row total is the sum of the parts and replaces `value`. A segment id shares its tone and legend entry across rows.
   segments?: HBarSegment[];
 }
@@ -1114,7 +1313,7 @@ const HBarList = forwardRef<HTMLUListElement, HBarListProps>(({ className, items
         ) : (
           <span aria-hidden="true" className={cn('block h-2 overflow-hidden rounded-full bg-muted', barSize)}>
             <span
-              className={cn('block h-full rounded-full', item.color ? bgColor(item.color)?.className : toneBg[item.tone ?? 'brand'])}
+              className={cn('block h-full rounded-full', item.color ? bgColor(item.color)?.className : item.skill ? skillCategoryFill[item.skill] : toneBg[item.tone ?? 'brand'])}
               style={{ width: `${pct}%`, ...bgColor(item.color)?.style }}
             />
           </span>

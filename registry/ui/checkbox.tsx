@@ -12,8 +12,10 @@ const Checkbox = forwardRef<
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
     // `sm` uses the compact checkbox size token (Figma Size=sm); default keeps the 20px box. In the zero preset the default is `sm`.
     size?: 'default' | 'sm';
+    // Grows the pointer hit area to the touch-target token (44px) around the unchanged visible box, for a standalone box on a touch screen. Off by default.
+    comfortable?: boolean;
   }
->(({ className, size: sizeProp, ...props }, ref) => {
+>(({ className, size: sizeProp, comfortable = false, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   const size = sizeProp ?? (zero ? 'sm' : 'default');
   return (
@@ -52,8 +54,11 @@ const Checkbox = forwardRef<
       'data-[state=indeterminate]:border-border-control-checked',
       'data-[state=indeterminate]:bg-background-brand-bold-default',
       'data-[state=indeterminate]:text-text-on-brand',
+      // Comfortable touch target: the visible box stays the same, an invisible centred hit area grows to the touch-target token (44 px).
+      comfortable && ['relative', "after:content-['']", 'after:absolute', 'after:left-1/2', 'after:top-1/2', 'after:-translate-x-1/2', 'after:-translate-y-1/2', 'after:h-[var(--size-touch-target-lg)]', 'after:w-[var(--size-touch-target-lg)]'],
       className,
     )}
+    data-comfortable={comfortable || undefined}
     {...props}
   >
     <CheckboxPrimitive.Indicator

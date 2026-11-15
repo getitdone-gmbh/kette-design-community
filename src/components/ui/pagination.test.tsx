@@ -205,3 +205,61 @@ describe('Pagination loading markup', () => {
     expect(document.querySelector('p [role="presentation"]')).toBeNull();
   });
 });
+
+// C-1: link mode, crawlable pager without JavaScript.
+describe('Pagination link mode (getPageHref)', () => {
+  const href = (page: number) => `/servers?page=${page}`;
+
+  it('renders page numbers, Previous and Next as real links', () => {
+    render(<Pagination pageCount={10} page={3} getPageHref={href} />);
+    const nav = screen.getByRole('navigation', { name: 'Pagination' });
+    const current = within(nav).getByRole('link', { name: 'Page 3' });
+    expect(current).toHaveAttribute('href', '/servers?page=3');
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Page 2' })).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: /Previous/ })).toHaveAttribute('href', '/servers?page=2');
+    expect(within(nav).getByRole('link', { name: /Previous/ })).toHaveAttribute('rel', 'prev');
+    expect(within(nav).getByRole('link', { name: /Next/ })).toHaveAttribute('href', '/servers?page=4');
+    expect(within(nav).getByRole('link', { name: /Next/ })).toHaveAttribute('rel', 'next');
+    expect(within(nav).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('does not track or report the page itself, the URL does', async () => {
+    const onPageChange = vi.fn();
+    render(<Pagination pageCount={5} page={1} onPageChange={onPageChange} getPageHref={href} />);
+    const link = screen.getByRole('link', { name: 'Page 2' });
+    link.addEventListener('click', (event) => event.preventDefault());
+    await userEvent.click(link);
+    expect(onPageChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Page 1' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('first page Previous and last page Next are disabled and not links', () => {
+    const { rerender } = render(<Pagination pageCount={3} page={1} getPageHref={href} />);
+    expect(screen.queryByRole('link', { name: /Previous/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Previous/ })).toBeDisabled();
+    rerender(<Pagination pageCount={3} page={3} getPageHref={href} />);
+    expect(screen.queryByRole('link', { name: /Next/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled();
+  });
+
+  it('a disabled pager has no href anywhere', () => {
+    render(<Pagination pageCount={4} page={2} disabled getPageHref={href} />);
+    const nav = screen.getByRole('navigation');
+    expect(nav.querySelectorAll('a[href]')).toHaveLength(0);
+    expect(within(nav).getByText('2').closest('[aria-disabled="true"]')).not.toBeNull();
+  });
+
+  it.each(['page', 'card', 'page-minimal', 'card-minimal', 'card-button-group', 'compact'] as const)('%s variant keeps links', (variant) => {
+    render(<Pagination variant={variant} pageCount={6} page={3} total={120} pageSize={20} getPageHref={href} />);
+    const nav = screen.getByRole('navigation');
+    expect(nav.querySelectorAll('a[href]').length).toBeGreaterThanOrEqual(2);
+    expect(nav.querySelector('a[rel="next"]')).toHaveAttribute('href', '/servers?page=4');
+    expect(nav.querySelector('a[rel="prev"]')).toHaveAttribute('href', '/servers?page=2');
+  });
+
+  it('lazy ignores link mode', () => {
+    render(<Pagination variant="lazy" total={100} pageSize={20} onLoadMore={() => undefined} getPageHref={href} />);
+    expect(screen.getByRole('button', { name: /Load more/ })).toBeInTheDocument();
+  });
+});

@@ -32,6 +32,7 @@ const badgeVariants = cva(
         'product-vacancy': 'border-transparent bg-product-vacancy-subtle',
         'product-jobsearch': 'border-transparent bg-product-jobsearch-subtle',
         'product-coldcall': 'border-transparent bg-product-coldcall-subtle',
+        'product-meeting': 'border-transparent bg-product-meeting-subtle',
         // Neutral product accent (slate in light, inverted in dark): readable on its subtle fill in both modes.
         'product-accent': 'border-transparent bg-product-accent-subtle',
       },
@@ -77,6 +78,9 @@ const badgeVariants = cva(
       { variant: 'product-accent', bordered: true, className: 'border-product-accent-border' },
       { variant: 'product-coldcall', readable: false, className: 'text-product-coldcall-default' },
       { variant: 'product-coldcall', readable: true, className: 'text-foreground' },
+      { variant: 'product-meeting', bordered: true, className: 'border-product-meeting-border' },
+      { variant: 'product-meeting', readable: false, className: 'text-product-meeting-default' },
+      { variant: 'product-meeting', readable: true, className: 'text-foreground' },
       { variant: 'product-accent', readable: true, className: 'text-foreground' },
       { variant: 'product-accent', readable: false, className: 'text-product-accent-default' },
     ],
@@ -91,20 +95,32 @@ const badgeVariants = cva(
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, Omit<VariantProps<typeof badgeVariants>, 'preset'> {
   // Optional leading icon. Decorative (aria-hidden), sized with the icon tokens. The text carries the meaning.
   icon?: React.ReactNode;
+  // Where the icon sits (Figma Lead glyph). `end` puts it after the text, at the right edge of the badge. Default `start`.
+  iconPosition?: 'start' | 'end';
+  // Classes for the icon slot, e.g. `text-icon-success` to colour the icon apart from the text. The icon draws in the text colour (currentColor) without it.
+  iconClassName?: string;
   // Small neutral status dot before the text (decorative). Shown instead of `icon` when both are set.
   dot?: boolean;
 }
 
-function Badge({ className, variant, bordered, readable, tinted, icon, dot, children, title, ...props }: BadgeProps) {
+function Badge({ className, variant, bordered, readable, tinted, icon, iconPosition = 'start', iconClassName, dot, children, title, ...props }: BadgeProps) {
   const zero = usePreset() === 'zero';
   const hasAdornment = Boolean(icon || dot);
   const isText = typeof children === 'string' || typeof children === 'number';
   // Text sits in its own label slot: the badge keeps the 0.25.0 box (inline-flex, fixed height, normal baseline) and only the label truncates, and only when max-w-full is reached. The 4px padding and the matching negative margin keep descenders out of the overflow clip without changing the layout.
   const text = isText ? String(children) : undefined;
+  const iconSlot = icon ? (
+    <span aria-hidden="true" data-slot="icon" className={cn('inline-flex shrink-0 [&>svg]:h-icon-xs [&>svg]:w-icon-xs', iconClassName)}>
+      {icon}
+    </span>
+  ) : null;
+  // The dot always leads; the icon trails only when asked and when no dot replaces it.
+  const trailing = !dot && iconPosition === 'end';
   return (
     <div
       data-slot="badge"
       data-variant={variant ?? 'default'}
+      data-icon-position={icon && !dot ? iconPosition : undefined}
       className={cn(
         badgeVariants({ variant, bordered, readable, tinted, preset: zero ? 'zero' : 'default' }),
         hasAdornment && 'gap-1',
@@ -115,11 +131,9 @@ function Badge({ className, variant, bordered, readable, tinted, icon, dot, chil
     >
       {dot ? (
         <span aria-hidden="true" data-slot="dot" className="h-2 w-2 shrink-0 rounded-full bg-icon-subtle" />
-      ) : icon ? (
-        <span aria-hidden="true" data-slot="icon" className="inline-flex shrink-0 [&>svg]:h-icon-xs [&>svg]:w-icon-xs">
-          {icon}
-        </span>
-      ) : null}
+      ) : trailing ? null : (
+        iconSlot
+      )}
       {isText ? (
         <span data-slot="label" className="-my-1 min-w-0 truncate py-1">
           {children}
@@ -127,6 +141,7 @@ function Badge({ className, variant, bordered, readable, tinted, icon, dot, chil
       ) : (
         children
       )}
+      {trailing ? iconSlot : null}
     </div>
   );
 }

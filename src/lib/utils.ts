@@ -36,6 +36,16 @@ export const TOKEN_FONT_SIZES = [
   'logo-tile-48',
 ];
 
+// Line heights the token preset adds on top of Tailwind's scale (theme.lineHeight), so a consumer `leading-*` replaces a token line height such as `leading-ui-relaxed`. utils.test.ts asserts this list matches the installed preset.
+export const TOKEN_LINE_HEIGHTS = [
+  '0', '1', '2',
+  'button-sm', 'button', 'button-lg', 'button-xl', 'button-2xl', 'link',
+  'clamp-small', 'clamp', 'clamp-large', 'clamp-xlarge',
+  'xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl',
+  'ui-lg', 'title-md', 'ui-sm', 'ui', 'page-title', 'kpi-value', 'nano', 'nav-item',
+  'display', 'display-sm', 'lead-lg', 'code-block', 'title-lg', 'display-md', 'ui-relaxed',
+];
+
 // Named spacing tokens of the preset, so size, padding and gap overrides (`px-0` over `px-control-px-sm`) win over the token utilities.
 const TOKEN_SPACING = [
   'micro', 'label', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl',
@@ -55,6 +65,7 @@ const twMerge = extendTailwindMerge<'typography'>({
     theme: { spacing: TOKEN_SPACING },
     classGroups: {
       'font-size': [{ text: TOKEN_FONT_SIZES }],
+      leading: [{ leading: TOKEN_LINE_HEIGHTS }],
       // Token radius tiers and the `font-regular` weight, so variants can override the base.
       rounded: [{ rounded: ['item', 'control', 'surface', 'dialog', 'popover'] }],
       // Focus ring widths of the preset (ring-focus 2px, ring-halo 3px), so they are widths and never read as a ring color.

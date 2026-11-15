@@ -199,8 +199,9 @@ describe('0.12.1 regressions', () => {
     it('strip drops the fixed height from md so wrapped content is not clipped', () => {
       render(<KpiStrip aria-label="KPIs" />);
       const strip = screen.getByRole('group', { name: 'KPIs' });
-      expect(strip).toHaveClass('md:flex');
+      expect(strip).toHaveClass('flex');
       expect(strip).not.toHaveClass('md:h-kpi-strip');
+      expect(strip).not.toHaveClass('h-kpi-strip');
     });
   });
 });

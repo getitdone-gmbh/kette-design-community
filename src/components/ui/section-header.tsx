@@ -3,6 +3,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
+import { displayVoice } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 
 // Figma: Section header 1214:38 (exported as PanelSectionHeader because SectionHeader is the marketing sections export) (Type Buttons | Button group | Search, Tabs, Breakpoint, Actions, Divider, Supporting text, Dropdown icon).
@@ -18,6 +19,7 @@ const panelSectionHeaderTitleVariants = cva('m-0 min-w-0 text-text-default', {
   defaultVariants: { size: 'sm' },
 });
 
+// The title is a heading, so it takes the display voice of the theme (kette-tokens 5.26.0 font-display, WOW-TITLES-01): wow draws it in Cinzel, every other theme keeps the body font, the size stays the Figma text role.
 export interface PanelSectionHeaderProps extends Omit<React.HTMLAttributes<HTMLElement>, 'title'>, VariantProps<typeof panelSectionHeaderTitleVariants> {
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -36,7 +38,7 @@ const PanelSectionHeader = React.forwardRef<HTMLElement, PanelSectionHeaderProps
     <header ref={ref} data-size={size} className={cn('flex w-full flex-col gap-5', className)} {...props}>
       <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start">
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 self-stretch">
-          <Title className={panelSectionHeaderTitleVariants({ size })}>{title}</Title>
+          <Title className={cn(panelSectionHeaderTitleVariants({ size }), displayVoice)}>{title}</Title>
           {description ? <p className="typography-text-small m-0 text-text-subtle">{description}</p> : null}
         </div>
         {actions ? <div data-slot="actions" className="flex shrink-0 flex-wrap items-center gap-3 max-sm:[&>*]:flex-1">{actions}</div> : null}

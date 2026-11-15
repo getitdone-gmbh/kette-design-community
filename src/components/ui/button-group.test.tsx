@@ -126,4 +126,19 @@ describe('ButtonGroupItem aria-disabled gating (0.28.1)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Board' }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('an asChild link segment takes no border except the divider, like a button segment', () => {
+    render(
+      <ButtonGroup aria-label="Pages">
+        <ButtonGroupItem asChild>
+          <a href="/1">1</a>
+        </ButtonGroupItem>
+        <ButtonGroupItem asChild>
+          <a href="/2">2</a>
+        </ButtonGroupItem>
+      </ButtonGroup>,
+    );
+    const link = screen.getByRole('link', { name: '1' });
+    expect(link).toHaveClass('border-0', 'border-r');
+  });
 });

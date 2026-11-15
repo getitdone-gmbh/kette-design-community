@@ -27,6 +27,23 @@ describe('Button component', () => {
     expect(button).not.toHaveClass('whitespace-nowrap');
   });
 
+  it('lets a label wrap with `wrap` and keeps the control height as a minimum', () => {
+    render(
+      <Button wrap size="lg">
+        A very long label that needs more than one line
+      </Button>,
+    );
+    const button = screen.getByRole('button');
+    expect(button).not.toHaveClass('whitespace-nowrap');
+    expect(button).toHaveAttribute('data-wrap', 'true');
+    expect(button).toHaveClass('!h-auto', '[min-height:var(--size-control-lg)]', 'leading-normal');
+  });
+
+  it('does not set the wrap marker by default', () => {
+    render(<Button>Save</Button>);
+    expect(screen.getByRole('button')).not.toHaveAttribute('data-wrap');
+  });
+
   it('renders as a native button element by default', () => {
     render(<Button>Save</Button>);
     expect(screen.getByRole('button')).toBeInstanceOf(HTMLButtonElement);
@@ -350,7 +367,7 @@ describe('Button state model (Attio recipe)', () => {
 });
 
 describe('Button loading and count', () => {
-  it('is busy, disabled and announces loading while loading, keeping the label', async () => {
+  it('is busy, aria-disabled (still focusable) and announces loading while loading, keeping the label', async () => {
     const onClick = jest.fn();
     render(
       <Button loading onClick={onClick}>
@@ -358,7 +375,10 @@ describe('Button loading and count', () => {
       </Button>,
     );
     const button = screen.getByRole('button', { name: /Save/ });
-    expect(button).toBeDisabled();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    button.focus();
+    expect(button).toHaveFocus();
     expect(button).toHaveAttribute('aria-busy', 'true');
     expect(button).toHaveTextContent('Loading');
     expect(button.querySelector('[data-button-spinner]')).not.toBeNull();

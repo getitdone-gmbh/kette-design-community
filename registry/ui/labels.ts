@@ -33,7 +33,12 @@ export interface Labels {
   navigation: string;
   next: string;
   notFound: string;
+  // Empty result of a search, with the typed text.
+  notFoundFor: (query: string) => string;
   online: string;
+  presenceAway: string;
+  presenceCall: string;
+  presenceOffline: string;
   overflowMore: string;
   phone: string;
   pleaseWait: string;
@@ -107,6 +112,7 @@ export interface Labels {
   noDataYet: string;
   dataNotLoaded: string;
   loadingTableData: string;
+  loadingResults: string;
   tableErrorTitle: string;
   tableErrorDescription: string;
   sheetLoadError: string;
@@ -169,6 +175,21 @@ export interface Labels {
   kanbanMoveTo: string;
   kanbanCardActions: (title: string) => string;
   kanbanCurrentColumn: (column: string) => string;
+  // Sortable list
+  sortableHandle: (title: string) => string;
+  sortableRoleDescription: string;
+  sortableInstructions: string;
+  sortableAtStart: (title: string) => string;
+  sortableAtEnd: (title: string) => string;
+  sortableLocked: (title: string, reason?: string) => string;
+  opensInNewTab: string;
+  sortablePickedUp: (title: string, position: number, total: number) => string;
+  sortableMoved: (title: string, position: number, total: number) => string;
+  sortableDropped: (title: string, position: number, total: number) => string;
+  sortableCancelled: (title: string, position: number, total: number) => string;
+  // Chart keyboard focus target
+  chartFocusHint: string;
+  chartPoint: (category: string, position: number, total: number) => string;
   // Scores
   score: string;
   scoreBreakdown: string;
@@ -225,6 +246,9 @@ export interface Labels {
   // Accessible names of the select family and the stepper
   openOptions: string;
   selectOptions: string;
+  optionSelected: (label: string) => string;
+  optionRemoved: (label: string) => string;
+  maxSelectedHint: (max: number) => string;
   stepName: (index: number, label?: string) => string;
   stepCurrent: string;
   autosaveStates: Record<'saved' | 'saving' | 'dirty' | 'error' | 'offline', string>;
@@ -385,6 +409,36 @@ export interface Labels {
   requiredByJob: string;
   // Rating input: name of one star option, e.g. `2 of 5`
   ratingOption: (value: number, max: number) => string;
+  // Credit note status (CreditStatusBadge, MonthStatusTile)
+  creditExpected: string;
+  creditReceived: string;
+  creditDiffers: string;
+  creditOverdue: string;
+  // Settings row edit button, e.g. `Edit Billing mode`
+  edit: string;
+  editSetting: (label: string) => string;
+  // Skip link default text
+  skipToMain: string;
+  // Theme toggle: mode names and the accessible name (current mode first, then the action)
+  themeSystem: string;
+  themeLight: string;
+  themeDark: string;
+  themeToggle: (current: string) => string;
+  // Check-state indicator: one label per display state and the age modifier
+  checkOpen: string;
+  checkProtected: string;
+  checkReachableError: string;
+  checkTimeout: string;
+  checkUnreachable: string;
+  checkBlocked: string;
+  checkNotChecked: string;
+  checkPending: string;
+  checkDisabled: string;
+  checkOld: string;
+  // Annotation cell words
+  annotationYes: string;
+  annotationNo: string;
+  annotationNotDeclared: string;
 }
 
 // Per-instance override: a plain string, or for parameterised texts a string or the function form.

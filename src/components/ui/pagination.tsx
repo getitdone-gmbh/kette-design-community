@@ -114,6 +114,8 @@ export interface PaginationProps extends Omit<React.HTMLAttributes<HTMLElement>,
   onLoadMore?: () => void;
   // `lazy`: no further records, hides the button.
   exhausted?: boolean;
+  // Link mode (crawlable pager that works without JavaScript): returns the URL of a page (1 based). Page numbers, Previous and Next then render as real links (`<a href>`, `aria-current="page"` on the current page) and navigate natively; `onPageChange` is not called and the page is not tracked internally, so drive `page` from the URL. Previous and Next that cannot be followed (first page, last page, `disabled`, `loading`) stay disabled buttons; page numbers under `disabled` or `loading` render without an `href` and with `aria-disabled`. Ignored by `lazy`.
+  getPageHref?: (page: number) => string;
   // Built-in texts. Each wins over the provider text; the function forms receive the numbers.
   previousLabel?: string;
   nextLabel?: string;
@@ -155,6 +157,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
       announce = true,
       onLoadMore,
       exhausted = false,
+      getPageHref,
       'aria-label': ariaLabelProp,
       previousLabel,
       nextLabel,
@@ -218,20 +221,80 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
     const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
     const last = total === undefined ? page * pageSize : Math.min(page * pageSize, total);
 
+    // Link mode: every control that moves the page is an anchor to getPageHref(target).
+    const linkMode = typeof getPageHref === 'function' && variant !== 'lazy';
+    const hrefFor = (target: number) => getPageHref?.(Math.min(Math.max(1, target), pageCount));
+    // Previous and Next: a button, or in link mode a link styled as the same button. A boundary or disabled pager keeps a disabled button (nothing to follow).
+    const stepButton = (direction: 'previous' | 'next', variantProp: 'ghost' | 'outline', content: React.ReactNode, icon?: React.ReactElement, className?: string) => {
+      const blocked = off || (direction === 'previous' ? atStart : atEnd);
+      const target = direction === 'previous' ? page - 1 : page + 1;
+      if (linkMode && !blocked) {
+        return (
+          <Button asChild variant={variantProp} size="sm" icon={icon} className={className}>
+            <a href={hrefFor(target)} rel={direction === 'previous' ? 'prev' : 'next'}>
+              {content}
+            </a>
+          </Button>
+        );
+      }
+      return (
+        <Button type="button" variant={variantProp} size="sm" disabled={blocked} onClick={() => goTo(target)} icon={icon} className={className}>
+          {content}
+        </Button>
+      );
+    };
+
+    // Compact arrows: an icon button, or in link mode an icon link.
+    const iconStep = (direction: 'previous' | 'next', label: string, icon: React.ReactNode) => {
+      const blocked = off || (direction === 'previous' ? atStart : atEnd);
+      const target = direction === 'previous' ? page - 1 : page + 1;
+      const className = cn('h-control-sm w-control-sm', zero && 'disabled:!opacity-100 disabled:text-text-subtlest');
+      if (linkMode && !blocked) {
+        return (
+          <Button asChild variant="ghost" size="icon-sm" className={className}>
+            <a href={hrefFor(target)} rel={direction === 'previous' ? 'prev' : 'next'} aria-label={label}>
+              {icon}
+            </a>
+          </Button>
+        );
+      }
+      return (
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={label} disabled={blocked} onClick={() => goTo(target)} className={className}>
+          {icon}
+        </Button>
+      );
+    };
+
     const numberCells = (tone: 'default' | 'zeroPage' | 'compact' | 'compactLegacy' = 'default') =>
       items.map((item) =>
         typeof item === 'number' ? (
           <li key={item}>
-            <button
-              type="button"
-              disabled={off}
-              aria-label={l.page(item)}
-              aria-current={item === page ? 'page' : undefined}
-              onClick={() => goTo(item)}
-              className={numberVariants({ shape, tone })}
-            >
-              {item}
-            </button>
+            {linkMode && off ? (
+              <span
+                role="link"
+                aria-disabled="true"
+                aria-label={l.page(item)}
+                aria-current={item === page ? 'page' : undefined}
+                className={cn(numberVariants({ shape, tone }), 'pointer-events-none opacity-disabled')}
+              >
+                {item}
+              </span>
+            ) : linkMode ? (
+              <a href={hrefFor(item)} aria-label={l.page(item)} aria-current={item === page ? 'page' : undefined} className={numberVariants({ shape, tone })}>
+                {item}
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled={off}
+                aria-label={l.page(item)}
+                aria-current={item === page ? 'page' : undefined}
+                onClick={() => goTo(item)}
+                className={numberVariants({ shape, tone })}
+              >
+                {item}
+              </button>
+            )}
           </li>
         ) : (
           <li key={item} aria-hidden="true">
@@ -256,14 +319,16 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
 
     const textButtons = (kind: 'ghost' | 'outline') => (
       <>
-        <Button type="button" variant={kind} size="sm" disabled={off || atStart} onClick={() => goTo(page - 1)} icon={<ArrowLeft />}>
-          {l.previous}
-        </Button>
+        {stepButton('previous', kind, l.previous, <ArrowLeft />)}
         {pages}
-        <Button type="button" variant={kind} size="sm" disabled={off || atEnd} onClick={() => goTo(page + 1)}>
-          {l.next}
-          <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
-        </Button>
+        {stepButton(
+          'next',
+          kind,
+          <>
+            {l.next}
+            <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
+          </>,
+        )}
       </>
     );
 
@@ -280,27 +345,19 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
             {pagerBusy ? loadingSummary : l.pageOf(page, pageCount)}
           </div>
           <div className={cn('flex items-start gap-3', align === 'left' && 'order-first', align === 'center' && 'hidden')}>
-            <Button type="button" variant="outline" size="sm" disabled={off || atStart} onClick={() => goTo(page - 1)}>
-              {l.previous}
-            </Button>
-            <Button type="button" variant="outline" size="sm" disabled={off || atEnd} onClick={() => goTo(page + 1)}>
-              {l.next}
-            </Button>
+            {stepButton('previous', 'outline', l.previous)}
+            {stepButton('next', 'outline', l.next)}
           </div>
         </>
       );
       if (align === 'center') {
         body = (
           <div className="flex w-full items-center justify-center gap-3">
-            <Button type="button" variant="outline" size="sm" disabled={off || atStart} onClick={() => goTo(page - 1)}>
-              {l.previous}
-            </Button>
+            {stepButton('previous', 'outline', l.previous)}
             <div aria-live={live} className="typography-label text-text-default">
               {pagerBusy ? loadingSummary : l.pageOf(page, pageCount)}
             </div>
-            <Button type="button" variant="outline" size="sm" disabled={off || atEnd} onClick={() => goTo(page + 1)}>
-              {l.next}
-            </Button>
+            {stepButton('next', 'outline', l.next)}
           </div>
         );
       }
@@ -308,23 +365,44 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
       body = (
         <div className={cn('flex w-full', alignClass[align])}>
           <ButtonGroup aria-label={l.pages} size={size}>
-            <ButtonGroupItem disabled={off || atStart} icon={<ArrowLeft />} onClick={() => goTo(page - 1)}>
-              {l.previous}
-            </ButtonGroupItem>
+            {linkMode && !(off || atStart) ? (
+              <ButtonGroupItem asChild icon={<ArrowLeft />}>
+                <a href={hrefFor(page - 1)} rel="prev">
+                  {l.previous}
+                </a>
+              </ButtonGroupItem>
+            ) : (
+              <ButtonGroupItem disabled={off || atStart} icon={<ArrowLeft />} onClick={() => goTo(page - 1)}>
+                {l.previous}
+              </ButtonGroupItem>
+            )}
             {items.map((item) =>
               typeof item === 'number' ? (
-                <ButtonGroupItem
-                  key={item}
-                  disabled={off}
-                  aria-label={l.page(item)}
-                  aria-current={item === page ? 'page' : undefined}
-                  data-current={item === page ? true : undefined}
-                  // Below sm only the current page stays, so the group never overflows a 390px screen.
-                  className={cn(size === 'sm' ? 'w-control-sm' : 'w-control-md', 'px-0', item !== page && 'max-sm:hidden')}
-                  onClick={() => goTo(item)}
-                >
-                  {item}
-                </ButtonGroupItem>
+                linkMode && !off ? (
+                  <ButtonGroupItem
+                    key={item}
+                    asChild
+                    data-current={item === page ? true : undefined}
+                    className={cn(size === 'sm' ? 'w-control-sm' : 'w-control-md', 'px-0', item !== page && 'max-sm:hidden')}
+                  >
+                    <a href={hrefFor(item)} aria-label={l.page(item)} aria-current={item === page ? 'page' : undefined}>
+                      {item}
+                    </a>
+                  </ButtonGroupItem>
+                ) : (
+                  <ButtonGroupItem
+                    key={item}
+                    disabled={off}
+                    aria-label={l.page(item)}
+                    aria-current={item === page ? 'page' : undefined}
+                    data-current={item === page ? true : undefined}
+                    // Below sm only the current page stays, so the group never overflows a 390px screen.
+                    className={cn(size === 'sm' ? 'w-control-sm' : 'w-control-md', 'px-0', item !== page && 'max-sm:hidden')}
+                    onClick={() => goTo(item)}
+                  >
+                    {item}
+                  </ButtonGroupItem>
+                )
               ) : (
                 <span
                   key={item}
@@ -338,10 +416,19 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                 </span>
               ),
             )}
-            <ButtonGroupItem disabled={off || atEnd} onClick={() => goTo(page + 1)}>
-              {l.next}
-              <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
-            </ButtonGroupItem>
+            {linkMode && !(off || atEnd) ? (
+              <ButtonGroupItem asChild>
+                <a href={hrefFor(page + 1)} rel="next">
+                  {l.next}
+                  <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
+                </a>
+              </ButtonGroupItem>
+            ) : (
+              <ButtonGroupItem disabled={off || atEnd} onClick={() => goTo(page + 1)}>
+                {l.next}
+                <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
+              </ButtonGroupItem>
+            )}
           </ButtonGroup>
         </div>
       );
@@ -394,29 +481,9 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
           ) : (
             <p className="typography-caption-regular shrink-0 text-text-subtle">{l.perPage(pageSize)}</p>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={l.previousPage}
-            disabled={off || atStart}
-            onClick={() => goTo(page - 1)}
-            className={cn('h-control-sm w-control-sm', zero && 'disabled:!opacity-100 disabled:text-text-subtlest')}
-          >
-            <ChevronLeft aria-hidden="true" className="h-icon-md w-icon-md" />
-          </Button>
+          {iconStep('previous', l.previousPage, <ChevronLeft aria-hidden="true" className="h-icon-md w-icon-md" />)}
           {pages}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={l.nextPage}
-            disabled={off || atEnd}
-            onClick={() => goTo(page + 1)}
-            className={cn('h-control-sm w-control-sm', zero && 'disabled:!opacity-100 disabled:text-text-subtlest')}
-          >
-            <ChevronRight aria-hidden="true" className="h-icon-md w-icon-md" />
-          </Button>
+          {iconStep('next', l.nextPage, <ChevronRight aria-hidden="true" className="h-icon-md w-icon-md" />)}
         </>
       );
     }

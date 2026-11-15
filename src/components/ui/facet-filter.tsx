@@ -1,9 +1,9 @@
 'use client';
 
-import { ChevronDown, Minus, Plus } from 'lucide-react';
+import { Check, ChevronDown, Minus, Plus } from 'lucide-react';
 import { Children, createContext, forwardRef, useContext, useId, useState, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 
-import { focusRing } from '../../lib/recipes';
+import { displayVoice, focusRing } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import type { HeadingTag } from './heading-tag';
 import { Checkbox } from './checkbox';
@@ -75,7 +75,7 @@ const FacetFilter = forwardRef<HTMLElement, FacetFilterProps>(
       >
         <header className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2">
-            <Title className={zero ? 'typography-ui-semibold' : 'typography-ui-lg-semibold'}>{title}</Title>
+            <Title className={cn(zero ? 'typography-ui-semibold' : 'typography-ui-lg-semibold', !zero && displayVoice)}>{title}</Title>
             {onReset ? (
               <button
                 type="button"
@@ -239,10 +239,14 @@ export interface FacetOptionProps extends Omit<HTMLAttributes<HTMLLabelElement>,
   dotColor?: string;
   // Result count next to the label. A number, or text such as "99+" or "n/a".
   count?: number | string;
+  // Native form field name. Setting it renders a real `<input type="checkbox" name value>` instead of the script-driven checkbox, so a surrounding `<form method="get">` submits the filter without JavaScript. The row still reports changes through `onCheckedChange`. In `toggle-links` mode a hidden input with the same name and value is rendered while the option is selected.
+  name?: string;
+  // Native form value, sent as `name=value` while checked. Defaults to `on`.
+  value?: string;
 }
 
 const FacetOption = forwardRef<HTMLLabelElement, FacetOptionProps>(
-  ({ className, label, checked, defaultChecked, onCheckedChange, disabled, dotColor, count, ...props }, ref) => {
+  ({ className, label, checked, defaultChecked, onCheckedChange, disabled, dotColor, count, name, value, ...props }, ref) => {
     const id = useId();
     const labelId = useId();
     const mode = useContext(FacetSelectionModeContext);
@@ -253,6 +257,8 @@ const FacetOption = forwardRef<HTMLLabelElement, FacetOptionProps>(
     if (mode === 'toggle-links') {
       const { onClick, ...rest } = props as HTMLAttributes<HTMLButtonElement>;
       return (
+        <>
+        {name && selected ? <input type="hidden" name={name} value={value ?? 'on'} /> : null}
         <button
           ref={ref as unknown as Ref<HTMLButtonElement>}
           type="button"
@@ -278,6 +284,43 @@ const FacetOption = forwardRef<HTMLLabelElement, FacetOptionProps>(
           <span className="min-w-0 flex-1 truncate">{label}</span>
           {count != null ? <span className="typography-text-extra-small tabular-nums text-muted-foreground">{count}</span> : null}
         </button>
+        </>
+      );
+    }
+    if (name) {
+      // Native input: submits with a plain GET form before any script runs. The box is drawn from the input state with peer-* variants, same tokens as Checkbox.
+      return (
+        <label ref={ref} htmlFor={id} className={cn('typography-ui flex cursor-pointer items-center gap-2', zero ? 'h-control-sm' : 'h-6', disabled && 'cursor-not-allowed opacity-disabled', className)} {...props}>
+          <span className={cn('relative inline-flex shrink-0', zero ? 'h-checkbox-sm w-checkbox-sm' : 'h-5 w-5')}>
+            <input
+              id={id}
+              type="checkbox"
+              name={name}
+              value={value ?? 'on'}
+              checked={checked}
+              defaultChecked={checked === undefined ? defaultChecked : undefined}
+              disabled={disabled}
+              aria-labelledby={labelId}
+              onChange={(event) => {
+                if (checked === undefined) setInner(event.target.checked);
+                onCheckedChange?.(event.target.checked);
+              }}
+              className="peer absolute inset-0 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+            />
+            <span
+              aria-hidden="true"
+              data-slot="facet-option-box"
+              className="pointer-events-none flex h-full w-full items-center justify-center rounded-tight border border-solid border-checkbox-border-default bg-background text-text-on-brand transition-[color,background-color,border-color,box-shadow] duration-150 peer-hover:border-checkbox-border-hover peer-focus-visible:border-ring peer-focus-visible:ring-focus peer-focus-visible:ring-ring-default peer-focus-visible:ring-offset-focus peer-focus-visible:ring-offset-background peer-checked:border-border-control-checked peer-checked:bg-background-brand-bold-default [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100"
+            >
+              <Check aria-hidden className={cn(zero ? 'h-3 w-3' : 'h-4 w-4', '[stroke-width:var(--size-icon-stroke-check,3)]')} />
+            </span>
+          </span>
+          {dotColor ? <FacetDot color={dotColor} /> : null}
+          <span id={labelId} className="min-w-0 flex-1 truncate">
+            {label}
+          </span>
+          {count != null ? <span className="typography-text-extra-small tabular-nums text-muted-foreground">{count}</span> : null}
+        </label>
       );
     }
     return (

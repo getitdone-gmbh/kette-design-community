@@ -7,12 +7,14 @@ import { AlertCircle, X } from 'lucide-react';
 import * as React from 'react';
 
 import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from '@/lib/modal-inert';
-import { focusFirst, focusLast } from '@/lib/first-focusable';
+import { focusFirst, focusLast, hasFocusable } from '@/lib/first-focusable';
+import { openedByActivation, openedByPointer } from '@/lib/opened-by-activation';
 import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from '@/lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from '@/lib/sticky-inset';
 import { displayVoice } from '@/lib/recipes';
 import { cn } from '@/lib/utils';
 import type { HeadingTag } from '@/components/ui/heading-tag';
+import { AutosaveScopeContext, type AutosaveScope, type HandedStatus } from '@/components/ui/autosave-scope';
 import { AutosaveStatus } from '@/components/ui/autosave-status';
 import { Button } from '@/components/ui/button';
 import { CodeSnippet, type CodeSnippetProps } from '@/components/ui/code-snippet';
@@ -123,6 +125,10 @@ const sheetInsetClass: Record<Exclude<SheetInset, 'none'>, string> = {
   'topbar-sidebar-collapsed': 'top-topbar h-auto bottom-0',
 };
 
+// Written out in full, so Tailwind finds every class in the source and in dist.
+const sheetMobileFullscreen =
+  'max-sm:inset-0 max-sm:h-full max-sm:max-h-full max-sm:w-full max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0';
+
 const SheetStateContext = React.createContext<SheetState>('default');
 
 const sheetSizeWidth: Record<SheetSize, string> = {
@@ -146,14 +152,18 @@ interface SheetContentProps
   padded?: boolean;
   /** Loading, error and dirty states, read by SheetBody and SheetFooter. */
   state?: SheetState;
+  // Where the save status may appear. `footer` draws it once, in the zero `SheetFooter` (left side): an `AutosaveStatus` placed elsewhere in the sheet, for example in `SheetMeta`, hands its state, label and retry to the footer and draws nothing. Without a zero footer the status stays where it is placed. Dialogs and popovers opened from the sheet are not affected. Default `any` draws every status where it is placed.
+  statusPlacement?: 'any' | 'footer';
   // Accessible name of the close button and the loading skeleton. Win over the provider text.
   closeLabel?: string;
   /** Docks the sheet to the work area instead of the window edge, see SheetInset. Default `none` is unchanged. */
   inset?: SheetInset;
   /** Portals the sheet (and its scrim) into this element instead of the body and positions it `absolute`. The element must be `relative`. */
   container?: HTMLElement | null;
-  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets and false when `Sheet` has `modal={false}` (docked usage keeps the page focus). Focus lands on the first visible focusable element of the content, links included; the close button is only the target when nothing else can take focus. A sheet that is read, not operated, should keep focus at its start: pass `focusOnOpen={false}`, which focuses the sheet container (the dialog itself, tabIndex -1) instead of the first control, or focus the title in `onOpenAutoFocus`. */
+  /** Moves focus into the sheet when it opens. Defaults to true for modal sheets. A docked sheet (`Sheet` has `modal={false}`, for example `mode="push"`) takes focus when a click opened it and keeps the page focus when it opened without one (a selection or a route changed it). Focus lands on the first visible focusable element of the content, links included; the close button is only the target when nothing else can take focus. A sheet that is read, not operated, should keep focus at its start: pass `focusOnOpen={false}`, which focuses the first `SheetBody` (no ring when a pointer click opened the sheet, the ring shows when the keyboard opened it; a body without controls stays a tab stop) so Page Down, Space, the arrow keys and End scroll it at once, or the sheet container (the dialog itself, tabIndex -1) when there is no SheetBody, instead of the first control. Or focus the title in `onOpenAutoFocus`. */
   focusOnOpen?: boolean;
+  /** Below the `sm` screen (640px) the sheet fills the whole viewport: no inset, no radius, no border, full width and height (Figma Slide out menu, Mobile=Full screen). From `sm` up it keeps its mode and size. Works with every mode and side. */
+  mobileFullscreen?: boolean;
   /** Runs once the sheet is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener. Put "focus this field after closing" code here. */
   onAfterClose?: () => void;
 }
@@ -169,6 +179,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       stackDepth = 0,
       padded: paddedProp,
       state = 'default',
+      statusPlacement = 'any',
       style,
       onInteractOutside,
       onOpenAutoFocus,
@@ -179,6 +190,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       inset = 'none',
       container,
       focusOnOpen,
+      mobileFullscreen = false,
       onAfterClose,
       ...props
     },
@@ -192,6 +204,13 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     const padded = paddedProp ?? !zero;
     const nonModal = !React.useContext(SheetModalContext);
     const escapeGuard = React.useContext(EscapeGuardContext);
+    // Save status handed over to the footer (statusPlacement="footer").
+    const [footerShown, setFooterShown] = React.useState(false);
+    const [handed, hand] = React.useState<HandedStatus | null>(null);
+    const statusScope = React.useMemo<AutosaveScope | null>(
+      () => (statusPlacement === 'footer' ? { footerOnly: true, footerShown, setFooterShown, handed, hand } : null),
+      [statusPlacement, footerShown, handed],
+    );
     const contentRef = React.useRef<HTMLDivElement | null>(null);
     // A modal sheet makes everything outside its portal inert while it is open, see lib/modal-inert.
     const inertRef = useModalInertRef<HTMLDivElement>(!nonModal);
@@ -231,10 +250,23 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
           onOpenAutoFocus={(event) => {
             onOpenAutoFocus?.(event);
             if (event.defaultPrevented) return;
-            if (!(focusOnOpen ?? !nonModal)) {
+            if (!(focusOnOpen ?? (!nonModal || openedByActivation()))) {
               event.preventDefault();
-              // An explicit `focusOnOpen={false}` on a modal sheet still moves focus into the sheet (its container), so focus never stays on the inert page body. A docked sheet keeps the page focus.
-              if (focusOnOpen === false && !nonModal) contentRef.current?.focus({ preventScroll: true });
+              // An explicit `focusOnOpen={false}` on a modal sheet still moves focus into the sheet, so focus never stays on the inert page body. A docked sheet keeps the page focus.
+              // The start is the first SheetBody, the element that scrolls: Page Down, Space, the arrows and End scroll it right away. Without a body it is the container.
+              if (focusOnOpen === false && !nonModal) {
+                const body = contentRef.current?.querySelector<HTMLElement>('[data-slot="sheet-body"]');
+                if (body) {
+                  // A body with controls is reached through them, so it only takes this programmatic focus. A body of text stays a tab stop, so Tab can bring the keyboard back to scroll it.
+                  if (!body.hasAttribute('tabindex')) body.tabIndex = hasFocusable(body) ? -1 : 0;
+                  // No ring for the focus the sheet sets itself after a pointer click; the mark goes with the first blur, a later keyboard focus shows the ring. Opened by keyboard (or programmatically) the ring shows, since focus landed on a tab stop the user has to see.
+                  if (openedByPointer()) {
+                    body.setAttribute('data-sheet-autofocus', '');
+                    body.addEventListener('blur', () => body.removeAttribute('data-sheet-autofocus'), { once: true });
+                  }
+                }
+                (body ?? contentRef.current)?.focus({ preventScroll: true });
+              }
               return;
             }
             // Radix skips links for the first focus and the close button is now first in the tab order. Focus the first focusable element of the content instead, links included.
@@ -266,6 +298,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
           data-sheet-state={state}
           data-sheet-inset={inset !== 'none' ? inset : undefined}
           data-sheet-scoped={scoped || undefined}
+          data-sheet-mobile={mobileFullscreen ? 'fullscreen' : undefined}
           style={stackDepth > 0 ? ({ '--sheet-depth': stackDepth, ...style } as React.CSSProperties) : style}
           onInteractOutside={(event) => {
             if (mode === 'push') event.preventDefault();
@@ -302,6 +335,8 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             scoped && 'absolute',
             zero && 'typography-ui',
             stackDepth > 0 && 'right-[calc(var(--size-sheet-stack-offset)*var(--sheet-depth))] bg-muted',
+            // The max-sm rules come after the plain ones in the CSS, so they replace inset, size, radius and the centred translate on a phone.
+            mobileFullscreen && sheetMobileFullscreen,
             className,
           )}
           {...props}
@@ -311,7 +346,9 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             <X className="h-icon-md w-icon-md" aria-hidden="true" />
             <span className="sr-only">{l.close}</span>
           </SheetPrimitive.Close>
-          <SheetStateContext.Provider value={state}>{children}</SheetStateContext.Provider>
+          <SheetStateContext.Provider value={state}>
+            <AutosaveScopeContext.Provider value={statusScope}>{children}</AutosaveScopeContext.Provider>
+          </SheetStateContext.Provider>
         </SheetPrimitive.Content>
       </SheetPortal>
     );
@@ -347,19 +384,32 @@ const SheetHeader = React.forwardRef<HTMLDivElement, SheetHeaderProps>(({ classN
 SheetHeader.displayName = 'SheetHeader';
 
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  // Footer of a form sheet, one row: the one destructive action far left, then Cancel, Back and exactly one primary button. Cancel is `ghost` in a sheet (it is `outline` in a dialog, see DialogFooter and ConfirmDialog). The footer shows no save status of its own for list entries; autosave and draft hints belong to the sheet header.
   /** `zero` is the 56px action footer with a top hairline: status on the left, actions on the right. */
   variant?: 'default' | 'zero';
+  // Retry of the default status, for the error and offline states. A status handed over by `statusPlacement="footer"` brings its own.
+  onRetry?: () => void;
+  retryLabel?: string;
   /** Zero footer only. Left side status, defaults to the autosave status derived from the sheet state. */
   status?: React.ReactNode;
   /** Zero footer only. Secondary action on the left (for example "Download error list"), shown instead of the status. */
   leftAction?: React.ReactNode;
 }
 
-const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ className, variant: variantProp, status, leftAction, children, ...props }, ref) => {
+const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ className, variant: variantProp, status, leftAction, onRetry, retryLabel, children, ...props }, ref) => {
   const state = React.useContext(SheetStateContext);
+  const scope = React.useContext(AutosaveScopeContext);
+  const setFooterShown = scope?.setFooterShown;
   const stickyRef = useStickyInset<HTMLDivElement>('bottom', ref, { place: 'auto' });
   const zero = usePreset() === 'zero';
   const variant = variantProp ?? (zero ? 'zero' : 'default');
+  // Only the zero footer draws the status; while it is mounted the sheet may hide every other status.
+  const shows = variant === 'zero' && !leftAction && !status;
+  React.useLayoutEffect(() => {
+    if (!setFooterShown || !shows) return undefined;
+    setFooterShown(true);
+    return () => setFooterShown(false);
+  }, [setFooterShown, shows]);
   if (variant === 'zero') {
     return (
       <div
@@ -370,7 +420,16 @@ const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ classN
         )}
         {...props}
       >
-        {leftAction ?? status ?? <AutosaveStatus state={state === 'dirty' ? 'dirty' : state === 'error' ? 'error' : 'saved'} />}
+        <AutosaveScopeContext.Provider value={null}>
+          {leftAction ?? status ?? (
+            <AutosaveStatus
+              state={scope?.handed?.state ?? (state === 'dirty' ? 'dirty' : state === 'error' ? 'error' : 'saved')}
+              label={scope?.handed?.label}
+              onRetry={onRetry ?? scope?.handed?.onRetry}
+              retryLabel={retryLabel ?? scope?.handed?.retryLabel}
+            />
+          )}
+        </AutosaveScopeContext.Provider>
         <div className="ml-auto flex items-center gap-2">{children}</div>
       </div>
     );
@@ -476,9 +535,15 @@ const SheetBody = React.forwardRef<HTMLDivElement, SheetBodyProps>(
     return (
       <div
         ref={ref}
+        data-slot="sheet-body"
         data-state={state}
         aria-busy={state === 'loading' || undefined}
-        className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto', scrollInsetClasses, className)}
+        // `focusOnOpen={false}` focuses the body so the keyboard scrolls it: no ring for that focus (data-sheet-autofocus), the inset ring for a later Tab onto a body of text.
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-y-auto focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-inset focus-visible:ring-ring-default [&[data-sheet-autofocus]:focus-visible]:ring-0',
+          scrollInsetClasses,
+          className,
+        )}
         {...props}
       >
         {state === 'loading' ? (

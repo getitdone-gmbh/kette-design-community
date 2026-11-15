@@ -1,21 +1,32 @@
 'use client';
 
-import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast';
-import { useToast } from '@/components/ui/use-toast';
+import * as React from 'react';
+
+import { Toast, ToastAction, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast';
+import { type ToastActionSpec, useToast } from '@/components/ui/use-toast';
+
+// A toast that carries an action stays open at least this long (ms) unless it sets its own `duration`, so keyboard and screen reader users can reach the action (WCAG 2.2.1).
+const ACTION_TOAST_DURATION = 10000;
 
 export function Toaster() {
   const { toasts } = useToast();
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {toasts.map(function ({ id, title, description, action, duration, ...props }) {
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} duration={duration ?? (action ? ACTION_TOAST_DURATION : undefined)} {...props}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}
             </div>
-            {action}
+            {action && !React.isValidElement(action) ? (
+              <ToastAction altText={(action as ToastActionSpec).altText ?? (action as ToastActionSpec).label} onClick={(action as ToastActionSpec).onClick}>
+                {(action as ToastActionSpec).label}
+              </ToastAction>
+            ) : (
+              action
+            )}
             <ToastClose />
           </Toast>
         );

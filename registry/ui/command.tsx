@@ -3,11 +3,11 @@
 import { type DialogProps } from '@radix-ui/react-dialog';
 import { Command as CommandPrimitive, useCommandState } from 'cmdk';
 import { ArrowRight, Search } from 'lucide-react';
-import { Fragment, ReactNode, forwardRef, useCallback, useRef } from 'react';
+import { Fragment, ReactNode, forwardRef, useCallback, useEffect, useRef } from 'react';
 
 import { useDanglingControls } from '@/lib/dangling-controls';
 import { cn } from '@/lib/utils';
-import { usePreset } from '@/components/ui/labels-context';
+import { useLabels, usePreset } from '@/components/ui/labels-context';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const Command = forwardRef<
@@ -33,10 +33,11 @@ interface CommandDialogProps
   commandClassName?: string;
 }
 
+// The 48px search row centres at 24px, so the 40px close button sits at top-1 (not the default top-3) and lines up with the field
 const CommandDialog = ({ children, open, defaultOpen, onOpenChange, modal, commandClassName, ...commandProps }: CommandDialogProps) => {
   return (
     <Dialog open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange} modal={modal}>
-      <DialogContent className="overflow-hidden p-0">
+      <DialogContent className="overflow-hidden p-0" closeClassName="top-1">
         <Command {...commandProps} className={cn("[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5", commandClassName)}>
           {children}
         </Command>
@@ -51,9 +52,16 @@ const CommandInput = forwardRef<
     icon?: ReactNode;
     /** Trailing shortcut hint, e.g. `<CommandKbd>⌘/</CommandKbd>`. */
     shortcut?: ReactNode;
+    // Whether the popup the input controls is open. Without it aria-expanded follows whether the list exists.
+    expanded?: boolean;
+    // No hairline under the field, for a field that sits in its own bordered surface (MultiSelect).
+    borderless?: boolean;
   }
->(({ className, icon, shortcut, ...props }, ref) => {
+>(({ className, icon, shortcut, expanded, borderless, ...props }, ref) => {
+  const l = useLabels();
   const inner = useRef<HTMLInputElement | null>(null);
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
   const setRefs = useCallback(
     (node: HTMLInputElement | null) => {
       inner.current = node;
@@ -65,16 +73,36 @@ const CommandInput = forwardRef<
   useDanglingControls(
     inner,
     (node) => node.closest('[cmdk-root]'),
-    // cmdk keeps aria-expanded true; it follows the list instead.
-    (node, exists) => node.setAttribute('aria-expanded', String(exists)),
+    // cmdk keeps aria-expanded true; it follows the list instead, or the `expanded` prop when set.
+    (node, exists) => node.setAttribute('aria-expanded', String(expandedRef.current ?? exists)),
   );
+  // cmdk sets aria-activedescendant from a snapshot that is stale when the list mounts after the input (opened by key, filtered by typing). The attribute follows the highlighted item here, so assistive technology hears what Enter will pick. An empty cmdk label (a Command without `label`) would leave the field without a name, so the field is named by its aria-label then.
+  useEffect(() => {
+    const input = inner.current;
+    const root = input?.closest('[cmdk-root]');
+    if (!input || !root) return undefined;
+    const sync = () => {
+      const active = root.querySelector('[cmdk-item][aria-selected="true"]');
+      if (active?.id) input.setAttribute('aria-activedescendant', active.id);
+      else input.removeAttribute('aria-activedescendant');
+      if (!root.querySelector('[cmdk-label]')?.textContent?.trim()) input.removeAttribute('aria-labelledby');
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected'] });
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (expanded !== undefined) inner.current?.setAttribute('aria-expanded', String(expanded));
+  }, [expanded]);
   return (
-    <div className="flex items-center border-b border-solid border-hairline px-3" cmdk-input-wrapper="">
+    <div className={cn('flex items-center px-3', !borderless && 'border-b border-solid border-hairline')} cmdk-input-wrapper="">
       {icon ? icon : <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />}
       <CommandPrimitive.Input
         ref={setRefs}
+        aria-label={props['aria-label'] ?? (typeof props.placeholder === 'string' && props.placeholder ? props.placeholder : l.search)}
         className={cn(
-          'flex h-11 w-full rounded-control bg-transparent py-3 text-sm max-sm:text-[max(16px,var(--typo-input-text-size,1rem))] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-disabled',
+          'flex h-11 min-w-0 w-full text-ellipsis rounded-control bg-transparent py-3 typography-input-text max-sm:text-[max(16px,var(--typo-input-text-size,1rem))] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-disabled',
           className,
         )}
         {...props}

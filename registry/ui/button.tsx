@@ -240,6 +240,19 @@ const FILLED_COUNT: Record<string, string> = {
 // Round count pill outside zero: 20px high, at least 20px wide (min-width via theme(), because consumer Tailwind 3.3 has no min-w-5 utility), centred, so one digit is a circle and longer text grows into a pill.
 const COUNT_PILL = ['inline-flex', 'h-5', '[min-width:theme(spacing.5)]', 'items-center', 'justify-center', 'rounded-full', 'px-1', 'tabular-nums', 'text-xs'];
 
+// Multi-line buttons (`wrap`): the fixed height gives way to a minimum height from the same control token, so a one-line label keeps the exact height of the size and a longer label grows by whole lines.
+const WRAP_MIN_HEIGHT: Record<string, string> = {
+  sm: '[min-height:var(--size-control-sm)]',
+  'control-sm': '[min-height:var(--size-control-sm)]',
+  default: '[min-height:var(--size-control-md)]',
+  md: '[min-height:var(--size-control-md)]',
+  'control-md': '[min-height:var(--size-control-md)]',
+  lg: '[min-height:var(--size-control-lg)]',
+  'control-lg': '[min-height:var(--size-control-lg)]',
+  xl: '[min-height:var(--size-control-xl)]',
+  '2xl': '[min-height:var(--size-control-2xl)]',
+};
+
 const iconSlotClass = (size: ButtonProps['size']) => (size === '2xl' ? ['h-6', 'w-6'] : size === 'icon-xs' ? ['h-icon-xs', 'w-icon-xs'] : ['h-icon-md', 'w-icon-md']);
 
 export interface ButtonProps
@@ -254,6 +267,8 @@ export interface ButtonProps
    */
   dotLeading?: boolean;
   underline?: boolean;
+  // Lets the label wrap onto several lines (centred, balanced). The height becomes the minimum height of the size (control token) and the line height stays the size's token, so a one-line label looks like the normal button. Off by default: an action label stays on one line. Not for icon-only sizes.
+  wrap?: boolean;
   // Link variant only: keeps the horizontal padding of the size, so a link button in a toolbar or button group has the same hit area as its neighbours. Without it the link has no padding and reads as inline text.
   padded?: boolean;
   // Busy state: shows a spinner in the icon slot, keeps the label, blocks activation and sets `aria-busy`.
@@ -271,7 +286,7 @@ export interface ButtonProps
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, icon, dotLeading = false, underline = false, padded = false, loading = false, loadingLabel, count, countPlacement = 'end', status, statusLabel, children, disabled, onClick, 'aria-label': ariaLabel, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, icon, dotLeading = false, underline = false, wrap = false, padded = false, loading = false, loadingLabel, count, countPlacement = 'end', status, statusLabel, children, disabled, onClick, 'aria-label': ariaLabel, ...props }, ref) => {
     const l = useLabels({ loading: loadingLabel });
     const zero = usePreset() === 'zero';
     // Without an explicit variant the zero preset renders the secondary (outline) button, filled brand stays opt-in.
@@ -312,7 +327,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           'inline-flex',
           // A label never wraps inside a button. A group of buttons wraps (or collapses) instead. The link variant is running text (an author name in a teaser) and may wrap.
-          { 'whitespace-nowrap': resolvedVariant !== 'link' },
+          { 'whitespace-nowrap': resolvedVariant !== 'link' && !wrap },
+          wrap && ['!h-auto', 'py-1', 'text-center', '[text-wrap:balance]', WRAP_MIN_HEIGHT[size ?? 'default'] ?? WRAP_MIN_HEIGHT.default],
           { relative: Boolean(status) },
           'items-center',
           'justify-center',
@@ -329,6 +345,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'disabled:pointer-events-none',
           'disabled:opacity-disabled',
           'disabled:data-[loading=true]:opacity-100',
+          // Loading is aria-disabled, not natively disabled, so the button keeps the keyboard focus; it ignores pointer input
+          'data-[loading=true]:pointer-events-none',
           { 'underline-offset-4': underline },
           { 'hover:underline': underline },
           { 'hover:decoration-2': underline },
@@ -339,12 +357,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-slot="button"
         data-variant={resolvedVariant}
         data-size={size ?? undefined}
-        disabled={disabled || loading}
+        data-wrap={wrap || undefined}
+        disabled={disabled}
+        aria-disabled={loading || undefined}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}
         data-status={status}
         aria-label={ariaLabel && status && statusLabel ? `${ariaLabel}, ${statusLabel}` : ariaLabel}
-        onClick={loading ? undefined : onClick}
+        // A loading submit button must not submit again while it stays focusable
+        onClick={loading ? (event) => event.preventDefault() : onClick}
         {...props}
       >
         {loading ? null : dot}

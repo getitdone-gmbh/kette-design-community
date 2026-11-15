@@ -258,3 +258,68 @@ describe('Facet colour dot and group count (0.17)', () => {
     expect(container.querySelector('[data-facet-dot]')).toBeInTheDocument();
   });
 });
+
+// C-2: FacetOption name/value for native GET forms.
+describe('FacetOption name and value (C-2)', () => {
+  it('renders a native checkbox that submits name=value in a GET form', () => {
+    const { container } = render(
+      <form method="get" action="/servers">
+        <FacetOption label="Open" name="state" value="open" defaultChecked count={4} />
+        <FacetOption label="Protected" name="state" value="protected" />
+      </form>,
+    );
+    const open = screen.getByRole('checkbox', { name: 'Open' });
+    expect(open).toBeChecked();
+    expect(open).toHaveAttribute('name', 'state');
+    expect(open).toHaveAttribute('value', 'open');
+    expect(screen.getByRole('checkbox', { name: 'Protected' })).not.toBeChecked();
+    const form = container.querySelector('form') as HTMLFormElement;
+    expect(new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString()).toBe('state=open');
+  });
+
+  it('toggles, reports the change and keeps count 0 options usable', async () => {
+    const onCheckedChange = vi.fn();
+    render(<FacetOption label="Blocked" name="state" value="blocked" count={0} defaultChecked onCheckedChange={onCheckedChange} />);
+    const box = screen.getByRole('checkbox', { name: 'Blocked' });
+    expect(box).toBeEnabled();
+    await userEvent.click(box);
+    expect(onCheckedChange).toHaveBeenLastCalledWith(false);
+    expect(box).not.toBeChecked();
+  });
+
+  it('a disabled option stays visible and is not submitted', () => {
+    const { container } = render(
+      <form>
+        <FacetOption label="Timed out" name="state" value="timeout" count={0} defaultChecked disabled />
+      </form>,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Timed out' })).toBeDisabled();
+    expect(new FormData(container.querySelector('form') as HTMLFormElement).has('state')).toBe(false);
+  });
+
+  it('the value defaults to on', () => {
+    render(<FacetOption label="Auth" name="auth" />);
+    expect(screen.getByRole('checkbox', { name: 'Auth' })).toHaveAttribute('value', 'on');
+  });
+
+  it('is keyboard operable with Space', async () => {
+    render(<FacetOption label="Auth" name="auth" />);
+    await userEvent.tab();
+    await userEvent.keyboard(' ');
+    expect(screen.getByRole('checkbox', { name: 'Auth' })).toBeChecked();
+  });
+
+  it('toggle-links mode adds a hidden input while selected', () => {
+    const probe = (selected: boolean) => (
+      <FacetFilter selectionMode="toggle-links">
+        <FacetGroup label="Category">
+          <FacetOption label="A" name="cat" value="a" checked={selected} />
+        </FacetGroup>
+      </FacetFilter>
+    );
+    const { container, rerender } = render(probe(false));
+    expect(container.querySelector('input[type="hidden"]')).toBeNull();
+    rerender(probe(true));
+    expect(container.querySelector('input[type="hidden"][name="cat"][value="a"]')).not.toBeNull();
+  });
+});

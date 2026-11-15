@@ -30,7 +30,8 @@ const tones = {
   // 0.31.0: light minimum follows the dark-only themes (discord, steam, ableton render dark in light mode)
   info: ['info', 4.9, 4.9],
   success: ['success', 4.84, 5.77],
-  warning: ['warning', 4.52, 5.83],
+  // 0.33.0: the warning family is amber (kette-tokens 5.28.0), the light worst case rises from 4.52
+  warning: ['warning', 5.84, 5.83],
   destructive: ['error', 5.3, 6.17],
 } as const;
 

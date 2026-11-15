@@ -71,6 +71,18 @@ describe('Command additions', () => {
   });
 });
 
+describe('CommandInput shrink behaviour', () => {
+  it('can shrink next to a hint and ends a long placeholder with an ellipsis by default', () => {
+    render(
+      <Command>
+        <CommandInput placeholder="Search" />
+        <CommandList />
+      </Command>,
+    );
+    expect(screen.getByPlaceholderText('Search')).toHaveClass('min-w-0', 'text-ellipsis');
+  });
+});
+
 describe('CommandDialog', () => {
   it('forwards cmdk root props such as shouldFilter to Command', async () => {
     const user = userEvent.setup();
@@ -88,4 +100,47 @@ describe('CommandDialog', () => {
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
   });
+
+  it('centres the close button on the 48px search row', async () => {
+    render(
+      <CommandDialog open>
+        <CommandInput placeholder="Search" />
+        <CommandList />
+      </CommandDialog>,
+    );
+    const close = document.querySelector('[data-slot="dialog-close"]');
+    expect(close).toHaveClass('top-1');
+    expect(close).not.toHaveClass('top-3');
+  });
 });
+
+describe('CommandInput name and active descendant (round 2)', () => {
+  it('is named by its placeholder when the Command has no label', () => {
+    render(
+      <Command>
+        <CommandInput placeholder="Find an action" />
+        <CommandList>
+          <CommandItem>One</CommandItem>
+        </CommandList>
+      </Command>,
+    );
+    expect(screen.getByRole('combobox')).toHaveAccessibleName('Find an action');
+  });
+
+  it('points aria-activedescendant at the highlighted item on open', async () => {
+    render(
+      <Command label="Actions">
+        <CommandInput placeholder="Find" />
+        <CommandList>
+          <CommandItem>One</CommandItem>
+          <CommandItem>Two</CommandItem>
+        </CommandList>
+      </Command>,
+    );
+    const input = screen.getByRole('combobox');
+    await vi.waitFor(() => expect(input.getAttribute('aria-activedescendant')).toBe(screen.getAllByRole('option')[0].id));
+    await userEvent.type(input, '{ArrowDown}');
+    await vi.waitFor(() => expect(input.getAttribute('aria-activedescendant')).toBe(screen.getAllByRole('option')[1].id));
+  });
+});
+

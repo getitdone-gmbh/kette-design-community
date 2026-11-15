@@ -128,4 +128,10 @@ describe('EmptyState page adoption options', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveClass('typography-display-sm');
     expect(screen.getByRole('heading', { level: 1 })).not.toHaveClass('typography-page-title');
   });
+
+  it('locked by plan: a no-access state with what stays free and one primary action', () => {
+    render(<EmptyState variant="no-access" title="Recommended is part of jobsearch.zero" description="Your profile stays free." actions={<button type="button">Choose jobsearch.zero</button>} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Recommended is part of jobsearch.zero');
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
 });

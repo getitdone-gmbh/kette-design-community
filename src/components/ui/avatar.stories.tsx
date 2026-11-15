@@ -95,6 +95,34 @@ export const WithOnlineIndicator: Story = {
 // Status icon=Verified / Company in Figma are asset-driven (a verified-check icon, an arbitrary
 // company logo) rather than a fixed color — AvatarBadge is the generic bottom-right "cutout" slot
 // those compose into; consumers bring their own icon/logo as children.
+export const Presence: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'Presence for chat and calls (meeting.zero): `status` online, away, call (in a call, product colour meeting) and offline. The dot always carries the status as screen reader text, put the status in words next to it where it matters.',
+      },
+    },
+  },
+  render: () => (
+    <div className="flex flex-col gap-6">
+      {(['xs', 'sm', 'lg'] as const).map((avatarSize) => (
+        // xs and sm are the sizes of the chat list and the chat panel (zero CommAvatar), lg the profile size
+        <div key={avatarSize} className="flex items-center gap-6" data-size={avatarSize}>
+          {(['online', 'away', 'call', 'offline'] as const).map((status) => (
+            <div key={status} className="flex flex-col items-center gap-2">
+              <Avatar size={avatarSize}>
+                <AvatarFallback>EP</AvatarFallback>
+                <AvatarOnlineIndicator size={avatarSize === 'xs' ? 'sm' : avatarSize === 'sm' ? 'md' : 'lg'} status={status} />
+              </Avatar>
+              <span className="text-xs text-text-subtle">{status}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 export const WithCustomBadge: Story = {
   args: { size: 'xl' } as React.ComponentProps<typeof Avatar>,
   render: (args) => (

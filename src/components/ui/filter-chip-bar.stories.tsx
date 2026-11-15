@@ -35,3 +35,15 @@ export const Interactive: Story = {
     );
   },
 };
+
+// Link mode: a chip with `href` is an anchor that removes the filter by navigating to the listing without it, and `resetHref` makes "Clear all" a real link too. Works without JavaScript.
+export const LinkChips: Story = {
+  args: {
+    chips: [
+      { id: 'state', label: 'Check state: Responds', href: '?' },
+      { id: 'category', label: 'Category: Developer tools', href: '?' },
+    ],
+    resetHref: '?',
+    resetLabel: 'Clear all',
+  } as any,
+};

@@ -698,7 +698,7 @@ SidebarTree.displayName = 'SidebarTree';
  * Object icon (product) + swatch (project)
  * -----------------------------------------------------------------------------------------------*/
 
-type SidebarProduct = 'workstream' | 'backoffice' | 'coldcall' | 'vacancy' | 'jobsearch';
+type SidebarProduct = 'workstream' | 'backoffice' | 'coldcall' | 'vacancy' | 'jobsearch' | 'meeting';
 
 // Full class strings so Tailwind's content scan picks every product token up.
 const productClasses: Record<SidebarProduct, string> = {
@@ -707,6 +707,7 @@ const productClasses: Record<SidebarProduct, string> = {
   coldcall: 'bg-product-coldcall-default text-product-coldcall-on',
   vacancy: 'bg-product-vacancy-default text-product-vacancy-on',
   jobsearch: 'bg-product-jobsearch-default text-product-jobsearch-on',
+  meeting: 'bg-product-meeting-default text-product-meeting-on',
 };
 
 interface SidebarObjectIconProps extends React.HTMLAttributes<HTMLSpanElement> {

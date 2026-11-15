@@ -3,6 +3,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
+import { DesignSystemProvider } from './design-system-provider';
 import { ActivityGauge, ChartLegend, HBarList, Histogram, LineBarChart, PieChart, RadarChart, Sparkline, Treemap } from './chart';
 
 const categories = ['Jan', 'Feb', 'Mar'];
@@ -86,6 +87,112 @@ describe('LineBarChart', () => {
     expect(container.querySelector('[data-chart-tooltip]')).not.toBeNull();
     fireEvent.pointerLeave(hits[0].closest('div') as HTMLElement);
     expect(container.querySelector('[data-chart-tooltip]')).toBeNull();
+  });
+
+  it('makes the plot a keyboard focus target that reads the data points with the arrow keys (ZERO-575)', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<LineBarChart title="Users per month" tooltip categories={categories} series={series} />);
+    const plot = screen.getByRole('group', { name: 'Users per month', description: /arrow keys/ });
+    expect(plot).toHaveAttribute('tabindex', '0');
+    expect(plot).toHaveAttribute('aria-roledescription', 'chart');
+    await user.tab();
+    expect(plot).toHaveFocus();
+    expect(container.querySelector('[data-chart-tooltip]')).toHaveTextContent('Jan');
+    const live = container.querySelector('[data-chart-live]') as HTMLElement;
+    expect(live).toHaveTextContent('Jan, 1 of 3. Active users 10. Trials 5');
+    await user.keyboard('{ArrowRight}');
+    expect(container.querySelector('[data-chart-tooltip]')).toHaveTextContent('Feb');
+    expect(live).toHaveTextContent('Feb, 2 of 3. Active users 20. Trials 5');
+    expect(container.querySelector('[data-chart-focus-band]')).not.toBeNull();
+    await user.keyboard('{End}');
+    expect(live).toHaveTextContent('Mar, 3 of 3');
+    await user.keyboard('{ArrowRight}');
+    expect(live).toHaveTextContent('Mar, 3 of 3');
+    await user.keyboard('{Home}');
+    expect(live).toHaveTextContent('Jan, 1 of 3');
+    await user.keyboard('{Escape}');
+    expect(container.querySelector('[data-chart-tooltip]')).toBeNull();
+    expect(live).toHaveTextContent('');
+  });
+
+  it('hides the tooltip when focus leaves the plot and has no focus target without tooltip', async () => {
+    const user = userEvent.setup();
+    const { container, rerender } = render(<LineBarChart title="t" tooltip categories={categories} series={series} />);
+    await user.tab();
+    expect(container.querySelector('[data-chart-tooltip]')).not.toBeNull();
+    await user.tab();
+    expect(container.querySelector('[data-chart-tooltip]')).toBeNull();
+    rerender(<LineBarChart title="t" categories={categories} series={series} />);
+    expect(screen.getByRole('img', { name: 't' })).toBeInTheDocument();
+    expect(container.querySelector('[tabindex]')).toBeNull();
+  });
+
+  it('names the chart once, on the focus target, and keeps the ring on the plot (ZERO-575 review)', () => {
+    render(<LineBarChart title="Users per month" description="Grows." tooltip categories={categories} series={series} />);
+    expect(screen.getAllByRole('group', { name: 'Users per month' })).toHaveLength(1);
+    const plot = screen.getByRole('group', { name: 'Users per month' });
+    expect(plot).toHaveAccessibleDescription(/Grows\..*arrow keys/);
+    expect(plot).toHaveClass('w-fit');
+  });
+
+  it('Escape hides the tooltip, stays in the chart and the next arrow continues from the last category', async () => {
+    const user = userEvent.setup();
+    const onDocumentKey = vi.fn();
+    document.addEventListener('keydown', onDocumentKey);
+    const { container } = render(<LineBarChart title="t" tooltip categories={categories} series={series} />);
+    await user.tab();
+    await user.keyboard('{End}');
+    expect(container.querySelector('[data-chart-tooltip-open]')).not.toBeNull();
+    onDocumentKey.mockClear();
+    await user.keyboard('{Escape}');
+    expect(container.querySelector('[data-chart-tooltip]')).toBeNull();
+    expect(onDocumentKey).not.toHaveBeenCalled();
+    await user.keyboard('{ArrowLeft}');
+    expect(container.querySelector('[data-chart-live]')).toHaveTextContent(/^Feb, 2 of 3/);
+    document.removeEventListener('keydown', onDocumentKey);
+  });
+
+  it('draws guideline dashed and projection dotted by default, a series can choose its own style', () => {
+    const { container } = render(
+      <LineBarChart
+        title="t"
+        type="line"
+        legend
+        categories={categories}
+        series={[
+          { id: 'g', label: 'Ideal', values: [3, 2, 1], tone: 'guideline' },
+          { id: 'p', label: 'Projection', values: [3, 2, 2], tone: 'projection' },
+          { id: 'r', label: 'Remaining', values: [3, 3, 2] },
+          { id: 'x', label: 'Custom', values: [1, 1, 1], tone: 2, line: 'dashed' },
+        ]}
+      />,
+    );
+    const dash = (cls: string) => container.querySelector(`polyline.${cls}`)?.getAttribute('stroke-dasharray');
+    expect(dash('stroke-chart-guideline')).toBe('6 4');
+    expect(dash('stroke-chart-projection')).toBe('1 5');
+    expect(container.querySelectorAll('polyline')[2].getAttribute('stroke-dasharray')).toBeNull();
+    expect(container.querySelectorAll('polyline')[3].getAttribute('stroke-dasharray')).toBe('6 4');
+    // The legend keys follow the line style.
+    const keys = screen.getByRole('list', { name: 'Legend' }).querySelectorAll('svg line');
+    expect(keys).toHaveLength(3);
+  });
+
+  it('draws absence and non-working bars as hatching with a legend key to match', () => {
+    const { container } = render(
+      <LineBarChart
+        title="t"
+        legend
+        categories={categories}
+        series={[
+          { id: 'a', label: 'Absence', values: [1, 2, 3], tone: 'absence' },
+          { id: 'n', label: 'Non-working', values: [1, 1, 1], tone: 'non-working' },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll('pattern')).toHaveLength(4);
+    const bars = container.querySelectorAll('[data-bar]');
+    expect((bars[0] as SVGElement).style.fill).toMatch(/^url\(#.*absence\)$/);
+    expect((bars[1] as SVGElement).style.fill).toMatch(/^url\(#.*non-working\)$/);
   });
 
   it('renders loading, empty and error states', async () => {
@@ -203,6 +310,24 @@ describe('Sparkline, Histogram, HBarList, Treemap, Legend', () => {
     expect(screen.getByText('3 proj.')).toBeInTheDocument();
     rerender(<HBarList aria-label="Skills" layout="stacked" items={items} />);
     expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('data-layout', 'stacked');
+  });
+
+  it('HBarList fills a row by skill category, with color winning over skill and skill over tone', () => {
+    const { container } = render(
+      <HBarList
+        aria-label="Skills"
+        items={[
+          { id: 'a', label: 'React', value: 3, skill: 'frontend', tone: 2 },
+          { id: 'b', label: 'Go', value: 2, skill: 'backend', color: 'bg-product-vacancy-default' },
+          { id: 'c', label: 'Other', value: 1, tone: 2 },
+        ]}
+      />,
+    );
+    const fills = Array.from(container.querySelectorAll('li span.rounded-full > span.rounded-full'));
+    expect(fills[0]).toHaveClass('bg-data-skill-frontend-default');
+    expect(fills[1]).toHaveClass('bg-product-vacancy-default');
+    expect(fills[1]).not.toHaveClass('bg-data-skill-backend-default');
+    expect(fills[2]).not.toHaveClass('bg-data-skill-frontend-default');
   });
 
   it('Treemap sizes cells by value and hides labels on tiny cells', () => {
@@ -472,5 +597,61 @@ describe('LineBarChart fluid width and category label (0.20)', () => {
     const table = screen.getByRole('table', { hidden: true });
     expect(within(table).getByRole('columnheader', { name: 'Week', hidden: true })).toBeInTheDocument();
     expect(within(table).queryByRole('columnheader', { name: 'Category', hidden: true })).toBeNull();
+  });
+});
+
+describe('LineBarChart integer ticks', () => {
+  const tickLabels = (container: HTMLElement) => [...container.querySelectorAll('text[text-anchor="end"]')].map((t) => t.textContent);
+  const hours = [{ id: 'h', label: 'Hours', values: [3, 1, 2] }];
+
+  it('keeps the nice maximum and its quarter steps by default', () => {
+    const { container } = render(<LineBarChart title="t" categories={categories} series={hours} />);
+    // Quarter steps of a nice maximum round to fractions an hour or count axis cannot have (DR-242-05)
+    expect(tickLabels(container)).toEqual(['0', '1.3', '2.5', '3.8', '5']);
+  });
+
+  it('steps in whole numbers for counts and hours', () => {
+    const { container } = render(<LineBarChart title="t" categories={categories} series={hours} integerTicks />);
+    expect(tickLabels(container)).toEqual(['0', '1', '2', '3', '4']);
+  });
+
+  it('keeps whole steps for small, empty and larger values', () => {
+    const at = (values: number[]) => tickLabels(render(<LineBarChart title="t" categories={categories} series={[{ id: 'h', label: 'Hours', values }]} integerTicks />).container);
+    expect(at([0.5, 0, 0])).toEqual(['0', '1', '2', '3', '4']);
+    expect(at([0, 0, 0])).toEqual(['0', '1', '2', '3', '4']);
+    expect(at([37, 12, 5])).toEqual(['0', '10', '20', '30', '40']);
+    expect(at([12, 3, 9])).toEqual(['0', '5', '10', '15', '20']);
+  });
+});
+
+describe('LineBarChart money values (KETTE-63)', () => {
+  const nbsp = (s: string | null) => (s ?? '').replace(/ | /g, ' ');
+  const labels = (root: HTMLElement) => Array.from(root.querySelectorAll('text[data-bar-value]')).map((n) => nbsp(n.textContent));
+  const money = { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 } as const;
+
+  it('valueFormat formats the totals above stacked bars as currency in the provider locale', () => {
+    const { container } = render(
+      <DesignSystemProvider locale="de">
+        <LineBarChart title="Revenue" stacked showValues valueFormat={money} categories={['Jan', 'Feb']} series={[{ id: 'a', label: 'A', values: [1200, 800] }, { id: 'b', label: 'B', values: [300, 4500] }]} />
+      </DesignSystemProvider>,
+    );
+    expect(labels(container)).toEqual(['1.500 €', '5.300 €']);
+  });
+
+  it('valueFormat labels every bar of an unstacked chart and uses the English locale by default', () => {
+    const { container } = render(<LineBarChart title="Revenue" showValues valueFormat={money} categories={['Jan', 'Feb']} series={[{ id: 'a', label: 'A', values: [1200, 800] }]} />);
+    expect(labels(container)).toEqual(['€1,200', '€800']);
+  });
+
+  it('formatValue wins over valueFormat and also fills the data table', () => {
+    render(<LineBarChart title="Revenue" showValues showTable valueFormat={money} formatValue={(v) => `${v / 1000}k`} categories={['Jan']} series={[{ id: 'a', label: 'A', values: [2500] }]} />);
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('2.5k')).toBeInTheDocument();
+  });
+
+  it('the axis ticks keep the plain number format, the unit belongs in yTitle', () => {
+    const { container } = render(<LineBarChart title="Revenue" showValues valueFormat={money} categories={['Jan']} series={[{ id: 'a', label: 'A', values: [2000] }]} />);
+    const ticks = Array.from(container.querySelectorAll('text')).filter((t) => !t.hasAttribute('data-bar-value')).map((t) => t.textContent ?? '');
+    expect(ticks.some((t) => t.includes('€'))).toBe(false);
   });
 });

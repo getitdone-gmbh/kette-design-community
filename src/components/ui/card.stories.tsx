@@ -37,6 +37,19 @@ export const Default: Story = {
   },
 };
 
+// The description brings its own line height (leading-ui-relaxed, 19px), so a lead over two lines stays readable inside a container that sets a tight line height (here 16px, as in a sheet).
+export const DescriptionLineHeight: Story = {
+  args: {
+    className: 'max-w-sheet-sm leading-ui',
+    children: (
+      <CardHeader>
+        <CardTitle>Revenue by person</CardTitle>
+        <CardDescription>Hours x member rate per person. The open month counts up to today and is marked as running.</CardDescription>
+      </CardHeader>
+    ),
+  },
+};
+
 // A real handler is what turns Card into a keyboard-operable "clickable card" (see the
 // `interactive` computation in card.tsx) — hover/focus-visible/active only ever appear here,
 // never on a purely informational Card.

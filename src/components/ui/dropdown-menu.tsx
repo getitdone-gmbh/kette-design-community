@@ -1,12 +1,12 @@
 'use client';
 
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { Check, ChevronRight, Circle } from 'lucide-react';
+import { Check, ChevronRight, Circle, ExternalLink } from 'lucide-react';
 import * as React from 'react';
 
 import { menuItem, menuItemDestructive, menuItemZero, overlayMotion, overlaySurface, overlaySurfaceZero } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
-import { usePreset } from './labels-context';
+import { useLabels, usePreset } from './labels-context';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -146,23 +146,45 @@ const DropdownMenuItem = React.forwardRef<
     inset?: boolean;
     /** `destructive` renders the row in the destructive role (delete, remove, sign out). */
     variant?: 'default' | 'destructive';
+    // A row that goes to another page is a real link: pass `href` and the row renders an `<a>` that keeps the menu item role, so "Open in new tab", copy link and a plain Enter all work. Use `onSelect` for actions, `href` for navigation. Not for `asChild` rows (bring your own link).
+    href?: string;
+    // Anchor attributes for an `href` row. `target="_blank"` also sets `rel="noopener noreferrer"` unless you pass `rel`, and adds an external-link icon and a screen reader text "opens in a new tab".
+    target?: React.HTMLAttributeAnchorTarget;
+    rel?: string;
+    download?: boolean | string;
   }
->(({ className, inset, variant = 'default', ...props }, ref) => {
+>(({ className, inset, variant = 'default', href, target, rel, download, children, asChild, ...props }, ref) => {
   const zero = usePreset() === 'zero';
+  const l = useLabels();
   const density = React.useContext(DropdownMenuDensityContext);
+  const classes = cn(
+    zero ? menuItemZero : menuItem,
+    densityRowClass(density),
+    'cursor-pointer',
+    variant === 'destructive' && menuItemDestructive,
+    inset && 'pl-8',
+    className,
+  );
+  if (href !== undefined && !asChild) {
+    return (
+      <DropdownMenuPrimitive.Item ref={ref} asChild className={classes} {...props}>
+        <a href={href} target={target} rel={rel ?? (target === '_blank' ? 'noopener noreferrer' : undefined)} download={download}>
+          {children}
+          {/* A row that opens a new tab says so: an icon for the eyes, a text for screen readers. */}
+          {target === '_blank' ? (
+            <>
+              <ExternalLink className="ml-auto h-icon-xs w-icon-xs shrink-0 text-icon-subtle" aria-hidden />
+              <span className="sr-only">({l.opensInNewTab})</span>
+            </>
+          ) : null}
+        </a>
+      </DropdownMenuPrimitive.Item>
+    );
+  }
   return (
-    <DropdownMenuPrimitive.Item
-      ref={ref}
-      className={cn(
-        zero ? menuItemZero : menuItem,
-        densityRowClass(density),
-        'cursor-pointer',
-        variant === 'destructive' && menuItemDestructive,
-        inset && 'pl-8',
-        className,
-      )}
-      {...props}
-    />
+    <DropdownMenuPrimitive.Item ref={ref} asChild={asChild} className={classes} {...props}>
+      {children}
+    </DropdownMenuPrimitive.Item>
   );
 });
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;

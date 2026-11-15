@@ -96,7 +96,7 @@ const Demo = ({
             {bannerPosition === 'bottom' && bannerNode}
           </SheetBody>
           <SheetFooter variant="zero">
-            <Button variant="outline" size="control-md" onClick={() => setOpen(false)}>
+            <Button variant="ghost" size="control-md" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button variant="primary" size="control-md">

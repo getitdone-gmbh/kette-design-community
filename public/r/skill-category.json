@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/ui/skill-category.ts",
-      "content": "// Category keys of the `data-skill` colour roles in the theme, shared by Chip (weighted) and Heatmap.\nexport type SkillCategory =\n  | 'frontend'\n  | 'backend'\n  | 'devops-cloud'\n  | 'data-ai'\n  | 'design-ux'\n  | 'mobile'\n  | 'security'\n  | 'testing-qa'\n  | 'infrastructure'\n  | 'project-management'\n  | 'business-strategy'\n  | 'fallback';\n",
+      "content": "// Category keys of the `data-skill` colour roles in the theme, shared by Chip (weighted) and Heatmap.\nexport type SkillCategory =\n  | 'frontend'\n  | 'backend'\n  | 'devops-cloud'\n  | 'data-ai'\n  | 'design-ux'\n  | 'mobile'\n  | 'security'\n  | 'testing-qa'\n  | 'infrastructure'\n  | 'project-management'\n  | 'business-strategy'\n  | 'fallback';\n\n// Full class strings so Tailwind's content scan finds every skill category token.\n// Dot/fill class per skill category, shared with charts and chips (the library keeps it in skill-tree.tsx).\nexport const skillCategoryFill: Record<SkillCategory, string> = {\n  frontend: 'bg-data-skill-frontend-default',\n  backend: 'bg-data-skill-backend-default',\n  'devops-cloud': 'bg-data-skill-devops-cloud-default',\n  'data-ai': 'bg-data-skill-data-ai-default',\n  'design-ux': 'bg-data-skill-design-ux-default',\n  mobile: 'bg-data-skill-mobile-default',\n  security: 'bg-data-skill-security-default',\n  'testing-qa': 'bg-data-skill-testing-qa-default',\n  infrastructure: 'bg-data-skill-infrastructure-default',\n  'project-management': 'bg-data-skill-project-management-default',\n  'business-strategy': 'bg-data-skill-business-strategy-default',\n  fallback: 'bg-data-skill-fallback-default',\n};\n",
       "type": "registry:ui"
     }
   ],

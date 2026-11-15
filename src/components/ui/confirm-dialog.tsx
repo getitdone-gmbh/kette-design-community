@@ -42,6 +42,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   // Disables the actions while the confirmation runs.
   pending?: boolean;
+  // A confirmation interrupts the user and asks for an answer, so it is an `alertdialog` by default (focus starts on Cancel, or on the confirm input, and a click outside does not close it). Pass `dialog` for a dismissible one.
+  role?: 'alertdialog' | 'dialog';
   className?: string;
 }
 
@@ -63,6 +65,7 @@ const ConfirmDialog = ({
   cancelLabel,
   onConfirm,
   pending = false,
+  role = 'alertdialog',
   className,
 }: ConfirmDialogProps) => {
   const l = useLabels({ confirm: confirmLabel, cancel: cancelLabel });
@@ -86,7 +89,7 @@ const ConfirmDialog = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent size="sm" className={className}>
+      <DialogContent size="sm" role={role} initialFocus={needsInput ? 'first-field' : 'auto'} className={className}>
         <DialogHeader orientation={icon ? 'horizontal' : 'vertical'}>
           {icon && <DialogFeaturedIcon tone={tone === 'destructive' ? 'destructive' : 'brand'}>{icon}</DialogFeaturedIcon>}
           <div className="flex flex-col gap-2">
@@ -114,7 +117,7 @@ const ConfirmDialog = ({
           </div>
         )}
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={pending} onClick={() => handleOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={pending} data-autofocus={needsInput ? undefined : ''} onClick={() => handleOpenChange(false)}>
             {l.cancel}
           </Button>
           <Button

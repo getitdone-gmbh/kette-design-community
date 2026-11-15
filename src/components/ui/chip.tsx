@@ -38,6 +38,37 @@ const SKILL_FILL: Record<SkillCategory, string> = {
   fallback: 'bg-data-skill-fallback-default text-data-skill-fallback-on-fill hover:bg-data-skill-fallback-default active:bg-data-skill-fallback-default',
 };
 
+// Soft skill chip (prototype sk-c): skill category tint with its on-subtle text and a dot in the category colour. Full class strings so Tailwind finds every token.
+const SKILL_SOFT: Record<SkillCategory, string> = {
+  frontend: 'bg-data-skill-frontend-subtle text-data-skill-frontend-on hover:bg-data-skill-frontend-subtle',
+  backend: 'bg-data-skill-backend-subtle text-data-skill-backend-on hover:bg-data-skill-backend-subtle',
+  'devops-cloud': 'bg-data-skill-devops-cloud-subtle text-data-skill-devops-cloud-on hover:bg-data-skill-devops-cloud-subtle',
+  'data-ai': 'bg-data-skill-data-ai-subtle text-data-skill-data-ai-on hover:bg-data-skill-data-ai-subtle',
+  'design-ux': 'bg-data-skill-design-ux-subtle text-data-skill-design-ux-on hover:bg-data-skill-design-ux-subtle',
+  mobile: 'bg-data-skill-mobile-subtle text-data-skill-mobile-on hover:bg-data-skill-mobile-subtle',
+  security: 'bg-data-skill-security-subtle text-data-skill-security-on hover:bg-data-skill-security-subtle',
+  'testing-qa': 'bg-data-skill-testing-qa-subtle text-data-skill-testing-qa-on hover:bg-data-skill-testing-qa-subtle',
+  infrastructure: 'bg-data-skill-infrastructure-subtle text-data-skill-infrastructure-on hover:bg-data-skill-infrastructure-subtle',
+  'project-management': 'bg-data-skill-project-management-subtle text-data-skill-project-management-on hover:bg-data-skill-project-management-subtle',
+  'business-strategy': 'bg-data-skill-business-strategy-subtle text-data-skill-business-strategy-on hover:bg-data-skill-business-strategy-subtle',
+  fallback: 'bg-data-skill-fallback-subtle text-data-skill-fallback-on hover:bg-data-skill-fallback-subtle',
+};
+
+const SKILL_DOT: Record<SkillCategory, string> = {
+  frontend: 'bg-data-skill-frontend-default',
+  backend: 'bg-data-skill-backend-default',
+  'devops-cloud': 'bg-data-skill-devops-cloud-default',
+  'data-ai': 'bg-data-skill-data-ai-default',
+  'design-ux': 'bg-data-skill-design-ux-default',
+  mobile: 'bg-data-skill-mobile-default',
+  security: 'bg-data-skill-security-default',
+  'testing-qa': 'bg-data-skill-testing-qa-default',
+  infrastructure: 'bg-data-skill-infrastructure-default',
+  'project-management': 'bg-data-skill-project-management-default',
+  'business-strategy': 'bg-data-skill-business-strategy-default',
+  fallback: 'bg-data-skill-fallback-default',
+};
+
 // Selected check size per chip size, from the icon size tokens.
 const CHECK_SIZE = {
   small: 'h-icon-2xs w-icon-2xs',
@@ -182,6 +213,7 @@ const chipVariants = cva(
         textOnly: '',
         productDot: '',
         weighted: '',
+        skillSoft: '',
       },
     },
     compoundVariants: [
@@ -236,6 +268,10 @@ const chipVariants = cva(
       { chipStyle: 'productDot', className: 'gap-2 rounded-item border-hairline bg-background-default text-xs font-medium text-text-default hover:bg-background-default active:bg-background-default active:brightness-100' },
       // Weighted: filled skill chip, no hairline border, fixed 22px height. Fill and text come from `skill`.
       { chipStyle: 'weighted', className: 'h-badge border-transparent font-medium leading-none active:brightness-100' },
+      // Skill soft: tinted category fill, no border, 22px high like weighted. Fill and text come from `skill`.
+      { chipStyle: 'skillSoft', className: 'h-badge border-transparent font-medium leading-none active:brightness-100' },
+      // Zero (prototype sk-c): 24px high with a 6px dot
+      { chipStyle: 'skillSoft', preset: 'zero', className: 'h-control-xs' },
       { preset: 'zero', size: 'control', variant: ['default', 'outline'], className: 'border-border-default' },
       { preset: 'zero', chipStyle: 'productDot', className: 'border-border-default' },
       { dashed: true, className: 'border-dashed border-input bg-transparent text-text-subtle hover:bg-muted' },
@@ -296,8 +332,8 @@ export interface ChipProps extends React.HTMLAttributes<HTMLDivElement>, Omit<Va
   selectedLabel?: string;
   invalidLabel?: string;
   // Visual style (Figma Chip Style). `textOnly` shows only coloured text (tone from `variant`: info, success, warning, destructive, default). `productDot` shows a neutral bordered chip with a square leading dot in `dotColor` (a product or project colour) and dark text.
-  chipStyle?: 'default' | 'textOnly' | 'productDot' | 'weighted';
-  // Skill category of a `weighted` chip: sets the fill and its on-fill text colour. Defaults to `fallback` (Figma Color=Skill Other).
+  chipStyle?: 'default' | 'textOnly' | 'productDot' | 'weighted' | 'skillSoft';
+  // Skill category of a `weighted` or `skillSoft` chip: `weighted` sets the fill and its on-fill text colour, `skillSoft` the tinted fill, its text colour and the dot. Defaults to `fallback` (Figma Color=Skill Other).
   skill?: SkillCategory;
   // Weight text of a `weighted` chip after the label, for example `weight 3` (Figma Weight text, Show weight).
   weight?: ReactNode;
@@ -395,20 +431,22 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
       }
     };
 
+    const isSkillSoft = chipStyle === 'skillSoft' && !invalid;
     // Categorical chips show a dot in the category colour unless a dot colour is given.
     const categoryDot = category != null && !dotColor ? CATEGORY_DOT[category] : undefined;
-    const effectiveDotColor = dotColor ?? categoryDot;
+    const effectiveDotColor = dotColor ?? categoryDot ?? (isSkillSoft ? SKILL_DOT[skill ?? 'fallback'] : undefined);
     const dotIsClass = effectiveDotColor?.startsWith('bg-');
     const isProductDot = chipStyle === 'productDot' && !invalid;
     const isTextOnly = chipStyle === 'textOnly' && !invalid;
     const isWeighted = chipStyle === 'weighted' && !invalid;
-    const showDot = (dotLeading || isProductDot || isWeighted || categoryDot != null) && !isTextOnly;
+    const showDot = (dotLeading || isProductDot || isWeighted || isSkillSoft || categoryDot != null) && !isTextOnly;
     const dot = showDot ? (
       <span
         aria-hidden="true"
         data-chip-dot=""
         className={cn(
-          'inline-block h-2 w-2 shrink-0',
+          'inline-block shrink-0',
+          isSkillSoft && zero ? 'h-status-dot w-status-dot' : 'h-2 w-2',
           (dotShape ?? (isProductDot ? 'square' : 'round')) === 'square' ? 'rounded-xs' : 'rounded-full',
           !isProductDot && 'mr-[6px]',
           dotIsClass ? effectiveDotColor : 'bg-current',
@@ -459,6 +497,7 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
         className={cn(
           chipVariants({ variant: invalid ? 'destructive' : variant, size, preset: zero ? 'zero' : 'default', selected, tinted: tinted ?? (zero && statusVariant ? true : undefined), mutedText, category: invalid ? undefined : category, dashed, hit, chipStyle: invalid ? 'default' : chipStyle }),
           isWeighted && SKILL_FILL[skill ?? 'fallback'],
+          isSkillSoft && SKILL_SOFT[skill ?? 'fallback'],
           meetsMinTargetSize,
           isLink && 'min-h-target',
           keptSelected && 'border-general-border-default',

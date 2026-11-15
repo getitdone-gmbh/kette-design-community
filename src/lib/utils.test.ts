@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { TOKEN_FONT_SIZES, cn } from './utils';
+import { TOKEN_FONT_SIZES, TOKEN_LINE_HEIGHTS, cn } from './utils';
 
 const require = createRequire(import.meta.url);
 
@@ -13,6 +13,27 @@ const presetTokenFontSizes = (): string[] => {
   const defaults = new Set(Object.keys(defaultTheme.fontSize));
   return Object.keys(resolved.theme.fontSize).filter((key) => !defaults.has(key));
 };
+
+// Line-height keys of the installed token preset that Tailwind's default theme does not ship
+const presetTokenLineHeights = (): string[] => {
+  const resolveConfig = require('tailwindcss/resolveConfig');
+  const defaultTheme = require('tailwindcss/defaultTheme');
+  const preset = require('../../tailwind/preset.cjs');
+  const resolved = resolveConfig({ content: [], presets: [preset] });
+  const defaults = new Set(Object.keys(defaultTheme.lineHeight));
+  return Object.keys(resolved.theme.lineHeight).filter((key) => !defaults.has(key));
+};
+
+describe('cn / tailwind-merge token line heights', () => {
+  it('TOKEN_LINE_HEIGHTS matches the line heights of the installed token preset', () => {
+    expect([...TOKEN_LINE_HEIGHTS].sort()).toEqual(presetTokenLineHeights().sort());
+  });
+
+  it('a later leading class replaces a token line height', () => {
+    expect(cn('text-sm leading-ui-relaxed', 'leading-normal')).toBe('text-sm leading-normal');
+    expect(cn('leading-none', 'leading-ui-relaxed')).toBe('leading-ui-relaxed');
+  });
+});
 
 describe('cn / tailwind-merge token config', () => {
   it('TOKEN_FONT_SIZES matches the font sizes of the installed token preset', () => {

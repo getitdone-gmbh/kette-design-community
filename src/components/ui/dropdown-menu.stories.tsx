@@ -222,3 +222,25 @@ export const TouchDensity: Story = {
     ),
   },
 };
+
+// Rows that go to another page are real links: pass `href` and the row renders an `<a>` that keeps the menu item role (Enter navigates, "Open in new tab" and copy link work). Use `onSelect` for actions.
+export const MoreMenuWithLinks: Story = {
+  args: {
+    children: (
+      <>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">More</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56">
+          <DropdownMenuItem href="#settings">Settings</DropdownMenuItem>
+          <DropdownMenuItem href="#reports">Reports</DropdownMenuItem>
+          <DropdownMenuItem href="https://example.com/docs" target="_blank">
+            Documentation
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => undefined}>Copy link</DropdownMenuItem>
+        </DropdownMenuContent>
+      </>
+    ),
+  },
+};

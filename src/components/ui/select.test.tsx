@@ -297,3 +297,59 @@ describe('Select small sizes use the small type size (RA-LIB-06)', () => {
     expect(native).toHaveAttribute('tabindex', '-1');
   });
 });
+
+// KETTE-69: a long list in popper mode is capped at the available height and its viewport scrolls, instead of running off the screen.
+describe('Select long list (KETTE-69)', () => {
+  const renderLong = (position?: 'popper' | 'item-aligned', className?: string) =>
+    render(
+      <Select defaultValue="option-30">
+        <SelectTrigger aria-label="Due">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position={position} className={className}>
+          {Array.from({ length: 40 }, (_, index) => (
+            <SelectItem key={index} value={`option-${index + 1}`}>
+              Option {index + 1}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>,
+    );
+
+  it('caps the popper list at the available height and lets the viewport scroll', async () => {
+    renderLong();
+    await userEvent.click(screen.getByRole('combobox'));
+    const listbox = await waitFor(() => screen.getByRole('listbox'));
+    expect(listbox).toHaveClass('max-h-[var(--radix-select-content-available-height)]');
+    const viewport = listbox.querySelector('[data-radix-select-viewport]') as HTMLElement;
+    expect(viewport.style.overflow).toBe('hidden auto');
+    expect(viewport).toHaveClass('overscroll-contain');
+  });
+
+  it('scrolls the selected item into view when the list opens', async () => {
+    const scrollIntoView = window.HTMLElement.prototype.scrollIntoView as jest.Mock;
+    scrollIntoView.mockClear();
+    renderLong();
+    await userEvent.click(screen.getByRole('combobox'));
+    const selected = await waitFor(() => screen.getByRole('option', { name: 'Option 30' }));
+    expect(selected).toHaveAttribute('data-state', 'checked');
+    // Radix scrolls the selected item into view, then focuses it.
+    await waitFor(() => expect(selected).toHaveFocus());
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it('leaves item-aligned mode to Radix, which sizes that list itself', async () => {
+    renderLong('item-aligned');
+    await userEvent.click(screen.getByRole('combobox'));
+    const listbox = await waitFor(() => screen.getByRole('listbox'));
+    expect(listbox.className).not.toContain('max-h-[var(--radix-select-content-available-height)]');
+  });
+
+  it('lets a caller override the cap', async () => {
+    renderLong('popper', 'max-h-80');
+    await userEvent.click(screen.getByRole('combobox'));
+    const listbox = await waitFor(() => screen.getByRole('listbox'));
+    expect(listbox).toHaveClass('max-h-80');
+    expect(listbox.className).not.toContain('max-h-[var(--radix-select-content-available-height)]');
+  });
+});

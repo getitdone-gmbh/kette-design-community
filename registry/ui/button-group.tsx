@@ -1,6 +1,6 @@
 'use client';
 
-import { Slot } from '@radix-ui/react-slot';
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import * as React from 'react';
 
 import { focusRing } from '@/lib/recipes';
@@ -76,6 +76,8 @@ const ButtonGroupItem = React.forwardRef<HTMLButtonElement, ButtonGroupItemProps
         data-current={current || undefined}
         className={cn(
           'relative inline-flex items-center justify-center gap-2 border-r border-solid border-input bg-background text-text-default transition-colors last:border-r-0',
+          // A link segment (`asChild` anchor) takes no border on the other edges, so it matches the button segment pixel for pixel.
+          asChild && 'border-0 border-r last:border-r-0',
           'hover:bg-muted active:bg-muted-strong',
           'data-[current]:bg-muted',
           'disabled:pointer-events-none disabled:text-text-disabled aria-disabled:cursor-not-allowed aria-disabled:text-text-disabled aria-disabled:hover:bg-background aria-disabled:active:bg-background',
@@ -104,7 +106,8 @@ const ButtonGroupItem = React.forwardRef<HTMLButtonElement, ButtonGroupItemProps
             {icon}
           </span>
         )}
-        {children}
+        {/* Slottable marks the child that receives the segment markup with `asChild`, so a link can carry the icon and dot slots. */}
+        <Slottable>{children}</Slottable>
       </Comp>
     );
   },

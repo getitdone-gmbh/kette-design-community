@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { CheckCircle2 } from 'lucide-react';
@@ -317,5 +317,39 @@ describe('initial focus priority', () => {
       </Dialog>,
     );
     expect(screen.getByTestId('body')).toHaveClass('overflow-y-auto', '-m-1', 'p-1');
+  });
+});
+
+describe('DialogContent role alertdialog (ZERO-575)', () => {
+  it('sets the role, focuses the data-autofocus element and keeps the dialog open on an outside click', async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent role="alertdialog">
+          <DialogTitle>Discard changes?</DialogTitle>
+          <DialogDescription>Your edits are lost.</DialogDescription>
+          <button type="button">Discard</button>
+          <button type="button" data-autofocus="">
+            Keep editing
+          </button>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole('alertdialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep editing' })).toHaveFocus();
+    fireEvent.pointerDown(document.body);
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('stays a plain dialog by default', () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Plain</DialogTitle>
+          <DialogDescription>Text</DialogDescription>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole('dialog', { name: 'Plain' })).toBeInTheDocument();
   });
 });

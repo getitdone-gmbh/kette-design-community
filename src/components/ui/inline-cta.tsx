@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import { displayVoice } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 
 // Figma: Inline CTA 1255:131915. A card with a message, optional media/body slot and actions; actions stack full-width on mobile.
@@ -31,7 +32,7 @@ const InlineCta = React.forwardRef<HTMLDivElement, InlineCtaProps>(
       {media ? <div className="shrink-0 sm:w-inner-column">{media}</div> : null}
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
         <div className="flex flex-col gap-1">
-          <Title className="typography-ui-lg-semibold text-text-default">{title}</Title>
+          <Title className={cn('typography-ui-lg-semibold text-text-default', displayVoice)}>{title}</Title>
           {description ? <p className="typography-ui text-text-subtle">{description}</p> : null}
         </div>
         {children}

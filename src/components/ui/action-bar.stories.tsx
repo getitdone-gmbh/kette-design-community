@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Building2, Download, LayoutGrid, Search, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
+import { Building2, Download, ExternalLink, LayoutGrid, Search, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Chip } from './chip';
@@ -166,4 +166,12 @@ export const ActionWithAnchoredPopover: Story = {
       </PopoverContent>
     </Popover>
   ),
+};
+
+// An action that goes to another page carries `href`: a link inline, an `<a>` menu item in the More menu.
+export const WithLinks: Story = {
+  args: {
+    actions: [{ id: 'open', label: 'Open report', icon: <ExternalLink />, href: '#report' }, ...actions.slice(0, 1)],
+    moreActions: [{ id: 'audit', label: 'Audit log', href: '#audit' }, { id: 'archive', label: 'Archive', onSelect: () => {} }],
+  },
 };

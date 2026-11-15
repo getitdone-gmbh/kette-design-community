@@ -2,7 +2,7 @@
 
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Camera, User } from 'lucide-react';
+import { Camera, Phone, User } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -397,22 +397,51 @@ const avatarOnlineIndicatorSizes = {
   profile: 'h-12 w-12',
 } as const;
 
+// Presence (meeting.zero): online, away, in a call, offline. The colour never stands alone, the status text is always in the dot for screen readers.
+const presenceLabelKey = { online: 'online', away: 'presenceAway', call: 'presenceCall', offline: 'presenceOffline' } as const;
+
+// In a call and offline are one size step larger than the filled states, so the phone glyph and the ring stay readable (UX-MZ-L01).
+const callSizes: Record<keyof typeof avatarOnlineIndicatorSizes, string> = {
+  '2xs': 'h-[6px] w-[6px]',
+  xs: 'h-2 w-2',
+  sm: 'h-[10px] w-[10px]',
+  md: 'h-3 w-3',
+  lg: 'h-[14px] w-[14px]',
+  xl: 'h-4 w-4',
+  '2xl': 'h-5 w-5',
+  profile: 'h-12 w-12',
+};
+
+const avatarPresenceColors = {
+  online: 'bg-general-success-default',
+  away: 'bg-general-warning-default',
+  call: 'bg-product-meeting-default text-product-meeting-on',
+  // Offline is a ring, so it differs from the filled states by shape.
+  offline: 'bg-surface-canvas ring-2 ring-inset ring-text-subtle',
+} as const;
+
+export type AvatarPresence = keyof typeof avatarPresenceColors;
+
 export interface AvatarOnlineIndicatorProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: keyof typeof avatarOnlineIndicatorSizes;
-  // Screen reader text. Wins over the provider text.
+  // Presence of the person, default online.
+  status?: AvatarPresence;
+  // Screen reader text of the current status. Wins over the provider text.
   onlineLabel?: string;
 }
 
 const AvatarOnlineIndicator = React.forwardRef<HTMLSpanElement, AvatarOnlineIndicatorProps>(
-  ({ className, size = 'md', onlineLabel, ...props }, ref) => {
-    const l = useLabels({ online: onlineLabel });
+  ({ className, size = 'md', status = 'online', onlineLabel, ...props }, ref) => {
+    const l = useLabels(onlineLabel ? { [presenceLabelKey[status]]: onlineLabel } : {});
     return (
       <AvatarBadge
         ref={ref}
-        className={cn('bg-general-success-default', avatarOnlineIndicatorSizes[size], className)}
+        data-status={status}
+        className={cn(avatarPresenceColors[status], status === 'call' || status === 'offline' ? callSizes[size] : avatarOnlineIndicatorSizes[size], className)}
         {...props}
       >
-        <span className="sr-only">{l.online}</span>
+        {status === 'call' && <Phone aria-hidden="true" strokeWidth={3} className="h-3/4 w-3/4" />}
+        <span className="sr-only">{l[presenceLabelKey[status]]}</span>
       </AvatarBadge>
     );
   },
@@ -458,4 +487,4 @@ const AvatarGroup = React.forwardRef<HTMLDivElement, AvatarGroupProps>(
 );
 AvatarGroup.displayName = 'AvatarGroup';
 
-export { Avatar, avatarFallbackColors, type AvatarFallbackColor, AvatarGroup, avatarVariants, AvatarBadge, AvatarFallback, AvatarImage, AvatarOnlineIndicator, AvatarUpload };
+export { Avatar, avatarFallbackColors, type AvatarFallbackColor, avatarPresenceColors, AvatarGroup, avatarVariants, AvatarBadge, AvatarFallback, AvatarImage, AvatarOnlineIndicator, AvatarUpload };

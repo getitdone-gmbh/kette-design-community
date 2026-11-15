@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { overlayMotion, overlaySurface, overlaySurfaceZero } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
+import { AutosaveScopeReset } from './autosave-scope';
 import { usePreset } from './labels-context';
 
 const Popover = PopoverPrimitive.Root;
@@ -36,7 +37,9 @@ const PopoverContent = React.forwardRef<
           className,
         )}
         {...props}
-      />
+      >
+        <AutosaveScopeReset>{props.children}</AutosaveScopeReset>
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
 });

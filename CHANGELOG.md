@@ -2,6 +2,54 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.6.0
+
+Synced from kette-design-enterprise 0.39.0 plus the MultiSelect and Sheet fixes of library PR #183, and kette-tokens 5.33.0 plus the dark chart palette of tokens PR #95 (5.33.1) (library changelogs 0.32.0 to 0.39.0, token changelogs 5.26.1 to 5.33.1). Only the changes to components and theme parts that are in this package are listed. No new components. Minor because `ConfirmDialog` changes its role and the warning colours change.
+
+### Behaviour change: `ConfirmDialog` is an `alertdialog`
+
+- The role is `alertdialog` (query it with `getByRole('alertdialog')`), a click outside no longer closes it (Escape and Cancel still do) and focus starts on Cancel, or on the confirm input when `confirmValue` is set.
+- `<ConfirmDialog role="dialog">` restores the old role, outside click and start focus. `DialogContent` takes `role="alertdialog"` as well.
+
+### Components
+
+- **Fields (zero look)**: `Input`, `Textarea`, `Select`, `SingleSelect`, `MultiSelect`, `DatePicker`, `PhoneInput` show the shared 2px keyboard focus ring instead of the faint 3px halo; an invalid field shows the destructive border at rest and the destructive ring only on keyboard focus and while open. New recipe export `fieldHaloZero` for hand-built field triggers.
+- **`Input`** and **`Select`**: sizes `xl` and `2xl` (type `InputSize` exported). **`Select`**: a long list is capped at the space between trigger and screen edge, scrolls and opens on the selected option; `SelectScrollUpButton` and `SelectScrollDownButton` exported.
+- **`Textarea`** `autoResize`: grows with the text, also with `minRows={1}`.
+- **`Label`** `required`: destructive asterisk after the text (put `required` on the control too).
+- **`Button`** `wrap`: the label may run over several lines, the size height becomes a minimum height.
+- **`Checkbox`** and **`RadioGroupItem`** `comfortable`: an invisible 44px hit area around the unchanged box.
+- **`MultiSelect`**: opens without a `MultiSelectProvider`, typing filters correctly, ArrowDown or ArrowUp opens the list, the search input is the only `combobox`; `maxSelected` with a hint (`maxSelectedHint` label), `clearSearchOnSelect`, `hideAutosaveHint`; the open list is a popover surface with an edge in dark mode; Tab walks through the list buttons before the list closes.
+- **`MultiSelect`** (library PR #183): the limit text sits in a footer below the options that keeps its place, so no option row moves when the limit is reached or released; new default limit text "You can choose up to {max}. Remove one to choose another." (`maxSelectedHint`); Enter on an option that cannot be added announces the limit again; removing a chip with its button moves focus to the next chip, else the previous chip, else the search input; a pick with the pointer returns focus to the search input; an empty result names the search ("No matches for ...", new label `notFoundFor`) and sits outside the listbox; it is announced only for a typed query with no match, 300 ms after typing paused (opening the list announces nothing, KDC-UX-05). The limit text uses the normal body line height.
+- **`Sheet`** (library PR #183): with `focusOnOpen={false}` the focused `SheetBody` shows the focus ring when the keyboard opened the sheet; the ring stays hidden only after a pointer click. New helper `openedByPointer` in `opened-by-activation`.
+- **`ToggleGroup`**: segmented single groups behave as a radio group (never empty, arrow keys, Home and End choose); an item with icon and label keeps both in one row.
+- **`RadioCard`**: named by its title and described by its description; title and description wrap; in the zero look a checked card shows the brand border and tint instead of a ring.
+- **`Sheet`**: a push sheet opened by a click takes focus; `focusOnOpen={false}` focuses the first `SheetBody` so the keyboard scrolls at once; `statusPlacement="footer"` draws the save status once in the zero `SheetFooter` (`onRetry`, `retryLabel`); `mobileFullscreen` fills the viewport below 640px. New internal module `autosave-scope`, new lib module `opened-by-activation` (also registry items).
+- **`Dialog`**: `closeClassName`; `CommandDialog` centres the close button on the search row. **`CommandInput`** follows the field text size (16px on phones), shrinks and ends a long placeholder with an ellipsis.
+- **`DropdownMenuItem href`** and **`BatchBarAction href`** (Action Bar): a navigating row is a real link; `target="_blank"` adds `rel`, an external-link icon and a screen reader hint.
+- **`LineBarChart`**: keyboard tooltip (arrow keys, Home, End, live region), line styles `solid`, `dashed`, `dotted`, hatched `absence` and `non-working` bars, planning tones `guideline`, `projection`, `absence`, `non-working`, `integerTicks`, `valueFormat` and `formatValue`. `HBarItem.skill` for the skill category colour.
+- **`KpiStrip`** follows the width of the strip (size container), new `columns` (`'auto'`, `2`); **`MetricItem labelAddon`** for a help icon after the label.
+- **`Pagination`** link mode through `getPageHref`; **`FacetOption`** `name` and `value` as a native form field; **`FilterChipBar`** chips with `href`, `resetHref` as a real link; **`ButtonGroupItem`** `asChild`.
+- **`Toast`**: action slot as data (`ToastActionSpec`), a toast with an action stays open 10 s by default, the toast root shows the inset focus ring.
+- **`Table`** `scrollRegion="always"`: a named, focusable scroll region; the caption sticks to the start edge, the edge fade shows only when enough is hidden.
+- **`Badge`** `iconPosition="end"` and `iconClassName`; **`Badge`**, **`ObjectIcon`** and **`SidebarObjectIcon`** know the product colour `meeting`.
+- **`AvatarOnlineIndicator`** `status` (`online`, `away`, `call`, `offline`) with screen reader text and distinct shapes; `avatarPresenceColors` and `AvatarPresence` exported.
+- **`VerifiedTick`** `tone` (`info`, `brand`, `success`, `neutral`), `verifiedTickTones` exported.
+- **`Alert`**: `warning`, `success` and `destructive` take their surface from the subtle roles. **`Chip`** `chipStyle="skillSoft"`. **`CardDescription`** sets its own line height.
+- **Heading display voice**: the titles of `PanelSectionHeader`, `FormSection`, `InlineCta` and `FacetFilter` (outside zero) read the theme display font.
+- **`cn`**: the token line heights (`TOKEN_LINE_HEIGHTS`) are merged as line heights. **Labels**: new English and German strings for the changes above.
+
+### Theme (kette-tokens 5.33.0)
+
+- Warning family amber instead of orange (fills, surfaces, border, icon, text, status dot, partial score); categorical chart palette with 3:1 on canvas and card; planning chart roles and `chart-subtle-non-working`.
+- Dark categorical chart palette in one lightness band (tokens PR #95): dark `chart-1`, `chart-7` and `chart-8` are no longer near white next to the saturated slots; `chart-1`, `chart-2` and `chart-5` take the light values (blue-500, violet-600, sky-700), `chart-6` is pink-400, `chart-7` purple-400 and `chart-8` rose-600, labels keep 4.7:1 or more. Light mode unchanged.
+- Heading and title roles read `--font-display` (the zero theme has no own display font, so nothing changes visually).
+- New roles: product colour `meeting`, code placeholder, console palette, flat brand gradient, edition marker; sizes `measure-prose`, `icon-tile-lg`, `snippet-max-height`. Jobsearch product colour one step darker with a white icon. `tailwind/preset.cjs` unchanged, `theme:prune` removed 0.
+
+### Not taken
+
+New library components (EntityPicker, TabsOverflowList, SortableList, IconTile, SearchField, SkipLink, Footer, ThemeToggle, CheckStateIndicator, AnnotationCell, ResultList and ResultRow, SettingsList, CreditStatusBadge and MonthStatusTile) and the new table cells `TableProjectCell` and `TableFigureCell`; MaterialIcon additions; the Enterprise marker of the Storybook; all-theme test tables; visual baselines.
+
 ## 0.5.0
 
 Version 0.4.6 was never published: its sync (below) ships as 0.5.0 together with a change of the default look. 0.5.0 is a minor release because the default behaviour changes.

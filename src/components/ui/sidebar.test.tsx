@@ -149,6 +149,11 @@ describe('Sidebar', () => {
     expect(el).toHaveClass('text-product-vacancy-on');
   });
 
+  it('wires the meeting.zero object icon to its product token family', () => {
+    const { container } = render(<SidebarObjectIcon product="meeting" data-testid="icon" />);
+    expect(container.firstChild as HTMLElement).toHaveClass('bg-product-meeting-default', 'text-product-meeting-on');
+  });
+
   it('uses only token classes, no raw palette or hex values', () => {
     const { container } = render(<Example />);
     const classes = Array.from(container.querySelectorAll('*'))

@@ -425,3 +425,29 @@ export const SmallSizesTypography: Story = {
     expect((canvasElement.querySelector('[data-size="sm"]') as HTMLElement).tagName).toBe('BUTTON');
   },
 };
+
+const dueOptions = Array.from({ length: 40 }, (_, index) => ({ value: `${index + 1}`, label: `${index + 1} ${index === 0 ? 'day' : 'days'} after the invoice date` }));
+
+// KETTE-69: a 40 option list opened from a trigger at the bottom of the screen. In popper mode the list is capped at the space Radix measures above the trigger, the list scrolls and opens on the selected option (day 30). The test runner checks it at 1440x900 and 390x844 (selectListFits).
+export const LongList: Story = {
+  parameters: {
+    layout: 'fullscreen',
+    selectListFits: { widths: [1440, 390], trigger: 'Credit note due' },
+  },
+  render: () => (
+    <div className="flex min-h-screen flex-col justify-end p-4">
+      <Select defaultValue="30">
+        <SelectTrigger aria-label="Credit note due" className="w-full max-w-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {dueOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  ),
+};

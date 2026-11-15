@@ -74,3 +74,17 @@ export const Small: Story = {
     </div>
   ),
 };
+
+/** `comfortable` keeps the box as it is and grows the pointer hit area to the touch-target token (44px), for a standalone checkbox on a touch screen. Neighbouring controls need at least that much room, the dashed frames show the area. */
+export const Comfortable: Story = {
+  render: () => (
+    <div className="flex items-center gap-4">
+      <span className="inline-flex h-11 w-11 items-center justify-center border border-dashed border-border">
+        <Checkbox aria-label="Comfortable" comfortable defaultChecked />
+      </span>
+      <span className="inline-flex h-11 w-11 items-center justify-center border border-dashed border-border">
+        <Checkbox aria-label="Comfortable small" size="sm" comfortable />
+      </span>
+    </div>
+  ),
+};

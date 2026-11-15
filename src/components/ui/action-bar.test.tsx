@@ -149,8 +149,31 @@ describe('BatchBar action popover', () => {
     expect(screen.getByRole('button', { name: 'Open' })).toBeEnabled();
   });
 
+  // Imports the whole package index, which takes longer than the 5 s default on a loaded CI runner
   it('exports PopoverAnchor from the package index', async () => {
     const index = await import('../../index');
     expect(index.PopoverAnchor).toBeDefined();
+    // The first import of the full index is slow on a loaded runner.
+  }, 30000);
+});
+
+describe('BatchBar href actions (ZERO-575)', () => {
+  it('renders a navigating action as a link inline and in the More menu', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <BatchBar
+        selectedCount={2}
+        onClear={() => {}}
+        actions={[{ id: 'open', label: 'Open report', href: '/reports/1', onSelect }]}
+        moreActions={[{ id: 'audit', label: 'Audit log', href: '/audit' }, { id: 'archive', label: 'Archive', onSelect: () => {} }]}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Open report' })).toHaveAttribute('href', '/reports/1');
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    const audit = await screen.findByRole('menuitem', { name: 'Audit log' });
+    expect(audit.tagName).toBe('A');
+    expect(audit).toHaveAttribute('href', '/audit');
+    expect(screen.getByRole('menuitem', { name: 'Archive' }).tagName).toBe('DIV');
   });
 });

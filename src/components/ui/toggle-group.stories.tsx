@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 import { Button } from './button';
+import { LayoutDashboard } from 'lucide-react';
 
 const meta = {
   id: 'primitives-togglegroup',
@@ -11,14 +12,14 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {},
   decorators: [
-    (Story) => {
+    (Story, context) => {
       const [value, setValue] = useState('no');
       const onValueChange = (e) => {
         setValue(e);
         console.log(e);
       };
       return (
-        <div style={{ maxWidth: '300px' }}>
+        <div style={context.parameters.fullWidth ? undefined : { maxWidth: '300px' }}>
           <Story value={value} setValue={setValue} onValueChange={onValueChange} />
         </div>
       );
@@ -36,6 +37,7 @@ export const Default: Story = {
     return (
       <ToggleGroup
         type="single"
+        aria-label="Answer"
         onValueChange={(item) => {
           onValueChange(item);
         }}
@@ -179,6 +181,33 @@ export const SegmentedSizesNextToButtons: Story = {
             <ToggleGroupItem value="b">Week</ToggleGroupItem>
           </ToggleGroup>
           <Button size={size}>Button {size}</Button>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+// Icon plus label: the icon sits left of the label on one line in every size and in the segmented variant (DR-544-06).
+export const WithIconAndLabel: Story = {
+  args: {} as never,
+  // own layout: the 300px cap of the other stories would stack the groups
+  parameters: { fullWidth: true },
+  render: () => (
+    <div className="flex flex-col gap-4 p-6">
+      {(['default', 'outline', 'segmented'] as const).map((variant) => (
+        <div key={variant} className="flex flex-wrap items-center gap-3">
+          {(['sm', 'default', 'md', 'lg'] as const).map((size) => (
+            <ToggleGroup key={size} type="single" variant={variant} size={size} defaultValue="a" aria-label={`${variant} ${size}`}>
+              <ToggleGroupItem value="a">
+                <LayoutDashboard aria-hidden className="h-icon-sm w-icon-sm shrink-0" />
+                Grid
+              </ToggleGroupItem>
+              <ToggleGroupItem value="b">
+                <LayoutDashboard aria-hidden className="h-icon-sm w-icon-sm shrink-0" />
+                List
+              </ToggleGroupItem>
+            </ToggleGroup>
+          ))}
         </div>
       ))}
     </div>

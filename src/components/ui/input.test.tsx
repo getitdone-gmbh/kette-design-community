@@ -221,3 +221,26 @@ describe('Input component', () => {
     });
   });
 });
+
+describe('Input sizes xl and 2xl', () => {
+  it.each([
+    ['xl', 'h-control-xl'],
+    ['2xl', 'h-control-2xl'],
+  ] as const)('size %s sets the control height token', (size, cls) => {
+    render(<Input aria-label="Search" size={size} />);
+    expect(screen.getByLabelText('Search')).toHaveClass(cls);
+  });
+
+  it('xl and 2xl take the type and icon step of the Button of the same name', () => {
+    const { container, rerender } = render(<Input aria-label="Search" variant="search" size="2xl" />);
+    expect(screen.getByLabelText('Search').className).toContain('--typo-button-2xl-size');
+    expect(screen.getByLabelText('Search').className).not.toContain('typography-input-text');
+    expect(container.querySelector('[data-input-search] svg')).toHaveClass('h-6', 'w-6');
+    rerender(<Input aria-label="Search" variant="search" size="xl" />);
+    expect(screen.getByLabelText('Search').className).toContain('--typo-button-xl-size');
+    expect(container.querySelector('[data-input-search] svg')).toHaveClass('h-icon-md', 'w-icon-md');
+    rerender(<Input aria-label="Search" variant="search" size="md" />);
+    expect(screen.getByLabelText('Search')).toHaveClass('typography-input-text');
+    expect(container.querySelector('[data-input-search] svg')).toHaveClass('h-icon-xs', 'w-icon-xs');
+  });
+});

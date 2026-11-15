@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import * as React from 'react';
 
 import { MODAL_EXEMPT_ATTRIBUTE } from '../../lib/modal-inert';
+import { focusRing } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import { useLabels, usePreset } from './labels-context';
 
@@ -145,15 +146,20 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 // substitute). Flagged for design-tokens-maintainer: a dedicated `toast-border-default` (or a shared
 // elevated-surface border role) needs a lighter dark-mode value that clears 3:1 against
 // `background-default` dark. Not fabricated here per the "never hardcode a missing token" rule.
+// The root is a tab stop (Radix sets tabindex 0 for the swipe and hotkey model), so it shows the shared focus ring, drawn inset because the toast clips its overflow.
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-default border border-solid border-general-border-default p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 max-sm:data-[state=closed]:slide-out-to-bottom-full sm:data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
+  [
+    ...focusRing,
+    'focus-visible:ring-inset focus-visible:ring-offset-0 group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-default border border-solid border-general-border-default p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 max-sm:data-[state=closed]:slide-out-to-bottom-full sm:data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
+  ],
   {
     variants: {
       variant: {
         default: 'bg-surface-canvas text-text-default',
-        destructive: 'destructive border-transparent bg-general-error-default text-general-error-on',
+        destructive:
+          'destructive border-transparent bg-general-error-default text-general-error-on focus-visible:ring-general-error-on',
         // Compact undo toast (Figma Toast): inverse surface, single line, text action and close inline.
-        inverse: 'inverse border-transparent bg-foreground px-4 py-3 text-background',
+        inverse: 'inverse border-transparent bg-foreground px-4 py-3 text-background focus-visible:ring-background',
       },
       // Product preset (DesignSystemProvider `preset`). `zero` uses the 12px surface radius, a 40px single line and the raised elevation on the inverse toast.
       preset: { default: '', zero: '' },

@@ -8,11 +8,19 @@ import type { ToastActionElement, ToastProps } from './toast';
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 5000; // 5 seconds instead of 16.7 minutes
 
+// Action slot as data: `toast({ title, action: { label: 'Undo', onClick } })`. The Toaster renders it as a `ToastAction` that sits before the close button, so it is the first control reached with the keyboard.
+export type ToastActionSpec = {
+  label: string;
+  // Text for assistive tech that says what the action does when it cannot be performed from the toast itself (Radix requires it). Defaults to `label`.
+  altText?: string;
+  onClick?: () => void;
+};
+
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  action?: ToastActionElement;
+  action?: ToastActionElement | ToastActionSpec;
 };
 
 const actionTypes = {

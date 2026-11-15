@@ -92,7 +92,7 @@ describe.each(CASES)('small sizes, preset %s with theme %s', (preset, theme, con
         <MultiSelect id="sm" ariaLabel="Skills" size="sm" options={[{ id: 'a', label: 'A' }]} selected={[]} onChange={() => undefined} />
       </MultiSelectProvider>,
     );
-    const field = screen.getAllByRole('combobox')[0];
+    const field = (document.querySelector('[data-id]') as HTMLElement);
     expect(pxOf(field, theme, 'min-h')).toBe(controlSm);
     expect(field).not.toHaveClass('min-h-[var(--size-control-md)]');
   });
@@ -104,7 +104,7 @@ describe.each(CASES)('small sizes, preset %s with theme %s', (preset, theme, con
         <MultiSelect id="md" ariaLabel="Skills" options={[{ id: 'a', label: 'A' }]} selected={[]} onChange={() => undefined} />
       </MultiSelectProvider>,
     );
-    expect(screen.getAllByRole('combobox')[0].className).not.toContain('min-h-[var(--size-control-sm)]');
+    expect((document.querySelector('[data-id]') as HTMLElement).className).not.toContain('min-h-[var(--size-control-sm)]');
   });
 
   it('Chip control and medium are control-sm high, like Button sm', () => {
@@ -135,7 +135,7 @@ describe('MultiSelect size sm chips inside', () => {
         <MultiSelect id="chips" ariaLabel="Skills" size="sm" chipsInside options={[{ id: 'a', label: 'Alpha' }]} selected={['a']} onChange={() => undefined} />
       </MultiSelectProvider>,
     );
-    const inner = screen.getAllByRole('combobox')[0].firstElementChild as HTMLElement;
+    const inner = (document.querySelector('[data-id]') as HTMLElement).firstElementChild as HTMLElement;
     expect(inner).toHaveClass('gap-1', 'min-h-0');
     expect(inner).not.toHaveClass('min-h-[40px]');
     expect(screen.getByText('Alpha')).toBeInTheDocument();

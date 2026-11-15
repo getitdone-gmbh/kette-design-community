@@ -30,7 +30,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const frame = 'w-[456px] rounded-surface border border-solid border-hairline shadow-popover';
+const frame = 'w-[456px] max-w-full rounded-surface border border-solid border-hairline shadow-popover';
 
 export const Actions: Story = {
   render: () => (

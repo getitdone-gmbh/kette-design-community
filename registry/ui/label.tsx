@@ -15,12 +15,28 @@ const labelVariants = cva('leading-none peer-disabled:cursor-not-allowed peer-di
   defaultVariants: { preset: 'default' },
 });
 
-const Label = forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
+export interface LabelProps extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {
+  // Adds the required marker (a destructive asterisk, hidden from assistive tech; not with asChild). Put `required` on the control itself so it is announced.
+  required?: boolean;
+}
+
+const Label = forwardRef<React.ElementRef<typeof LabelPrimitive.Root>, LabelProps>(({ className, required = false, children, ...props }, ref) => {
   const zero = usePreset() === 'zero';
-  return <LabelPrimitive.Root ref={ref} className={cn(labelVariants({ preset: zero ? 'zero' : 'default' }), className)} {...props} />;
+  const marked = required && !props.asChild;
+  return (
+    <LabelPrimitive.Root ref={ref} className={cn(labelVariants({ preset: zero ? 'zero' : 'default' }), className)} {...props}>
+      {marked ? (
+        <>
+          {children}
+          <span aria-hidden="true" data-required-marker="" className="ml-1 text-destructive">
+            *
+          </span>
+        </>
+      ) : (
+        children
+      )}
+    </LabelPrimitive.Root>
+  );
 });
 Label.displayName = LabelPrimitive.Root.displayName;
 

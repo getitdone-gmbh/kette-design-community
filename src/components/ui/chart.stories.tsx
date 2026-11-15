@@ -59,6 +59,39 @@ export const FluidWidth: Story = {
 // Hover tooltip stays inside the chart box.
 export const WithTooltip: Story = { args: { type: 'bar', tooltip: true, legend: true } };
 export const Line: Story = { args: { type: 'line', legend: true, legendPosition: 'top' } };
+// Keyboard: Tab reaches the plot, the left and right arrow keys (Home, End) step through the categories, the tooltip follows and the values are read in a live region. The play function presses the keys in a real browser.
+export const KeyboardFocus: Story = {
+  args: { type: 'bar', tooltip: true, legend: true, title: 'Active users per month (keyboard)' },
+  play: async ({ canvasElement }) => {
+    const plot = canvasElement.querySelector<HTMLElement>('[aria-roledescription="chart"]');
+    if (!plot) throw new Error('The chart has no focus target');
+    plot.focus();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    plot.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const live = canvasElement.querySelector('[data-chart-live]')?.textContent ?? '';
+    if (!/Feb, 2 of 6/.test(live)) throw new Error(`The data point was not announced: "${live}"`);
+    if (!canvasElement.querySelector('[data-chart-tooltip]')) throw new Error('The tooltip does not follow the keyboard');
+  },
+};
+// Planning roles of kette-tokens 5.28.0: the ideal line (guideline) and the projection next to the remaining work.
+export const PlanningRoles: Story = {
+  args: {
+    type: 'line',
+    legend: true,
+    tooltip: true,
+    title: 'Sprint burndown',
+    description: 'Remaining story points against the ideal line and the projection.',
+    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    series: [
+      { id: 'remaining', label: 'Remaining', values: [40, 34, 30, 24, 22], tone: 1 },
+      { id: 'ideal', label: 'Ideal', values: [40, 32, 24, 16, 8], tone: 'guideline' },
+      { id: 'projection', label: 'Projection', values: [40, 34, 30, 28, 27], tone: 'projection' },
+    ],
+    xTitle: 'Day',
+    yTitle: 'Story points',
+  },
+};
 export const BarZero: Story = {
   args: {
     stacked: true,
@@ -107,6 +140,48 @@ export const ColumnStackedValues: Story = {
       { id: 'open', label: 'Open', values: [10, 8, 12, 6], tone: 'neutral' },
     ],
   },
+};
+// Few booked hours: integerTicks keeps the y-axis in whole hours (0 1 2 3 4) instead of quarters of a nice maximum (1.3, 3.8).
+export const IntegerTicks: Story = {
+  args: {
+    type: 'bar',
+    integerTicks: true,
+    legend: true,
+    title: 'Weekly progress',
+    description: 'Booked hours against plan, last six weeks.',
+    xTitle: undefined,
+    yTitle: 'Hours',
+    categories: ['CW 40', 'CW 41', 'CW 42', 'CW 43', 'CW 44', 'CW 45'],
+    series: [
+      { id: 'plan', label: 'Plan', values: [3, 3, 3, 3, 3, 3], tone: 'neutral' },
+      { id: 'act', label: 'Actual', values: [1, 3, 2, 0, 3, 2], tone: 'brand' },
+    ],
+  },
+};
+// Money values: `valueFormat` with an Intl currency puts the unit on the totals above the columns, in the tooltip and in the table. The axis keeps plain numbers, the unit is in the axis title. German locale: "12.400 €".
+export const ColumnStackedMoney: Story = {
+  args: {
+    stacked: true,
+    showValues: true,
+    tooltip: true,
+    legend: true,
+    title: 'Revenue by month',
+    yTitle: 'EUR',
+    valueFormat: { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 },
+    categories: ['Jul', 'Aug', 'Sep', 'Oct'],
+    series: [
+      { id: 'anna', label: 'Anna', values: [6400, 7200, 5800, 8100], tone: 1 },
+      { id: 'ben', label: 'Ben', values: [4200, 3900, 5100, 4300], tone: 2 },
+      { id: 'cara', label: 'Cara', values: [1800, 2600, 2400, 3000], tone: 3 },
+    ],
+  },
+  decorators: [
+    (Story) => (
+      <DesignSystemProvider locale="de" preset="zero">
+        <Story />
+      </DesignSystemProvider>
+    ),
+  ],
 };
 export const WithVisibleTable: Story = { args: { showTable: true } };
 export const Loading: Story = { args: { state: 'loading' } };
@@ -178,6 +253,20 @@ export const HBars: StoryObj<typeof HBarList> = {
         { id: 'a', label: 'Figma', value: 3, valueLabel: '3 proj.', tone: 2 },
         { id: 'b', label: 'Design systems', value: 2, valueLabel: '2 proj.', tone: 2 },
         { id: 'c', label: 'Lead UX Designer', value: 1, valueLabel: '1 proj.' },
+      ]}
+    />
+  ),
+};
+// Rows coloured by skill category (HBarItem.skill), like SkillTree.
+export const HBarsBySkill: StoryObj<typeof HBarList> = {
+  render: () => (
+    <HBarList
+      aria-label="Top skills by category"
+      items={[
+        { id: 'a', label: 'React', value: 9, valueLabel: '9 proj.', skill: 'frontend' },
+        { id: 'b', label: 'NestJS', value: 7, valueLabel: '7 proj.', skill: 'backend' },
+        { id: 'c', label: 'Kubernetes', value: 4, valueLabel: '4 proj.', skill: 'devops-cloud' },
+        { id: 'd', label: 'Figma', value: 3, valueLabel: '3 proj.', skill: 'design-ux' },
       ]}
     />
   ),
