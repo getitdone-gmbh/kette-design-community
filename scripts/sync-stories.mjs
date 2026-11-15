@@ -20,6 +20,26 @@ const replaceOnce = (src, from, to, file) => {
 
 // Story specific cuts: parts that use components which are not in ui or packages ui does not ship.
 const patches = {
+  // The search input has min-w-0 since 0.39.0, so a w-full frame collapses to content width in the centred layout (KDC-DR-01). Skipped once the library ships the fixed frame.
+  'command.stories.tsx': (src) => src.split("'w-full max-w-[456px] ").join("'w-[456px] max-w-full "),
+  // The library has no plain dialog story; this one shows role="dialog" (dismissible, click outside closes) next to the alertdialog default (KDC-UX-02).
+  'confirm-dialog.stories.tsx': (src, file) => {
+    if (src.includes('export const PlainDialog')) return src;
+    const anchor = '// An alert dialog (role alertdialog)';
+    if (!src.includes(anchor)) throw new Error(`Patch for ${file} no longer matches: AlertDialog story`);
+    const story = `// A plain dialog (role="dialog") for a confirmation that may be dismissed: a click outside closes it.
+export const PlainDialog: Story = {
+  args: { trigger: undefined, open: true, onOpenChange: () => undefined, role: 'dialog' },
+  play: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!document.querySelector('[role="dialog"]')) throw new Error('No dialog rendered');
+    if (document.querySelector('[role="alertdialog"]')) throw new Error('Rendered an alertdialog, expected role dialog');
+  },
+};
+
+`;
+    return src.replace(anchor, story + anchor);
+  },
   'progress-circle.stories.tsx': (src, file) => {
     src = replaceOnce(src, "import { ScoreRing } from './score-ring';\n", '', file);
     const start = src.indexOf('export const Score: Story');
@@ -138,13 +158,25 @@ for (const f of fs.readdirSync(UI, { recursive: true })) if (isStory(f)) fs.rmSy
 const copied = [];
 const skipped = [];
 const assets = new Set();
-for (const rel of fs.readdirSync(LIB_UI, { recursive: true }).filter(isStory).sort()) {
+// Stories of components that live outside ui in the library but in ui here: library path (from @/components) to the file name in ui, imports rewritten to ui.
+const extra = {
+  'compositions/dialog/confirm-dialog.stories.tsx': 'confirm-dialog.stories.tsx',
+};
+const sources = [
+  ...fs.readdirSync(LIB_UI, { recursive: true }).filter(isStory).sort().map((rel) => [rel, path.join(LIB_UI, rel), (src) => src]),
+  ...Object.entries(extra).map(([from, rel]) => [rel, path.join(LIB, '@/components', from), (src) => src.split("'../../ui/").join("'./")]),
+];
+for (const [rel, from, rewrite] of sources) {
   const target = path.join(UI, rel);
   if (!fs.existsSync(path.dirname(target))) {
     skipped.push(`${rel} (folder not in ui)`);
     continue;
   }
-  let src = fs.readFileSync(path.join(LIB_UI, rel), 'utf8');
+  if (!fs.existsSync(from)) {
+    skipped.push(`${rel} (not in the library)`);
+    continue;
+  }
+  let src = rewrite(fs.readFileSync(from, 'utf8'));
   if (patches[rel]) src = patches[rel](src, rel);
   const missing = problems(target, src);
   if (missing.length) {
