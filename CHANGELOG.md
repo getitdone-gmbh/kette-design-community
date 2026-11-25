@@ -4,7 +4,7 @@ This package is a copy of the general components of the Get IT Done design syste
 
 ## 0.7.0
 
-Synced from kette-design-enterprise 0.48.1 (0.48.0 plus library PR #209) and kette-tokens 5.35.1 (library changelogs 0.40.0 to 0.48.1, token changelogs 5.34.0 to 5.35.1). Only the changes to components and theme parts that are in this package are listed. Minor because of two new components, `Field` and `FormErrorSummary`, and the visible look changes of empty states and toasts.
+Synced from kette-design-enterprise 0.48.1 (0.48.0 plus library PR #209) and kette-tokens 5.36.0 (library changelogs 0.40.0 to 0.48.1, token changelogs 5.34.0 to 5.36.0; the React Native export of 5.36.0 is not part of this package). Only the changes to components and theme parts that are in this package are listed. Minor because of two new components, `Field` and `FormErrorSummary`, and the visible look changes of empty states and toasts.
 
 ### New components
 
@@ -39,7 +39,7 @@ Synced from kette-design-enterprise 0.48.1 (0.48.0 plus library PR #209) and ket
 
 - `tailwind/preset.cjs` adds the variants `short:` (`@media (max-height: 480px)`) and `forced-colors:` (`@media (forced-colors: active)`), which Dialog and Tabs use. Apps on the preset get them with Tailwind 3.3 or later; `styles.css` contains the compiled rules.
 
-### Theme (kette-tokens 5.35.1)
+### Theme (kette-tokens 5.36.0)
 
 - Field borders `--semantic-border-field` and `--semantic-border-field-hover` (inputs and textareas reach 3:1 against the surface), state layer roles `--semantic-interaction-state-layer-hover`, `-focus`, `-pressed`, chart colours with 3:1 on muted surfaces (dark `chart-2` and `chart-5` changed), typography roles `item`, `item-bold` and `subtle-semibold`; popover and menu background values updated. `theme:prune` removed 0.
 
