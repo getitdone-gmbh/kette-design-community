@@ -66,16 +66,17 @@ export const AlertDialog: Story = {
     const dialog = document.querySelector('[role="alertdialog"]');
     if (!dialog) throw new Error('No alertdialog rendered');
     if (document.activeElement?.textContent !== 'Cancel') throw new Error(`Focus is on "${document.activeElement?.textContent}", expected Cancel`);
-    // A click on the scrim must not close an alert dialog
+    // A click on the scrim must not close an alert dialog. The scrim is found by its marker: the fill class differs per look (bg-overlay, bg-overlay-scrim in zero).
     const scrim = document.querySelector<HTMLElement>('[data-modal-overlay]');
-    scrim?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
-    scrim?.click();
+    if (!scrim) throw new Error('No scrim rendered');
+    scrim.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    scrim.click();
     await new Promise((resolve) => setTimeout(resolve, 200));
     if (!document.querySelector('[role="alertdialog"]')) throw new Error('A click outside closed the alert dialog');
   },
 };
 
-// A plain dialog (role="dialog") for a confirmation that may be dismissed. It opens from its button like the alert dialog; the play function checks that a click outside closes it.
+// The dismissible form (role dialog): a click on the scrim closes it, Escape does too. Focus starts on the first control like in any dialog.
 export const PlainDialog: Story = {
   args: { role: 'dialog' },
   render: (args) => <AlertDialogExample {...args} />,
@@ -84,12 +85,11 @@ export const PlainDialog: Story = {
     if (!trigger) throw new Error('No trigger button rendered');
     trigger.click();
     await new Promise((resolve) => setTimeout(resolve, 200));
+    if (document.querySelector('[role="alertdialog"]')) throw new Error('An alertdialog rendered, expected a dialog');
     if (!document.querySelector('[role="dialog"]')) throw new Error('No dialog rendered');
-    if (document.querySelector('[role="alertdialog"]')) throw new Error('Rendered an alertdialog, expected role dialog');
-    // A click on the scrim closes a plain dialog
     const scrim = document.querySelector<HTMLElement>('[data-modal-overlay]');
     if (!scrim) throw new Error('No scrim rendered');
-    scrim.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    scrim.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
     scrim.click();
     await new Promise((resolve) => setTimeout(resolve, 300));
     if (document.querySelector('[role="dialog"]')) throw new Error('A click outside did not close the dialog');

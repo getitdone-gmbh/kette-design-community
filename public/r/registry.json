@@ -825,6 +825,7 @@
       "registryDependencies": [
         "https://zero-design.itdone.de/r/button.json",
         "https://zero-design.itdone.de/r/edge.json",
+        "https://zero-design.itdone.de/r/empty-state.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
@@ -1025,6 +1026,7 @@
         "lucide-react@^0.379.0"
       ],
       "registryDependencies": [
+        "https://zero-design.itdone.de/r/edge.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],
@@ -1103,6 +1105,25 @@
       ]
     },
     {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Field from the Get IT Done design system.",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://zero-design.itdone.de/r/input.json",
+        "https://zero-design.itdone.de/r/label.json",
+        "https://zero-design.itdone.de/r/utils.json",
+        "https://zero-design.itdone.de/r/theme.json"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/field.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "file-icon",
       "type": "registry:ui",
       "title": "File Icon",
@@ -1165,6 +1186,26 @@
       "files": [
         {
           "path": "registry/ui/filter-chip-bar.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "form-error-summary",
+      "type": "registry:ui",
+      "title": "Form Error Summary",
+      "description": "Form Error Summary from the Get IT Done design system.",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://zero-design.itdone.de/r/labels.json",
+        "https://zero-design.itdone.de/r/labels-context.json",
+        "https://zero-design.itdone.de/r/link.json",
+        "https://zero-design.itdone.de/r/utils.json",
+        "https://zero-design.itdone.de/r/theme.json"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/form-error-summary.tsx",
           "type": "registry:ui"
         }
       ]
@@ -1487,6 +1528,7 @@
       "registryDependencies": [
         "https://zero-design.itdone.de/r/data-state-panel.json",
         "https://zero-design.itdone.de/r/heading-tag.json",
+        "https://zero-design.itdone.de/r/labels.json",
         "https://zero-design.itdone.de/r/labels-context.json",
         "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/utils.json",
@@ -2861,6 +2903,7 @@
         "https://zero-design.itdone.de/r/loading-spinner.json",
         "https://zero-design.itdone.de/r/recipes.json",
         "https://zero-design.itdone.de/r/skeleton.json",
+        "https://zero-design.itdone.de/r/stepper.json",
         "https://zero-design.itdone.de/r/utils.json",
         "https://zero-design.itdone.de/r/theme.json"
       ],

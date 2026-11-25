@@ -2,6 +2,47 @@
 
 This package is a copy of the general components of the Get IT Done design system. Each release names the library and token versions it was synced from. Only changes to components that are part of this package are listed.
 
+## 0.7.0
+
+Synced from kette-design-enterprise 0.48.1 (0.48.0 plus library PR #209) and kette-tokens 5.35.1 (library changelogs 0.40.0 to 0.48.1, token changelogs 5.34.0 to 5.35.1). Only the changes to components and theme parts that are in this package are listed. Minor because of two new components, `Field` and `FormErrorSummary`, and the visible look changes of empty states and toasts.
+
+### New components
+
+- **`Field`**: a form field without react-hook-form. Label above, optional `required` star with `aria-required` on the control, `error` above `hint`; it wires `id`, `aria-invalid` and `aria-describedby` into its control.
+- **`FormErrorSummary`**: for two or more faulty fields it says "Fix {n} fields to continue." as an alert and links every error to its field (label `formErrorSummaryTitle`, English and German). Nothing for zero or one error.
+
+### Look changes to know
+
+- **`EmptyState`** draws one body in every variant: dashed frame, a bare line icon without the icon tile, title and an optional smaller line, centred; it fills the free height of a flex column. **`DataStatePanel`** kind `empty` is outlined by default with the same classes; `TableEmpty`, `TableError`, `CalendarGrid` and `Heatmap` pass `outlined={false}`.
+- **`Toast`**: the default snackbar is light like the cards (border, surface radius, raised shadow); actions are brand text buttons, close sits on the same row. The zero preset uses the light snackbar as default.
+- **`cn`** knows every token border radius (new export `TOKEN_RADII`): a later `rounded-*` in `className` now replaces a token radius instead of losing in the cascade, so for example `<Skeleton className="rounded-full">` turns into a circle or pill.
+
+### Components
+
+- **`MultiSelect`**: `inputId` lets an outside `<Label htmlFor>` name the search input and focus it on click (also a label that renders later or is replaced); `disableAddNew` also hides "Press enter to add new"; `chipVariant` takes `neutral`, `muted` and `primary` (type `MultiSelectChipVariant`); Enter on the remove button of a chip inside the field removes the chip.
+- **`Sheet`**: a push sheet (`mode="push"`, `modal={false}`) is no focus trap, it follows its opener in the Tab order; square corners on the push sheet; no slide or fade under reduced motion; no new entrance when the open sheet switches to another record; no page-wide hit tests on open (large pages no longer freeze). New `SheetStages`, `SheetStage`, `useSheetStages` (push navigation inside one sheet) and `SheetConfirm` (confirmation as a step in the sheet); `discardGuard` on `SheetContent`; `handle` on bottom sheets; close button 44px on phones and bottom sheets; `SheetFooter status={false}` switches the footer status off. Labels `back`, `backTo`, `sheetDiscardTitle`, `sheetDiscardDescription`, `sheetDiscard`, `sheetKeepEditing`.
+- **`Dialog`**: a `scrollable` dialog scrolls as a whole in windows up to 480px high, header and footer stay sticky, the close button sticks with the header; the initial focus no longer scrolls the panel and a focus wrap brings the control into view.
+- **`Tabs`**: the selected tab is visible in forced colors (Highlight fill for `segmented`, `segment` and `vertical`, Highlight bar for `line`); `TabsList wrap` for long labels in `segmented` and `segment`.
+- **`Table`** and **`DataGrid`**: `phone="list"` (rows become a list below 768px of the table width, cell roles through `phone`), `phoneQuery` (`container` or `viewport`), column widths `fit` and `fill`, `bordered={false}`, `headerTone="muted"` only in the header; `TableLeadCell wrap`; DataGrid loading keeps the column widths (`keepHeightWhileLoading`), a click anywhere in the selection cell toggles the row, skeleton rows shrink with the area. New type exports `TablePhone`, `TableCellPhone`, `TablePhoneQuery`.
+- **`Pagination`**: "Page x of y" below `sm`, controls gated while loading so focus stays, counts grouped by locale.
+- **`ActionBar`** `BatchBar`: the More trigger is gated while every menu action is disabled and stays closed when they are enabled again; count and chip share one status region.
+- **`Alert`**: `icon` (`true` for a default symbol per variant), compact alerts align icon, text and end actions on the first text line; the default size centres the icon on the first line. Type `AlertProps` exported.
+- **`Button`** gated state: `aria-disabled` without `disabled` stays focusable, dimmed, calls `onGatedClick` instead of `onClick`.
+- **`Chip`**: `primary` variant, the remove cross on filled chips takes the on-fill colour, the meta text of a `hit` chip follows the hit colour (contrast in zero dark).
+- **`Select`**: trigger text left aligned, the list is at least the trigger width or 16rem.
+- **`Kanban`**: `KanbanColumn` `dropDisabled`, `dropDisabledText`, `headerAction` and `dropLabel`; announcements name a column by its title.
+- **`Checkbox`**: a minus when indeterminate, also uncontrolled.
+- **`CodeSnippet`** `wrap`; **`Link`** `inline`; **`MetricItem`** `labelWrap`; **`Histogram`** `width="auto"`; **`DatePicker`** `weekStartsOn`; **`LogoTile`** shows `src` in every tone; **`ObjectIcon`** tones `teal`, `strong`, `muted`; **`Skeleton`** `radius` (type `SkeletonRadius`); **`FileIcon`** and **`FileUploadItem`** centre glyph, tag and actions; **`FileUpload`** error text stays red in zero dark; **`TagInput`** Escape closes the suggestion list only.
+- **`toast()`** with an `action` and no `duration` stays 10000 ms (`ACTION_TOAST_DURATION`, exported); a toast without `type` is announced politely.
+
+### Tailwind
+
+- `tailwind/preset.cjs` adds the variants `short:` (`@media (max-height: 480px)`) and `forced-colors:` (`@media (forced-colors: active)`), which Dialog and Tabs use. Apps on the preset get them with Tailwind 3.3 or later; `styles.css` contains the compiled rules.
+
+### Theme (kette-tokens 5.35.1)
+
+- Field borders `--semantic-border-field` and `--semantic-border-field-hover` (inputs and textareas reach 3:1 against the surface), state layer roles `--semantic-interaction-state-layer-hover`, `-focus`, `-pressed`, chart colours with 3:1 on muted surfaces (dark `chart-2` and `chart-5` changed), typography roles `item`, `item-bold` and `subtle-semibold`; popover and menu background values updated. `theme:prune` removed 0.
+
 ## 0.6.0
 
 Synced from kette-design-enterprise 0.39.0 plus the MultiSelect and Sheet fixes of library PR #183, and kette-tokens 5.33.0 plus the dark chart palette of tokens PR #95 (5.33.1) (library changelogs 0.32.0 to 0.39.0, token changelogs 5.26.1 to 5.33.1). Only the changes to components and theme parts that are in this package are listed. No new components. Minor because `ConfirmDialog` changes its role and the warning colours change.

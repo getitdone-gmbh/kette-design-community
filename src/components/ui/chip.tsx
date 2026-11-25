@@ -121,6 +121,12 @@ const chipVariants = cva(
           'hover:bg-background-neutral-hover hover:text-text-default',
           'active:bg-muted-strong active:text-text-default',
         ],
+        // Brand fill: the primary role. It is the brand colour of the theme (violet in runzero, blue in zero, near black in neutral), where info stays blue in every theme.
+        primary: [
+          'border-transparent bg-primary text-primary-foreground',
+          'hover:brightness-110',
+          'active:brightness-95',
+        ],
         info: [
           'border-transparent bg-general-info-default text-general-info-on',
           'hover:bg-general-info-hover',
@@ -279,7 +285,8 @@ const chipVariants = cva(
       { dashed: true, preset: 'zero', className: 'bg-background text-text-default' },
       { selected: true, preset: 'zero', variant: ['default', 'outline', 'secondary', 'neutral'], className: 'border-chip-border-selected bg-chip-background-selected text-chip-foreground-selected hover:bg-chip-background-selected' },
       { dashed: true, selected: true, preset: 'zero', className: 'border-chip-border-selected bg-chip-background-selected text-chip-foreground-selected hover:bg-chip-background-selected' },
-      { hit: true, className: 'border-transparent bg-highlight-hit-default text-highlight-hit-on hover:bg-highlight-hit-default' },
+      // The label is medium and the meta stays regular, the same weight split as non-hit chips, so the meta reads as secondary although it shares the colour.
+      { hit: true, className: 'border-transparent bg-highlight-hit-default font-medium text-highlight-hit-on hover:bg-highlight-hit-default' },
     ],
     defaultVariants: {
       variant: 'default',
@@ -418,7 +425,10 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
     // Zero routes status meaning to the tinted look unless the caller sets `tinted` itself.
     const statusVariant = resolvedVariant === 'info' || resolvedVariant === 'success' || resolvedVariant === 'warning' || resolvedVariant === 'destructive';
     // Filled status chips (info, success, warning, destructive) carry the on-fill text role; the secondary text inherits it instead of the muted grey.
+    // KETTE-90: the hit state is a filled chip too (text-highlight-hit-on), so the meta follows its text colour; text-text-muted on the hit fill is 4.03:1 in zero dark.
     const metaOnFill = statusVariant && chipStyle !== 'textOnly' && chipStyle !== 'productDot' && chipStyle !== 'weighted';
+    // The remove cross sits on the fill of a status or primary chip: it takes the on-fill text colour (>= 3:1 non-text) instead of the subtle icon grey, which fails on blue and brand fills.
+    const removeOnFill = (statusVariant || resolvedVariant === 'primary') && chipStyle !== 'textOnly' && chipStyle !== 'productDot' && chipStyle !== 'weighted';
     // Dense chips that are operable get the same 24px floor.
     const meetsMinTargetSize = interactive && (effectiveSize === 'small' || effectiveSize === 'dense') ? 'min-h-target' : undefined;
 
@@ -521,7 +531,7 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
             {suffix}
           </span>
         )}
-        {meta != null && <span className={cn('ml-1 shrink-0 font-regular', metaOnFill ? 'text-current' : 'text-text-muted')} data-chip-meta="">
+        {meta != null && <span className={cn('ml-1 shrink-0 font-regular', metaOnFill || hit ? 'text-current' : 'text-text-muted')} data-chip-meta="">
             {meta}
           </span>}
         {count != null && (
@@ -550,8 +560,9 @@ const Chip = forwardRef<HTMLDivElement, ChipProps>(
               onRemove();
             }}
             className={cn(
-              '-my-1 -mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-item text-icon-subtle transition-colors',
-              'hover:text-icon-default focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default',
+              '-my-1 -mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-item transition-colors',
+              removeOnFill ? 'text-current hover:opacity-80' : 'text-icon-subtle hover:text-icon-default',
+              'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default',
               'disabled:pointer-events-none',
             )}
           >

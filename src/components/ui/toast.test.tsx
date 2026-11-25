@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
@@ -91,6 +91,25 @@ describe('Toast placement', () => {
   });
 });
 
+// R-LIB-02 (L-27): a plain toast is announced politely, a destructive one assertively.
+describe('Toast announcement priority (R-LIB-02)', () => {
+  it('announces a default toast politely, never assertive', async () => {
+    renderToast();
+    await waitFor(() => expect(document.querySelector('[role="status"][aria-live="polite"]')).not.toBeNull());
+    expect(document.querySelector('[role="status"][aria-live="assertive"]')).toBeNull();
+  });
+
+  it('announces a destructive toast assertively', async () => {
+    renderToast({ variant: 'destructive' });
+    await waitFor(() => expect(document.querySelector('[role="status"][aria-live="assertive"]')).not.toBeNull());
+  });
+
+  it('lets an explicit type win', async () => {
+    renderToast({ type: 'foreground' });
+    await waitFor(() => expect(document.querySelector('[role="status"][aria-live="assertive"]')).not.toBeNull());
+  });
+});
+
 describe('Toast component', () => {
   it('renders open by default (uncontrolled) with title, description and action', () => {
     renderToast();
@@ -104,7 +123,7 @@ describe('Toast component', () => {
   it('renders the default variant with token-styled surface, never a raw palette value', () => {
     renderToast();
     const toast = screen.getByTestId('toast');
-    expect(toast).toHaveClass('bg-surface-canvas', 'text-text-default');
+    expect(toast).toHaveClass('bg-card', 'text-text-default');
     expect(toast.className).not.toMatch(rawPaletteClass);
   });
 
@@ -137,10 +156,14 @@ describe('Toast component', () => {
   });
 
   // --- non-text boundary contrast (TOAST-A11Y-02 / TOAST-TOK-03) ---
-  it('carries a token-driven, non-color boundary on the default variant (TOAST-A11Y-02)', () => {
+  // The card hairline plus the raised elevation set the snackbar apart; the slate.900 frame is gone (24.11.2026)
+  it('carries a token-driven hairline and elevation on the default variant (TOAST-A11Y-02)', () => {
     renderToast();
     const toast = screen.getByTestId('toast');
-    expect(toast).toHaveClass('border', 'border-solid', 'border-general-border-default');
+    expect(toast).toHaveClass('border', 'border-solid', 'border-border-default', 'shadow-elevation-raised', 'rounded-surface');
+    expect(toast).not.toHaveClass('border-general-border-default');
+    // size-* does not exist on Tailwind 3.3, so the close target is spelled out (DR-TOAST-01)
+    expect(within(toast).getByRole('button', { name: /dismiss/i })).toHaveClass('group-[.snack]:h-10', 'group-[.snack]:w-10');
     expect(toast.className).not.toMatch(rawPaletteClass);
   });
 

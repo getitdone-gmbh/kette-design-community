@@ -207,7 +207,8 @@ const FileUpload = React.forwardRef<HTMLInputElement, FileUploadProps>(
             {message ? (
               <span
                 id={messageId}
-                className={cn('typography-caption', hasError ? (tinted || zero ? 'text-text-destructive-on-subtle' : 'text-text-destructive') : tinted ? 'text-general-brand-on-container' : zero ? 'text-text-subtle-on-muted' : 'text-text-subtle')}
+                // The error stays red on the muted zero drop zone; the on-subtle role (near white in zero dark) only while the zone is tinted for a drag.
+                className={cn('typography-caption', hasError ? (tinted ? 'text-text-destructive-on-subtle' : 'text-text-destructive') : tinted ? 'text-general-brand-on-container' : zero ? 'text-text-subtle-on-muted' : 'text-text-subtle')}
               >
                 {message}
               </span>
@@ -317,7 +318,8 @@ const FileUploadItem = React.forwardRef<HTMLLIElement, FileUploadItemProps>(
         data-status={status}
         data-variant={variant}
         className={cn(
-          'relative flex items-start gap-3 overflow-hidden rounded-surface border border-solid bg-background',
+          // The icon is centred on the name and meta row; the progress comes before the actions in the DOM (reading order) and sits below the text.
+          'relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-surface border border-solid bg-background',
           zero ? 'px-4 py-3' : 'p-4',
           status === 'error' ? 'border-border-destructive' : 'border-border-default',
           className,
@@ -337,25 +339,25 @@ const FileUploadItem = React.forwardRef<HTMLLIElement, FileUploadItemProps>(
           />
         ) : null}
         <FileIcon name={name} kind={kind} error={status === 'error'} size="xs" className="relative" />
-        <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+        <div className="relative flex min-w-0 flex-col gap-1">
           <span className="truncate typography-ui-medium text-foreground" title={name}>
             {name}
           </span>
           <span className={cn('typography-caption', status === 'error' ? 'text-text-destructive' : variant === 'fill' && uploading ? 'text-text-subtle-on-muted' : 'text-text-subtle')}>{meta}</span>
-          {variant === 'bar' && status !== 'error' && status !== 'selected' ? (
-            <div className="flex items-center gap-3">
-              <Progress
-                aria-label={l.uploading(name)}
-                value={status === 'complete' ? 100 : percent}
-                className="flex-1"
-              />
-              <span className="typography-caption w-8 shrink-0 text-right tabular-nums text-text-subtle">
-                {status === 'complete' ? 100 : percent}%
-              </span>
-            </div>
-          ) : null}
           {status === 'complete' ? <span className="sr-only">{l.uploadComplete}</span> : null}
         </div>
+        {variant === 'bar' && status !== 'error' && status !== 'selected' ? (
+          <div data-upload-progress="" className="relative col-start-2 row-start-2 flex items-center gap-3">
+            <Progress
+              aria-label={l.uploading(name)}
+              value={status === 'complete' ? 100 : percent}
+              className="flex-1"
+            />
+            <span className="typography-caption w-8 shrink-0 text-right tabular-nums text-text-subtle">
+              {status === 'complete' ? 100 : percent}%
+            </span>
+          </div>
+        ) : null}
         <div className="relative flex shrink-0 items-center gap-1">
           {variant === 'fill' && uploading ? <LoadingSpinner size="sm" label={l.uploading(name)} /> : null}
           {status === 'complete' ? <CheckCircle2 aria-hidden="true" className="h-icon-sm w-icon-sm text-icon-brand" /> : null}

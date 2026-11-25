@@ -52,6 +52,11 @@
   --typo-subtle-medium-size: 0.875rem;
   --typo-subtle-medium-lh: 1.125rem;
   --typo-subtle-medium-ls: 0.0000em;
+  --typo-subtle-semibold-font: var(--font-body-theme);
+  --typo-subtle-semibold-weight: 600;
+  --typo-subtle-semibold-size: 0.875rem;
+  --typo-subtle-semibold-lh: 1.125rem;
+  --typo-subtle-semibold-ls: 0.0000em;
   --typo-suble-semibold-font: var(--font-body-theme);
   --typo-suble-semibold-weight: 600;
   --typo-suble-semibold-size: 0.875rem;
@@ -162,6 +167,16 @@
   --typo-label-highlight-size: 1rem;
   --typo-label-highlight-lh: 1.5rem;
   --typo-label-highlight-ls: 0.0000em;
+  --typo-item-font: var(--font-body-theme);
+  --typo-item-weight: 500;
+  --typo-item-size: 0.8125rem;
+  --typo-item-lh: 1rem;
+  --typo-item-ls: -0.0060em;
+  --typo-item-bold-font: var(--font-body-theme);
+  --typo-item-bold-weight: 600;
+  --typo-item-bold-size: 1rem;
+  --typo-item-bold-lh: 1.5rem;
+  --typo-item-bold-ls: 0.0000em;
   --typo-text-small-font: var(--font-body-theme);
   --typo-text-small-weight: 400;
   --typo-text-small-size: 0.8125rem;
@@ -1157,7 +1172,7 @@
   --colors-inline-code-foreground-default: 15 23 42;
   --colors-input-background-default: 255 255 255;
   --colors-input-background-hover: 241 245 249;
-  --colors-input-border-default: 226 232 240;
+  --colors-input-border-default: 126 141 163;
   --colors-input-foreground-filled: 15 23 42;
   --colors-input-foreground-hint: 100 116 139;
   --colors-input-foreground-hint-error: 185 28 28;
@@ -1259,7 +1274,7 @@
   --colors-table-foreground-default: 15 23 42;
   --colors-textarea-background-default: 255 255 255;
   --colors-textarea-background-hover: 241 245 249;
-  --colors-textarea-border-default: 203 213 225;
+  --colors-textarea-border-default: 126 141 163;
   --colors-textarea-foreground-filled: 15 23 42;
   --colors-textarea-foreground-hint: 100 116 139;
   --colors-textarea-foreground-label: 15 23 42;
@@ -1276,7 +1291,7 @@
   --colors-utility-foreground: 15 23 42;
   --colors-utility-hairline: 15 23 42;
   --colors-utility-hairline-alpha: 0.0588;
-  --colors-utility-input: 226 232 240;
+  --colors-utility-input: 126 141 163;
   --colors-utility-muted: 241 245 249;
   --colors-utility-muted-foreground: 71 85 105;
   --colors-utility-muted-strong: 203 213 225;
@@ -1340,6 +1355,8 @@
   --semantic-border-destructive: 220 38 38;
   --semantic-border-destructive-subtle: 252 165 165;
   --semantic-border-disabled: 226 232 240;
+  --semantic-border-field: 126 141 163;
+  --semantic-border-field-hover: 71 85 105;
   --semantic-border-focus: 37 99 235;
   --semantic-border-info: 37 99 235;
   --semantic-border-input: 226 232 240;
@@ -1453,6 +1470,12 @@
   --semantic-interaction-active-alpha: 0.0784;
   --semantic-interaction-hover: 0 0 0;
   --semantic-interaction-hover-alpha: 0.0392;
+  --semantic-interaction-state-layer-focus: 15 23 42;
+  --semantic-interaction-state-layer-focus-alpha: 0.102;
+  --semantic-interaction-state-layer-hover: 15 23 42;
+  --semantic-interaction-state-layer-hover-alpha: 0.0784;
+  --semantic-interaction-state-layer-pressed: 15 23 42;
+  --semantic-interaction-state-layer-pressed-alpha: 0.102;
   --semantic-link-active: 30 64 175;
   --semantic-link-default: 29 78 216;
   --semantic-link-disabled: 203 213 225;
@@ -1784,12 +1807,12 @@
   --colors-inline-code-foreground-default: 248 250 252;
   --colors-input-background-default: 15 23 42;
   --colors-input-background-hover: 30 41 59;
-  --colors-input-border-default: 51 65 85;
+  --colors-input-border-default: 88 103 125;
   --colors-input-foreground-filled: 248 250 252;
   --colors-input-foreground-hint: 148 163 184;
   --colors-input-foreground-hint-error: 248 113 113;
   --colors-input-foreground-placeholder: 148 163 184;
-  --colors-menu-background-default: 2 6 23;
+  --colors-menu-background-default: 15 23 42;
   --colors-menu-background-hover: 30 41 59;
   --colors-menu-foreground-default: 226 232 240;
   --colors-menu-foreground-muted: 148 163 184;
@@ -1803,7 +1826,7 @@
   --colors-navigation-unselected-background-default: 2 6 23;
   --colors-navigation-unselected-foreground-default: 248 250 252;
   --colors-navigation-unselected-foreground-muted: 148 163 184;
-  --colors-popover-background-default: 2 6 23;
+  --colors-popover-background-default: 15 23 42;
   --colors-popover-foreground-filled: 248 250 252;
   --colors-popover-foreground-muted: 148 163 184;
   --colors-primary: 37 99 235;
@@ -1863,7 +1886,7 @@
   --colors-table-foreground-default: 248 250 252;
   --colors-textarea-background-default: 15 23 42;
   --colors-textarea-background-hover: 30 41 59;
-  --colors-textarea-border-default: 51 65 85;
+  --colors-textarea-border-default: 88 103 125;
   --colors-textarea-foreground-filled: 248 250 252;
   --colors-textarea-foreground-hint: 148 163 184;
   --colors-textarea-foreground-label: 248 250 252;
@@ -1879,11 +1902,11 @@
   --colors-utility-foreground: 248 250 252;
   --colors-utility-hairline: 255 255 255;
   --colors-utility-hairline-alpha: 0.102;
-  --colors-utility-input: 51 65 85;
+  --colors-utility-input: 88 103 125;
   --colors-utility-muted: 30 41 59;
   --colors-utility-muted-foreground: 148 163 184;
   --colors-utility-muted-strong: 71 85 105;
-  --colors-utility-popover: 2 6 23;
+  --colors-utility-popover: 15 23 42;
   --colors-utility-popover-foreground: 248 250 252;
   --colors-utility-primary-foreground: 248 250 252;
   --colors-utility-ring: 59 130 246;
@@ -1941,6 +1964,8 @@
   --semantic-border-destructive: 239 68 68;
   --semantic-border-destructive-subtle: 153 27 27;
   --semantic-border-disabled: 30 41 59;
+  --semantic-border-field: 88 103 125;
+  --semantic-border-field-hover: 203 213 225;
   --semantic-border-focus: 59 130 246;
   --semantic-border-info: 59 130 246;
   --semantic-border-input: 51 65 85;
@@ -1959,8 +1984,11 @@
   --semantic-chart-subtle-7: 88 28 135;
   --semantic-chart-subtle-8: 136 19 55;
   --semantic-chart-subtle-non-working: 30 41 59;
+  --semantic-chart-2: 136 77 255;
   --semantic-chart-3: 13 148 136;
   --semantic-chart-3-on: 2 6 23;
+  --semantic-chart-5: 6 182 212;
+  --semantic-chart-5-on: 2 6 23;
   --semantic-chart-6: 244 114 182;
   --semantic-chart-7: 192 132 252;
   --semantic-chart-7-on: 2 6 23;
@@ -1995,6 +2023,12 @@
   --semantic-interaction-active-alpha: 0.1216;
   --semantic-interaction-hover: 255 255 255;
   --semantic-interaction-hover-alpha: 0.0588;
+  --semantic-interaction-state-layer-focus: 248 250 252;
+  --semantic-interaction-state-layer-focus-alpha: 0.102;
+  --semantic-interaction-state-layer-hover: 248 250 252;
+  --semantic-interaction-state-layer-hover-alpha: 0.0784;
+  --semantic-interaction-state-layer-pressed: 248 250 252;
+  --semantic-interaction-state-layer-pressed-alpha: 0.102;
   --semantic-link-active: 191 219 254;
   --semantic-link-default: 147 197 253;
   --semantic-link-disabled: 71 85 105;
@@ -2288,12 +2322,12 @@
     --colors-inline-code-foreground-default: 248 250 252;
     --colors-input-background-default: 15 23 42;
     --colors-input-background-hover: 30 41 59;
-    --colors-input-border-default: 51 65 85;
+    --colors-input-border-default: 88 103 125;
     --colors-input-foreground-filled: 248 250 252;
     --colors-input-foreground-hint: 148 163 184;
     --colors-input-foreground-hint-error: 248 113 113;
     --colors-input-foreground-placeholder: 148 163 184;
-    --colors-menu-background-default: 2 6 23;
+    --colors-menu-background-default: 15 23 42;
     --colors-menu-background-hover: 30 41 59;
     --colors-menu-foreground-default: 226 232 240;
     --colors-menu-foreground-muted: 148 163 184;
@@ -2307,7 +2341,7 @@
     --colors-navigation-unselected-background-default: 2 6 23;
     --colors-navigation-unselected-foreground-default: 248 250 252;
     --colors-navigation-unselected-foreground-muted: 148 163 184;
-    --colors-popover-background-default: 2 6 23;
+    --colors-popover-background-default: 15 23 42;
     --colors-popover-foreground-filled: 248 250 252;
     --colors-popover-foreground-muted: 148 163 184;
     --colors-primary: 37 99 235;
@@ -2367,7 +2401,7 @@
     --colors-table-foreground-default: 248 250 252;
     --colors-textarea-background-default: 15 23 42;
     --colors-textarea-background-hover: 30 41 59;
-    --colors-textarea-border-default: 51 65 85;
+    --colors-textarea-border-default: 88 103 125;
     --colors-textarea-foreground-filled: 248 250 252;
     --colors-textarea-foreground-hint: 148 163 184;
     --colors-textarea-foreground-label: 248 250 252;
@@ -2383,11 +2417,11 @@
     --colors-utility-foreground: 248 250 252;
     --colors-utility-hairline: 255 255 255;
     --colors-utility-hairline-alpha: 0.102;
-    --colors-utility-input: 51 65 85;
+    --colors-utility-input: 88 103 125;
     --colors-utility-muted: 30 41 59;
     --colors-utility-muted-foreground: 148 163 184;
     --colors-utility-muted-strong: 71 85 105;
-    --colors-utility-popover: 2 6 23;
+    --colors-utility-popover: 15 23 42;
     --colors-utility-popover-foreground: 248 250 252;
     --colors-utility-primary-foreground: 248 250 252;
     --colors-utility-ring: 59 130 246;
@@ -2445,6 +2479,8 @@
     --semantic-border-destructive: 239 68 68;
     --semantic-border-destructive-subtle: 153 27 27;
     --semantic-border-disabled: 30 41 59;
+    --semantic-border-field: 88 103 125;
+    --semantic-border-field-hover: 203 213 225;
     --semantic-border-focus: 59 130 246;
     --semantic-border-info: 59 130 246;
     --semantic-border-input: 51 65 85;
@@ -2463,8 +2499,11 @@
     --semantic-chart-subtle-7: 88 28 135;
     --semantic-chart-subtle-8: 136 19 55;
     --semantic-chart-subtle-non-working: 30 41 59;
+    --semantic-chart-2: 136 77 255;
     --semantic-chart-3: 13 148 136;
     --semantic-chart-3-on: 2 6 23;
+    --semantic-chart-5: 6 182 212;
+    --semantic-chart-5-on: 2 6 23;
     --semantic-chart-6: 244 114 182;
     --semantic-chart-7: 192 132 252;
     --semantic-chart-7-on: 2 6 23;
@@ -2499,6 +2538,12 @@
     --semantic-interaction-active-alpha: 0.1216;
     --semantic-interaction-hover: 255 255 255;
     --semantic-interaction-hover-alpha: 0.0588;
+    --semantic-interaction-state-layer-focus: 248 250 252;
+    --semantic-interaction-state-layer-focus-alpha: 0.102;
+    --semantic-interaction-state-layer-hover: 248 250 252;
+    --semantic-interaction-state-layer-hover-alpha: 0.0784;
+    --semantic-interaction-state-layer-pressed: 248 250 252;
+    --semantic-interaction-state-layer-pressed-alpha: 0.102;
     --semantic-link-active: 191 219 254;
     --semantic-link-default: 147 197 253;
     --semantic-link-disabled: 71 85 105;
@@ -2796,7 +2841,7 @@
   --colors-inline-code-foreground-default: 15 23 42;
   --colors-input-background-default: 255 255 255;
   --colors-input-background-hover: 241 245 249;
-  --colors-input-border-default: 226 232 240;
+  --colors-input-border-default: 126 141 163;
   --colors-input-foreground-filled: 15 23 42;
   --colors-input-foreground-hint: 100 116 139;
   --colors-input-foreground-hint-error: 185 28 28;
@@ -2875,7 +2920,7 @@
   --colors-table-foreground-default: 15 23 42;
   --colors-textarea-background-default: 255 255 255;
   --colors-textarea-background-hover: 241 245 249;
-  --colors-textarea-border-default: 203 213 225;
+  --colors-textarea-border-default: 126 141 163;
   --colors-textarea-foreground-filled: 15 23 42;
   --colors-textarea-foreground-hint: 100 116 139;
   --colors-textarea-foreground-label: 15 23 42;
@@ -2891,7 +2936,7 @@
   --colors-utility-foreground: 15 23 42;
   --colors-utility-hairline: 15 23 42;
   --colors-utility-hairline-alpha: 0.0588;
-  --colors-utility-input: 226 232 240;
+  --colors-utility-input: 126 141 163;
   --colors-utility-muted: 241 245 249;
   --colors-utility-muted-foreground: 71 85 105;
   --colors-utility-muted-strong: 203 213 225;
@@ -2953,6 +2998,8 @@
   --semantic-border-destructive: 220 38 38;
   --semantic-border-destructive-subtle: 252 165 165;
   --semantic-border-disabled: 226 232 240;
+  --semantic-border-field: 126 141 163;
+  --semantic-border-field-hover: 71 85 105;
   --semantic-border-focus: 37 99 235;
   --semantic-border-info: 37 99 235;
   --semantic-border-input: 226 232 240;
@@ -2971,8 +3018,11 @@
   --semantic-chart-subtle-7: 243 232 255;
   --semantic-chart-subtle-8: 255 228 230;
   --semantic-chart-subtle-non-working: 241 245 249;
+  --semantic-chart-2: 124 58 237;
   --semantic-chart-3: 17 94 89;
   --semantic-chart-3-on: 255 255 255;
+  --semantic-chart-5: 3 105 161;
+  --semantic-chart-5-on: 255 255 255;
   --semantic-chart-6: 236 72 153;
   --semantic-chart-7: 107 33 168;
   --semantic-chart-7-on: 255 255 255;
@@ -3007,6 +3057,12 @@
   --semantic-interaction-active-alpha: 0.0784;
   --semantic-interaction-hover: 0 0 0;
   --semantic-interaction-hover-alpha: 0.0392;
+  --semantic-interaction-state-layer-focus: 15 23 42;
+  --semantic-interaction-state-layer-focus-alpha: 0.102;
+  --semantic-interaction-state-layer-hover: 15 23 42;
+  --semantic-interaction-state-layer-hover-alpha: 0.0784;
+  --semantic-interaction-state-layer-pressed: 15 23 42;
+  --semantic-interaction-state-layer-pressed-alpha: 0.102;
   --semantic-link-active: 30 64 175;
   --semantic-link-default: 29 78 216;
   --semantic-link-disabled: 203 213 225;
@@ -3293,6 +3349,13 @@
   line-height: var(--typo-subtle-medium-lh);
   letter-spacing: calc(var(--typo-subtle-medium-ls) + var(--tracking-extra, 0em));
 }
+.typography-subtle-semibold {
+  font-family: var(--typo-subtle-semibold-font), sans-serif;
+  font-weight: var(--typo-subtle-semibold-weight);
+  font-size: var(--typo-subtle-semibold-size);
+  line-height: var(--typo-subtle-semibold-lh);
+  letter-spacing: calc(var(--typo-subtle-semibold-ls) + var(--tracking-extra, 0em));
+}
 .typography-suble-semibold {
   font-family: var(--typo-suble-semibold-font), sans-serif;
   font-weight: var(--typo-suble-semibold-weight);
@@ -3447,6 +3510,20 @@
   font-size: var(--typo-label-highlight-size);
   line-height: var(--typo-label-highlight-lh);
   letter-spacing: calc(var(--typo-label-highlight-ls) + var(--tracking-extra, 0em));
+}
+.typography-item {
+  font-family: var(--typo-item-font), sans-serif;
+  font-weight: var(--typo-item-weight);
+  font-size: var(--typo-item-size);
+  line-height: var(--typo-item-lh);
+  letter-spacing: calc(var(--typo-item-ls) + var(--tracking-extra, 0em));
+}
+.typography-item-bold {
+  font-family: var(--typo-item-bold-font), sans-serif;
+  font-weight: var(--typo-item-bold-weight);
+  font-size: var(--typo-item-bold-size);
+  line-height: var(--typo-item-bold-lh);
+  letter-spacing: calc(var(--typo-item-bold-ls) + var(--tracking-extra, 0em));
 }
 .typography-text-small {
   font-family: var(--typo-text-small-font), sans-serif;

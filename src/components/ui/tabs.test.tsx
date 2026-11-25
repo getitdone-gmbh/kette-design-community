@@ -23,6 +23,37 @@ const renderTabs = (variant?: 'segmented' | 'line' | 'segment') =>
     </Tabs>,
   );
 
+describe('Tabs in forced colors (KETTE-96)', () => {
+  const tabs = (variant: 'segmented' | 'segment' | 'line' | 'vertical') => (
+    <Tabs defaultValue="a">
+      <TabsList variant={variant}>
+        <TabsTrigger value="a" count={2}>
+          First
+        </TabsTrigger>
+        <TabsTrigger value="b">Second</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  it.each(['segmented', 'segment', 'vertical'] as const)('%s: the selected tab gets the system selection pair, a fill the system keeps', (variant) => {
+    render(tabs(variant));
+    const [active, inactive] = screen.getAllByRole('tab');
+    expect(active).toHaveClass('forced-colors:data-[state=active]:[forced-color-adjust:none]', 'forced-colors:data-[state=active]:[background-color:Highlight]', 'forced-colors:data-[state=active]:[color:HighlightText]', 'forced-colors:data-[state=active]:[background-image:none]');
+    expect(active).toHaveAttribute('data-state', 'active');
+    expect(inactive).toHaveAttribute('data-state', 'inactive');
+    // The count sits on the fill, so it follows the pair's text colour.
+    expect(screen.getByText('2')).toHaveClass('forced-colors:group-data-[state=active]:[color:HighlightText]');
+  });
+
+  it('line: the selected tab has a Highlight bar and the others a Canvas bar (no transparent border, which forced colors paints visible)', () => {
+    render(tabs('line'));
+    const [active] = screen.getAllByRole('tab');
+    expect(active).toHaveClass('forced-colors:[border-bottom-color:Canvas]', 'forced-colors:data-[state=active]:[border-bottom-color:Highlight]', 'forced-colors:data-[state=active]:[border-image:none]');
+    expect(active).not.toHaveClass('forced-colors:data-[state=active]:[background-color:Highlight]');
+    expect(screen.getByText('2')).not.toHaveClass('forced-colors:group-data-[state=active]:[color:HighlightText]');
+  });
+});
+
 describe('Tabs', () => {
   it('sizes vertical trigger icons with the 15px nav icon token', () => {
     render(
@@ -58,6 +89,78 @@ describe('Tabs', () => {
     const tab = screen.getByRole('tab', { name: 'Account' });
     expect(tab).toHaveClass('h-8', 'py-0');
     expect(tab).not.toHaveClass('py-[6px]');
+  });
+
+  // KETTE-95: only a list with the `wrap` prop wraps long labels; every other row keeps its single line and holds all tabs
+  it.each(['segmented', 'segment'] as const)('%s trigger stays one line without the wrap prop', (variant) => {
+    renderTabs(variant);
+    const tab = screen.getByRole('tab', { name: 'Account' });
+    expect(tab).toHaveClass('whitespace-nowrap');
+    expect(tab).not.toHaveClass('whitespace-normal', 'max-w-full', 'h-auto');
+    // Same height classes as before the wrap prop, so a consumer height class (h-7) still overrides
+    expect(tab).toHaveClass(variant === 'segmented' ? 'h-8' : 'h-control-sm');
+    expect(tab.className).not.toMatch(/\bmin-h-/);
+    expect(screen.getByRole('tablist')).not.toHaveClass('flex-wrap');
+  });
+
+  it.each(['segmented', 'segment'] as const)('%s wrap list: wrapping flex row, triggers wrap start-aligned with a minimum height', (variant) => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList variant={variant} wrap aria-label="Sections">
+          <TabsTrigger value="a">Account</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    expect(screen.getByRole('tablist')).toHaveClass('flex-wrap', 'h-auto', 'max-w-full', 'justify-start');
+    const tab = screen.getByRole('tab', { name: 'Account' });
+    expect(tab).toHaveClass('h-auto', 'max-w-full', 'justify-start', 'whitespace-normal', 'text-start', '[overflow-wrap:anywhere]', 'py-1');
+    expect(tab).not.toHaveClass('whitespace-nowrap', 'h-8', 'h-control-sm');
+    expect(tab.className).toMatch(/\bmin-h-/);
+  });
+
+  // Outside zero a sized list is a fixed-height track: it ignores `wrap`, so no tab can flow below the track
+  it.each(['segmented', 'segment'] as const)('%s sized list outside zero ignores wrap: fixed track height, one line, no flex-wrap', (variant) => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList variant={variant} size="md" wrap aria-label="Sections">
+          <TabsTrigger value="a">Account</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole('tablist');
+    expect(list).toHaveClass('h-control-md');
+    expect(list).not.toHaveClass('flex-wrap');
+    expect(list).not.toHaveClass('h-auto');
+    expect(list).not.toHaveClass('max-w-full');
+    expect(screen.getByRole('tab', { name: 'Account' })).toHaveClass('h-full', 'min-h-0', 'py-0', 'whitespace-nowrap');
+  });
+
+  it('wrap list keeps the count on one line and the icon at its size while the label breaks', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList wrap aria-label="Sections">
+          <TabsTrigger value="a" count={128}>
+            <svg data-testid="icon" />
+            Authentication
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const tab = screen.getByRole('tab');
+    expect(tab).toHaveClass('[overflow-wrap:anywhere]', '[&>svg]:shrink-0');
+    expect(tab).toHaveClass('[&>[data-slot=tabs-count]]:shrink-0', '[&>[data-slot=tabs-count]]:whitespace-nowrap', '[&>[data-slot=tabs-count]]:[overflow-wrap:normal]');
+    expect(screen.getByText('128')).toHaveAttribute('data-slot', 'tabs-count');
+  });
+
+  it('a scrolling segmented row keeps its triggers on one line', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList variant="segmented" className="max-w-full justify-start overflow-x-auto" aria-label="Sections">
+          <TabsTrigger value="a">Roadmap for next quarter</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    expect(screen.getByRole('tab')).toHaveClass('whitespace-nowrap');
   });
 
   it('line variant: transparent track with a hairline baseline and a 2px active bar', () => {
@@ -293,7 +396,7 @@ describe('Tabs', () => {
       expect(screen.getByRole('tab', { name: 'Performance' })).toHaveTextContent(/^Performance$/);
     });
 
-    it('triggers never shrink or wrap so the list can scroll instead of squashing labels', () => {
+    it('triggers never shrink so the list can scroll instead of squashing labels', () => {
       renderSeven();
       screen.getAllByRole('tab').forEach((tab) => expect(tab).toHaveClass('shrink-0', 'whitespace-nowrap'));
     });

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { userEvent, within } from '@storybook/testing-library';
 import { useState } from 'react';
 
 import { Badge } from './badge';
@@ -43,6 +44,10 @@ const meta = {
   title: 'Patterns · Data/Data grid',
   component: DataGrid,
   tags: ['autodocs'],
+  argTypes: {
+    phoneQuery: { control: { type: 'select' }, options: ['container', 'viewport'], description: 'With `phone="list"`: `container` (default) shows the list below 768px of the grid width, `viewport` only below 768px of the viewport. Use `viewport` only where the table fits its desktop column (few columns, fit widths on the short ones, status before anything that may cut); a wider table scrolls sideways and the edge fade shows it.' },
+    phone: { control: { type: 'select' }, options: ['scroll', 'list'], description: 'Below 768px of the grid width: `scroll` keeps the table, `list` shows a row list. Columns choose their place with `phone` (lead, title, subtitle, value, meta, hidden).' },
+  },
 } satisfies Meta<typeof DataGrid>;
 export default meta;
 type Story = StoryObj;
@@ -135,6 +140,22 @@ export const TwoLineRows: Story = {
   render: () => <DataGrid {...base} columns={twoLineColumns} rows={demands.slice(0, 6)} rowHeight="two-line" selectable />,
 };
 
+// Fit and fill widths: the badge and number columns take their one-line width, the title column takes the rest and truncates (full text as tooltip). The header band spans the whole grid at every width.
+const fitFillColumns: DataGridColumn<Demand>[] = [
+  { id: 'title', header: 'Demand', width: 'fill', phone: 'title', cell: (r) => <DataGridTwoLine title={`${r.title} for the platform migration programme of ${r.client}`} subtitle={`${r.client} · ${r.deadline} · remote or on site`} /> },
+  { id: 'status', header: 'Status', width: 'fit', phone: 'value', cell: (r) => <Badge variant={statusVariant[r.status]}>{r.status}</Badge> },
+  { id: 'applications', header: 'Applic.', width: 'fit', align: 'right', phone: 'meta', sortable: true, sortValue: (r) => r.applications },
+];
+
+export const FitAndFillWidths: Story = {
+  render: () => (
+    <div data-testid="frame">
+      <DataGrid {...base} columns={fitFillColumns} rows={demands.slice(0, 6)} rowHeight="two-line" phone="list" />
+    </div>
+  ),
+  parameters: { layoutInvariants: { widths: [1440, 1024, 390, 320], noOverflow: ['[data-testid="frame"]'] } },
+};
+
 // Lazy loading: Load more appends the next page, the footer shows a live status while it loads.
 const LazyDemo = () => {
   const [count, setCount] = useState(8);
@@ -156,6 +177,42 @@ export const LazyLoadMore: Story = {
 // Paged grid while the next page loads: the footer says "Loading…" instead of the row range.
 export const PagerLoading: Story = {
   render: () => <DataGrid {...base} rows={demands.slice(0, 8)} pagination={{ pageSize: 8, total: 120, page: 2 }} loadingMore />,
+};
+
+// Next page loads (KETTE-84): the skeleton rows keep the column widths and the height of the page before (`keepHeightWhileLoading`), the pager stays mounted and "Next page" keeps the keyboard focus (aria-disabled, not disabled).
+const LoadingLayoutDemo = ({ hold }: { hold: boolean }) => {
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const goTo = (next: number) => {
+    setPage(next);
+    setLoading(true);
+    if (!hold) setTimeout(() => setLoading(false), 1500);
+  };
+  return (
+    <DataGrid
+      {...base}
+      rows={loading ? [] : demands.slice((page - 1) * 8, page * 8)}
+      loading={loading}
+      keepHeightWhileLoading
+      pagination={{ page, pageSize: 8, total: demands.length, onPageChange: goTo }}
+    />
+  );
+};
+
+export const LoadingKeepsLayout: Story = {
+  render: () => <LoadingLayoutDemo hold={false} />,
+};
+
+export const LoadingKeepsLayoutHeld: Story = {
+  parameters: { docs: { description: { story: 'Clicks "Next page" and keeps the load open, so the skeleton state can be inspected.' } } },
+  render: () => <LoadingLayoutDemo hold />,
+  play: async ({ canvasElement }) => {
+    const next = within(canvasElement).getByRole('button', { name: 'Next page' });
+    await userEvent.click(next);
+    const stillThere = within(canvasElement).getByRole('button', { name: 'Next page' });
+    if (stillThere.getAttribute('aria-disabled') !== 'true' || stillThere.hasAttribute('disabled')) throw new globalThis.Error('Next page must be aria-disabled, not disabled, while loading');
+    if (document.activeElement !== stillThere) throw new globalThis.Error('Next page lost the keyboard focus while loading');
+  },
 };
 
 export const LoadingMore: Story = {
@@ -232,4 +289,66 @@ export const ZeroPreset: Story = {
       </DesignSystemProvider>
     ),
   ],
+};
+
+// Phone list (ZERO-911): the columns name their place in the list, `priority` keeps working for the table layout above 768px. The frame is 390px wide.
+const phoneColumns: DataGridColumn<Demand>[] = [
+  { id: 'title', header: 'Demand', phone: 'title' },
+  { id: 'client', header: 'Client', priority: 2, phone: 'subtitle' },
+  { id: 'status', header: 'Status', priority: 2, phone: 'value', cell: (r) => <Badge variant={statusVariant[r.status]}>{r.status}</Badge> },
+  { id: 'applications', header: 'Applic.', align: 'right' },
+  { id: 'deadline', header: 'Deadline', priority: 3 },
+];
+
+export const PhoneList: Story = {
+  name: 'Phone list',
+  parameters: { layout: 'padded', layoutInvariants: { widths: [390, 320], noOverflow: ['[data-phone=list]'] } },
+  render: () => (
+    <div className="w-full max-w-[390px]">
+      <DataGrid columns={phoneColumns} getRowId={(r: Demand) => r.id} label="Demands" rows={demands.slice(0, 6)} phone="list" selectable onRowClick={() => undefined} getRowLabel={(r) => r.title} />
+    </div>
+  ),
+};
+
+// ZERO-1001: the same 480px wide grid next to a card, once per phoneQuery. `container` turns into the list because the grid is narrower than 768px; `viewport` stays a table on a desktop viewport and becomes the list only below 768px of viewport width.
+// `viewport` suits a table that fits its column: here three columns with the status as a fit column, so nothing scrolls sideways. A wider table keeps `container`.
+const narrowColumns: DataGridColumn<Demand>[] = [
+  { id: 'title', header: 'Demand', phone: 'title' },
+  { id: 'client', header: 'Client', phone: 'subtitle' },
+  { id: 'status', header: 'Status', phone: 'value', width: 'fit', cell: (r) => <Badge variant="subtle">{r.status}</Badge> },
+];
+
+const NarrowColumnDemo = ({ phoneQuery }: { phoneQuery: 'container' | 'viewport' }) => {
+  const [selected, setSelected] = useState<string[]>(['2']);
+  return (
+    <div className="flex flex-col gap-4 md:flex-row">
+      <div className="w-full md:w-[480px] md:shrink-0">
+        <DataGrid
+          columns={narrowColumns}
+          getRowId={(r: Demand) => r.id}
+          label={`Demands, phoneQuery ${phoneQuery}`}
+          getRowLabel={(r) => r.title}
+          rows={demands.slice(0, 5)}
+          phone="list"
+          phoneQuery={phoneQuery}
+          selectable
+          selectedIds={selected}
+          onSelectedIdsChange={setSelected}
+        />
+      </div>
+      <div className="min-h-32 flex-1 rounded-surface border border-solid border-border-subtle p-4 typography-ui text-text-subtle">Week card</div>
+    </div>
+  );
+};
+
+export const PhoneQueryContainer: Story = {
+  name: 'Phone query · container (default)',
+  parameters: { layout: 'padded', layoutInvariants: { widths: [1440, 390] } },
+  render: () => <NarrowColumnDemo phoneQuery="container" />,
+};
+
+export const PhoneQueryViewport: Story = {
+  name: 'Phone query · viewport',
+  parameters: { layout: 'padded', layoutInvariants: { widths: [1440, 390] } },
+  render: () => <NarrowColumnDemo phoneQuery="viewport" />,
 };

@@ -1,3 +1,4 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { Avatar, AvatarFallback, AvatarOnlineIndicator } from './avatar';
@@ -46,7 +47,24 @@ export const WithIconReactions: Story = {
     ),
   },
 };
-export const WithAttachment: Story = { args: { text: undefined, attachment: <MessageAttachment name="Latest design screenshot.jpg" size="1.2 MB" /> } };
+// The font shorthand can be empty (for example with tabular-nums), so the font is built from its parts.
+const loadFontOf = (el: HTMLElement) => {
+  const c = getComputedStyle(el);
+  return document.fonts.load(`${c.fontStyle} ${c.fontWeight} ${c.fontSize} ${c.fontFamily}`, el.textContent || undefined);
+};
+
+export const WithAttachment: Story = {
+  args: { text: undefined, attachment: <MessageAttachment name="Latest design screenshot.jpg" size="1.2 MB" /> },
+  // ZERO-812 G4: the file icon is vertically centred on name and size (1px).
+  play: async ({ canvasElement }) => {
+    // fonts.ready can resolve before a font has started loading; load the measured fonts first.
+    await Promise.all([...canvasElement.querySelectorAll<HTMLElement>('span')].map(loadFontOf));
+    await document.fonts.ready;
+    const icon = (canvasElement.querySelector('[data-kind]') as HTMLElement).getBoundingClientRect();
+    const text = ((canvasElement.querySelector('span.truncate') as HTMLElement).parentElement as HTMLElement).getBoundingClientRect();
+    expect(Math.abs(icon.top + icon.height / 2 - (text.top + text.height / 2))).toBeLessThanOrEqual(1);
+  },
+};
 export const Typing: Story = { args: { typing: true, text: undefined, time: undefined } };
 
 export const Compact: Story = { args: { density: 'compact', meta: <span>edited</span> } };

@@ -56,7 +56,7 @@ const numberVariants = cva(
   [
     'inline-flex h-control-sm w-control-sm shrink-0 items-center justify-center transition-colors',
     'hover:bg-muted hover:text-text-default',
-    'disabled:pointer-events-none disabled:opacity-disabled',
+    'disabled:pointer-events-none disabled:opacity-disabled aria-disabled:cursor-not-allowed aria-disabled:opacity-disabled aria-disabled:hover:bg-transparent',
     ...focusRing,
   ],
   {
@@ -104,7 +104,7 @@ export interface PaginationProps extends Omit<React.HTMLAttributes<HTMLElement>,
   boundaryCount?: number;
   // Disables every control.
   disabled?: boolean;
-  // A load is in flight. `lazy`: spinner on Load more. Other variants: the summary reads "Loading…", the pager is `aria-busy` and its controls are disabled.
+  // A load is in flight. `lazy`: spinner on Load more. Other variants: the summary reads "Loading…", the pager is `aria-busy` and its controls are gated with `aria-disabled` (not `disabled`), so keyboard focus stays on the control that started the load. In link mode and with `disabled` the controls stay natively disabled.
   loading?: boolean;
   // Text shown instead of the range or page summary while `loading`. Wins over the provider text.
   loadingText?: string;
@@ -210,6 +210,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
     const pageCount = Math.max(1, pageCountProp ?? (total !== undefined ? Math.ceil(total / pageSize) : 1));
     const page = Math.min(Math.max(1, controlled ? pageProp : inner), pageCount);
     const goTo = (next: number) => {
+      if (pagerBusy) return;
       const clamped = Math.min(Math.max(1, next), pageCount);
       if (clamped === page) return;
       if (!controlled) setInner(clamped);
@@ -224,6 +225,9 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
     // Link mode: every control that moves the page is an anchor to getPageHref(target).
     const linkMode = typeof getPageHref === 'function' && variant !== 'lazy';
     const hrefFor = (target: number) => getPageHref?.(Math.min(Math.max(1, target), pageCount));
+    // While a page loads the controls are gated with aria-disabled (not disabled), so a focused control keeps the focus. Link mode, a disabled pager and a boundary control stay natively disabled.
+    const nativeOff = (boundary: boolean) => (linkMode ? off || boundary : disabled || boundary);
+    const gated = (boundary: boolean) => (pagerBusy && !nativeOff(boundary) ? true : undefined);
     // Previous and Next: a button, or in link mode a link styled as the same button. A boundary or disabled pager keeps a disabled button (nothing to follow).
     const stepButton = (direction: 'previous' | 'next', variantProp: 'ghost' | 'outline', content: React.ReactNode, icon?: React.ReactElement, className?: string) => {
       const blocked = off || (direction === 'previous' ? atStart : atEnd);
@@ -238,7 +242,16 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         );
       }
       return (
-        <Button type="button" variant={variantProp} size="sm" disabled={blocked} onClick={() => goTo(target)} icon={icon} className={className}>
+        <Button
+          type="button"
+          variant={variantProp}
+          size="sm"
+          disabled={nativeOff(direction === 'previous' ? atStart : atEnd)}
+          aria-disabled={gated(direction === 'previous' ? atStart : atEnd)}
+          onClick={() => goTo(target)}
+          icon={icon}
+          className={className}
+        >
           {content}
         </Button>
       );
@@ -259,7 +272,16 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         );
       }
       return (
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={label} disabled={blocked} onClick={() => goTo(target)} className={className}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          disabled={nativeOff(direction === 'previous' ? atStart : atEnd)}
+          aria-disabled={gated(direction === 'previous' ? atStart : atEnd)}
+          onClick={() => goTo(target)}
+          className={className}
+        >
           {icon}
         </Button>
       );
@@ -286,7 +308,8 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
             ) : (
               <button
                 type="button"
-                disabled={off}
+                disabled={nativeOff(false)}
+                aria-disabled={gated(false)}
                 aria-label={l.page(item)}
                 aria-current={item === page ? 'page' : undefined}
                 onClick={() => goTo(item)}
@@ -303,15 +326,15 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         ),
       );
 
-    // The page and card lists show the numbers from sm up. Below sm they collapse to "Page x of y" so the row never overflows a 390px screen.
+    // The page, card and compact lists show the numbers from sm up. Below sm they collapse to "Page x of y" so the row never overflows or wraps on a 390px screen.
     const pagesTone = variant === 'compact' ? (zero ? 'compact' : 'compactLegacy') : zero ? 'zeroPage' : 'default';
-    const collapsible = variant === 'page' || variant === 'card';
+    const collapsible = variant === 'page' || variant === 'card' || variant === 'compact';
     const pages = (
       <>
         <ol className={cn('flex items-center', variant === 'compact' ? cn('flex-wrap', zero ? 'gap-2' : 'gap-1') : 'gap-micro', collapsible && 'max-sm:hidden')}>{numberCells(pagesTone)}</ol>
         {collapsible ? (
-          <span aria-live={live} className={cn('min-w-0 text-center text-text-default sm:hidden', zero ? 'typography-ui-sm' : 'typography-label')}>
-            {pagerBusy ? loadingSummary : l.pageOf(page, pageCount)}
+          <span aria-live={variant === 'compact' ? undefined : live} className={cn('min-w-0 text-center text-text-default sm:hidden', zero ? 'typography-ui-sm' : 'typography-label')}>
+            {pagerBusy && variant !== 'compact' ? loadingSummary : l.pageOf(page, pageCount)}
           </span>
         ) : null}
       </>
@@ -372,7 +395,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                 </a>
               </ButtonGroupItem>
             ) : (
-              <ButtonGroupItem disabled={off || atStart} icon={<ArrowLeft />} onClick={() => goTo(page - 1)}>
+              <ButtonGroupItem disabled={nativeOff(atStart)} aria-disabled={gated(atStart)} icon={<ArrowLeft />} onClick={() => goTo(page - 1)}>
                 {l.previous}
               </ButtonGroupItem>
             )}
@@ -392,7 +415,8 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                 ) : (
                   <ButtonGroupItem
                     key={item}
-                    disabled={off}
+                    disabled={nativeOff(false)}
+                    aria-disabled={gated(false)}
                     aria-label={l.page(item)}
                     aria-current={item === page ? 'page' : undefined}
                     data-current={item === page ? true : undefined}
@@ -424,7 +448,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
                 </a>
               </ButtonGroupItem>
             ) : (
-              <ButtonGroupItem disabled={off || atEnd} onClick={() => goTo(page + 1)}>
+              <ButtonGroupItem disabled={nativeOff(atEnd)} aria-disabled={gated(atEnd)} onClick={() => goTo(page + 1)}>
                 {l.next}
                 <ArrowRight aria-hidden="true" className="h-icon-md w-icon-md shrink-0" />
               </ButtonGroupItem>
@@ -465,8 +489,10 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
           {onPageSizeChange ? (
             <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))} disabled={off}>
               <SelectTrigger
+                size="sm"
                 aria-label={l.rowsPerPage}
-                className={cn('h-control-sm w-auto gap-1 border-transparent bg-transparent px-2 py-0 text-text-subtle shadow-none', zero ? 'typography-ui-sm' : 'typography-caption-regular')}
+                // Important: the small select trigger brings text-ui, the pager text stays on the 12px caption role of the range text.
+                className="h-control-sm w-auto gap-1 border-transparent bg-transparent px-2 py-0 text-text-subtle shadow-none !typography-caption-regular"
               >
                 <SelectValue>{l.perPage(pageSize)}</SelectValue>
               </SelectTrigger>
@@ -481,9 +507,12 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
           ) : (
             <p className="typography-caption-regular shrink-0 text-text-subtle">{l.perPage(pageSize)}</p>
           )}
-          {iconStep('previous', l.previousPage, <ChevronLeft aria-hidden="true" className="h-icon-md w-icon-md" />)}
-          {pages}
-          {iconStep('next', l.nextPage, <ChevronRight aria-hidden="true" className="h-icon-md w-icon-md" />)}
+          {/* One group below sm ("<" Page x of y ">") that wraps as a unit, from sm up its children join the row. */}
+          <div className="flex shrink-0 items-center gap-2 sm:contents">
+            {iconStep('previous', l.previousPage, <ChevronLeft aria-hidden="true" className="h-icon-md w-icon-md" />)}
+            {pages}
+            {iconStep('next', l.nextPage, <ChevronRight aria-hidden="true" className="h-icon-md w-icon-md" />)}
+          </div>
         </>
       );
     }

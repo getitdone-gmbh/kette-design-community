@@ -57,9 +57,12 @@ const CommandInput = forwardRef<
     // No hairline under the field, for a field that sits in its own bordered surface (MultiSelect).
     borderless?: boolean;
   }
->(({ className, icon, shortcut, expanded, borderless, ...props }, ref) => {
+>(({ className, icon, shortcut, expanded, borderless, 'aria-labelledby': labelledBy, ...props }, ref) => {
   const l = useLabels();
   const inner = useRef<HTMLInputElement | null>(null);
+  // cmdk always points aria-labelledby at its own label. A given aria-labelledby wins over it.
+  const labelledByRef = useRef(labelledBy);
+  labelledByRef.current = labelledBy;
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const setRefs = useCallback(
@@ -85,7 +88,8 @@ const CommandInput = forwardRef<
       const active = root.querySelector('[cmdk-item][aria-selected="true"]');
       if (active?.id) input.setAttribute('aria-activedescendant', active.id);
       else input.removeAttribute('aria-activedescendant');
-      if (!root.querySelector('[cmdk-label]')?.textContent?.trim()) input.removeAttribute('aria-labelledby');
+      if (labelledByRef.current) input.setAttribute('aria-labelledby', labelledByRef.current);
+      else if (!root.querySelector('[cmdk-label]')?.textContent?.trim()) input.removeAttribute('aria-labelledby');
     };
     sync();
     const observer = new MutationObserver(sync);
@@ -95,6 +99,9 @@ const CommandInput = forwardRef<
   useEffect(() => {
     if (expanded !== undefined) inner.current?.setAttribute('aria-expanded', String(expanded));
   }, [expanded]);
+  useEffect(() => {
+    if (labelledBy) inner.current?.setAttribute('aria-labelledby', labelledBy);
+  }, [labelledBy]);
   return (
     <div className={cn('flex items-center px-3', !borderless && 'border-b border-solid border-hairline')} cmdk-input-wrapper="">
       {icon ? icon : <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />}

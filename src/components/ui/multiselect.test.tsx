@@ -526,6 +526,101 @@ describe('MultiSelect filterMode', () => {
   });
 });
 
+
+// R-LIB-08 (ZERO-593): input id for an outside Label, hints that can be hidden, a selection limit.
+describe('MultiSelect inputId, hideAutosaveHint, disableAddNew, maxSelected (R-LIB-08)', () => {
+  const skills = [
+    { label: 'React', id: 'react' },
+    { label: 'Vue', id: 'vue' },
+    { label: 'Svelte', id: 'svelte' },
+  ];
+  const Controlled = (props: Partial<MultiSelectProps> & { initial?: string[] }) => {
+    const [selected, setSelected] = useState<string[]>(props.initial ?? []);
+    return <MultiSelect id="skills" ariaLabel="Skills" options={skills} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} {...props} />;
+  };
+
+  it('lets an outside label with htmlFor = inputId name the search input and focus it on click', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <label htmlFor="skills-search">Skills to match</label>
+        <Controlled inputId="skills-search" />
+      </>,
+    );
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Skills to match' })).toBe(getInput()));
+    await user.click(screen.getByText('Skills to match'));
+    expect(getInput()).toHaveFocus();
+  });
+
+  // CR-LIB-03: a label that renders later or is replaced by React is still connected.
+  it('connects an outside label that renders after the field or is replaced', async () => {
+    const user = userEvent.setup();
+    const Late = ({ label }: { label?: string }) => (
+      <>
+        {label && (
+          <label key={label} htmlFor="skills-search">
+            {label}
+          </label>
+        )}
+        <Controlled inputId="skills-search" />
+      </>
+    );
+    const { rerender } = render(<Late />);
+    rerender(<Late label="Skills to match" />);
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Skills to match' })).toBe(getInput()));
+    await user.click(screen.getByText('Skills to match'));
+    expect(getInput()).toHaveFocus();
+    getInput().blur();
+    rerender(<Late label="Required skills" />);
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Required skills' })).toBe(getInput()));
+    await user.click(screen.getByText('Required skills'));
+    expect(getInput()).toHaveFocus();
+  });
+
+  it('keeps the name from ariaLabel without inputId', () => {
+    render(<Controlled />);
+    expect(getInput()).not.toHaveAttribute('aria-labelledby', 'skills-search-label');
+  });
+
+  it('hides "(autosave)" next to Close with hideAutosaveHint', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<Controlled />);
+    await user.click(getInput());
+    expect(screen.getByRole('button', { name: /Close/ })).toHaveTextContent('(autosave)');
+    unmount();
+    render(<Controlled hideAutosaveHint />);
+    await user.click(getInput());
+    const close = screen.getByRole('button', { name: /Close/ });
+    expect(close).not.toHaveTextContent('(autosave)');
+  });
+
+  it('hides "Press enter to add new" with disableAddNew', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<Controlled />);
+    await user.type(getInput(), 'zzz');
+    expect(await screen.findByText(/Press enter to add new/i)).toBeInTheDocument();
+    unmount();
+    render(<Controlled disableAddNew />);
+    await user.type(getInput(), 'zzz');
+    await waitFor(() => expect(screen.getAllByText('No matches for "zzz"').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/Press enter to add new/i)).toBeNull();
+  });
+
+  it('disables further options once maxSelected is reached and keeps selected ones removable', async () => {
+    const user = userEvent.setup();
+    render(<Controlled maxSelected={2} initial={['react']} />);
+    await user.click(getInput());
+    await user.click(screen.getByRole('option', { name: 'Vue' }));
+    const svelte = screen.getByRole('option', { name: 'Svelte' });
+    expect(svelte).toHaveAttribute('aria-disabled', 'true');
+    await user.click(svelte);
+    expect(svelte).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('option', { name: 'React' })).not.toHaveAttribute('aria-disabled', 'true');
+    await user.click(screen.getByRole('option', { name: 'React' }));
+    expect(screen.getByRole('option', { name: 'Svelte' })).not.toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
 // Fix round 15.11.2026: limit footer, limit re-announce, chip remove focus, pointer pick focus, empty result text.
 describe('MultiSelect limit footer, focus and empty result (0.40.1)', () => {
   const LIMIT_TEXT = 'You can choose up to 2. Remove one to choose another.';
@@ -660,5 +755,48 @@ describe('MultiSelect limit footer, focus and empty result (0.40.1)', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No matches for "zzz"'));
     observer.disconnect();
     expect(log.filter(Boolean)).toEqual(['No matches for "zzz"']);
+  });
+});
+
+describe('MultiSelect chipVariant (KETTE-79, KETTE-77)', () => {
+  const renderChips = (chipVariant?: MultiSelectProps['chipVariant']) =>
+    render(
+      <MultiSelectProvider>
+        <MultiSelect id="chips" label="Chips" options={options} selected={['design']} onChange={() => {}} onUpdateOrder={() => {}} chipVariant={chipVariant} />
+      </MultiSelectProvider>,
+    );
+  const chipOf = () => screen.getByTitle('Design').closest('[class*="rounded"]') as HTMLElement;
+
+  it('keeps the info chip as default', () => {
+    renderChips();
+    expect(chipOf()).toHaveClass('bg-general-info-default');
+  });
+
+  it.each([
+    ['neutral', 'bg-background-neutral-default'],
+    ['muted', 'bg-muted'],
+    ['primary', 'bg-primary'],
+  ] as const)('accepts chipVariant %s', (variant, fill) => {
+    renderChips(variant);
+    expect(chipOf()).toHaveClass(fill);
+  });
+});
+
+describe('MultiSelect chip remove button keyboard (UX-KB-03)', () => {
+  const Controlled = () => {
+    const [selected, setSelected] = useState<string[]>(['design', 'development']);
+    return (
+      <MultiSelectProvider>
+        <MultiSelect id="enter-remove" label="Jobs" chipsInside options={options} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} />
+      </MultiSelectProvider>
+    );
+  };
+
+  it('removes a chip with Enter on its remove button when the chips sit inside the field', async () => {
+    render(<Controlled />);
+    screen.getByRole('button', { name: /Remove Design/ }).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByRole('button', { name: /Remove Design/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove Development/ })).toBeInTheDocument();
   });
 });

@@ -244,6 +244,20 @@ export const HistogramStory: StoryObj<typeof Histogram> = {
     />
   ),
 };
+// width="auto" fills the container and follows its width, like LineBarChart.
+export const HistogramFluid: StoryObj<typeof Histogram> = {
+  name: 'Histogram fluid width',
+  render: () => (
+    <div className="w-full max-w-2xl">
+      <Histogram
+        title="Score distribution"
+        width="auto"
+        highlight={[3, 5]}
+        bins={[{ label: '0', value: 2 }, { value: 4 }, { value: 8 }, { value: 14 }, { label: '50', value: 20 }, { value: 16 }, { value: 9 }, { value: 5 }, { value: 3 }, { label: '100', value: 1 }]}
+      />
+    </div>
+  ),
+};
 export const HBars: StoryObj<typeof HBarList> = {
   name: 'HBarList',
   render: () => (

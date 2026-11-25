@@ -434,3 +434,79 @@ export const LongTitleNextToClose: Story = {
     await expect(close.getBoundingClientRect().left - right).toBeGreaterThanOrEqual(8);
   },
 };
+
+const PushTabOrderDemo = () => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Open details
+      </Button>
+      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+        <SheetContent mode="push" size="sm">
+          <SheetHeader>
+            <SheetTitle>Details</SheetTitle>
+            <SheetDescription>Docked next to the page.</SheetDescription>
+          </SheetHeader>
+          <Button variant="outline">Last in sheet</Button>
+        </SheetContent>
+      </Sheet>
+      <Button variant="outline">Next on page</Button>
+    </div>
+  );
+};
+
+// A docked push sheet is part of the page, not a focus trap: it follows its opener in the Tab order (opener, sheet, next on page) and the last page element leaves to the browser bar. Once it lies over page controls (phone, high zoom) it keeps Tab inside like a modal sheet, see Push over page. Under prefers-reduced-motion it appears without the slide.
+export const PushTabOrder: Story = {
+  args: {} as any,
+  render: () => <PushTabOrderDemo />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Open details' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    const last = within(dialog).getByRole('button', { name: 'Last in sheet' });
+    // The test runner keeps the viewport of the previous story: on a narrow one the sheet lies over Next on page and keeps Tab inside (Push over page).
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    last.focus();
+    await userEvent.tab();
+    if (dialog.getAttribute('aria-modal') === 'true') {
+      await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    } else {
+      await waitFor(() => expect(within(canvasElement).getByRole('button', { name: 'Next on page' })).toHaveFocus());
+    }
+  },
+};
+
+const PushOverPageDemo = () => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="flex w-full items-center justify-between gap-2">
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Open details
+      </Button>
+      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+        <SheetContent mode="push" size="sm">
+          <SheetHeader>
+            <SheetTitle>Details</SheetTitle>
+            <SheetDescription>Lies over the page, which is not pushed.</SheetDescription>
+          </SheetHeader>
+          <Button variant="outline">Last in sheet</Button>
+        </SheetContent>
+      </Sheet>
+      <Button variant="outline">Hidden on page</Button>
+    </div>
+  );
+};
+
+// A push sheet over page controls (the page is not pushed aside, or the screen is narrow) hides them: Tab and Shift+Tab stay inside and the sheet is announced as modal (UX-PKG5-01). Escape returns to the opener.
+export const PushOverPage: Story = {
+  args: {} as any,
+  render: () => <PushOverPageDemo />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Open details' }));
+    const dialog = await within(document.body).findByRole('dialog');
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-modal', 'true'), { timeout: 3000 });
+    within(dialog).getByRole('button', { name: 'Last in sheet' }).focus();
+    await userEvent.tab();
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+  },
+};

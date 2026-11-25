@@ -223,7 +223,7 @@ const Heatmap = forwardRef<HTMLDivElement, HeatmapProps>(
               <tr>
                 <td colSpan={span}>
                   {state === 'empty' ? (
-                    <DataStatePanel kind="empty" icon={<Grid3x3 className="h-icon-md w-icon-md" />} title={emptyTitle} description={emptyDescription} />
+                    <DataStatePanel kind="empty" outlined={false} icon={<Grid3x3 className="h-icon-md w-icon-md" />} title={emptyTitle} description={emptyDescription} />
                   ) : (
                     <DataStatePanel kind="error" title={errorTitle} description={errorDescription} onRetry={onRetry} />
                   )}

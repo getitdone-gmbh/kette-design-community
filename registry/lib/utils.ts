@@ -46,6 +46,12 @@ export const TOKEN_LINE_HEIGHTS = [
   'display', 'display-sm', 'lead-lg', 'code-block', 'title-lg', 'display-md', 'ui-relaxed',
 ];
 
+// Border radii the token preset adds on top of Tailwind's scale (theme.borderRadius), so a later `rounded-*` (full, none, another token) replaces a token radius such as `rounded-default` instead of losing to it in the cascade (DR-05). utils.test.ts asserts this list matches the installed preset.
+export const TOKEN_RADII = [
+  'xs', 'default', 'button', 'input', 'card', 'badge', 'checkbox', 'hairline', 'tight', 'item', 'control', 'surface', 'dialog', 'popover',
+  'logo-tile-20', 'logo-tile-24', 'logo-tile-32', 'logo-tile-40', 'logo-tile-48',
+];
+
 // Named spacing tokens of the preset, so size, padding and gap overrides (`px-0` over `px-control-px-sm`) win over the token utilities.
 const TOKEN_SPACING = [
   'micro', 'label', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl',
@@ -66,8 +72,22 @@ const twMerge = extendTailwindMerge<'typography'>({
     classGroups: {
       'font-size': [{ text: TOKEN_FONT_SIZES }],
       leading: [{ leading: TOKEN_LINE_HEIGHTS }],
-      // Token radius tiers and the `font-regular` weight, so variants can override the base.
-      rounded: [{ rounded: ['item', 'control', 'surface', 'dialog', 'popover'] }],
+      // Token radii on every side and corner group, and the `font-regular` weight, so variants and consumers can override the base.
+      rounded: [{ rounded: TOKEN_RADII }],
+      'rounded-s': [{ 'rounded-s': TOKEN_RADII }],
+      'rounded-e': [{ 'rounded-e': TOKEN_RADII }],
+      'rounded-t': [{ 'rounded-t': TOKEN_RADII }],
+      'rounded-r': [{ 'rounded-r': TOKEN_RADII }],
+      'rounded-b': [{ 'rounded-b': TOKEN_RADII }],
+      'rounded-l': [{ 'rounded-l': TOKEN_RADII }],
+      'rounded-ss': [{ 'rounded-ss': TOKEN_RADII }],
+      'rounded-se': [{ 'rounded-se': TOKEN_RADII }],
+      'rounded-ee': [{ 'rounded-ee': TOKEN_RADII }],
+      'rounded-es': [{ 'rounded-es': TOKEN_RADII }],
+      'rounded-tl': [{ 'rounded-tl': TOKEN_RADII }],
+      'rounded-tr': [{ 'rounded-tr': TOKEN_RADII }],
+      'rounded-br': [{ 'rounded-br': TOKEN_RADII }],
+      'rounded-bl': [{ 'rounded-bl': TOKEN_RADII }],
       // Focus ring widths of the preset (ring-focus 2px, ring-halo 3px), so they are widths and never read as a ring color.
       'ring-w': [{ ring: ['focus', 'halo'] }],
       'ring-offset-w': [{ 'ring-offset': ['focus'] }],

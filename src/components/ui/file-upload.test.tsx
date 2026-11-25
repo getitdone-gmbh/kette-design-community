@@ -227,3 +227,21 @@ describe('FileUpload external trigger', () => {
   });
 });
 
+
+describe('FileUploadItem icon alignment (0.45.1, ZERO-812)', () => {
+  it('centres the file icon on the name and meta row and keeps the progress below, under the text', () => {
+    const { container } = render(
+      <ul>
+        <FileUploadItem name="design.pdf" size="4.2 MB" progress={40} onRemove={() => {}} />
+      </ul>,
+    );
+    const row = container.querySelector('li') as HTMLElement;
+    expect(row).toHaveClass('grid', 'grid-cols-[auto_minmax(0,1fr)_auto]', 'items-center');
+    expect(row).not.toHaveClass('items-start');
+    const progress = screen.getByRole('progressbar').closest('[data-upload-progress]') as HTMLElement;
+    expect(progress).toHaveClass('row-start-2', 'col-start-2');
+    // Reading order: name, meta, progress, then the actions.
+    const remove = screen.getByRole('button', { name: 'Remove design.pdf' });
+    expect(progress.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

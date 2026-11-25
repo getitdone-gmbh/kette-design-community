@@ -86,7 +86,7 @@ import {
 // Classes that are legitimately not Tailwind utilities (state hooks, marker classes) or that come
 // from the CSS layers in tailwind.css rather than the utility pass. Keep this list short.
 // `card` is a plain marker class on Card; `lucide*` are the icon library's own classes.
-const NON_UTILITY = new Set<string>(['group', 'peer', 'dark', 'card', 'inverse', 'destructive']);
+const NON_UTILITY = new Set<string>(['group', 'peer', 'dark', 'card', 'inverse', 'destructive', 'snack']);
 const NON_UTILITY_PATTERN = /^lucide(-|$)/;
 
 class ResizeObserverStub {

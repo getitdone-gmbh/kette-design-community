@@ -181,6 +181,10 @@ if (hasCssVars) {
     },
     plugins: [
       ...plugins,
+      // kette-design-community only (the library adds them in its tailwind.config.cjs): `short:` matches windows up to 480px high (landscape phones, split screens), a plain variant, not `theme.screens`, because a raw screen would switch off every max-* variant.
+      plugin(({ addVariant }) => addVariant('short', '@media (max-height: 480px)')),
+      // `forced-colors:` matches Windows high contrast and other forced-colors modes. Tailwind 3.4 has it built in, 3.3 does not; the same media query either way.
+      plugin(({ addVariant }) => addVariant('forced-colors', '@media (forced-colors: active)')),
       plugin(({ addBase, addUtilities, addComponents }) => {
         addBase({
           '*, ::before, ::after': {

@@ -233,6 +233,7 @@ const WeekGrid = forwardRef<HTMLDivElement, WeekGridProps>(
                   {state === 'empty' ? (
                     <DataStatePanel
                       kind="empty"
+                      outlined={false}
                       icon={<Calendar className="h-icon-md w-icon-md" />}
                       title={emptyTitle}
                       description={emptyDescription}
@@ -480,6 +481,7 @@ const MonthGrid = forwardRef<HTMLDivElement, MonthGridProps>(
             <div role="gridcell" className={cn('border-t border-solid', edge)}>
               <DataStatePanel
                 kind="empty"
+                outlined={false}
                 icon={<Calendar className="h-icon-md w-icon-md" />}
                 title={emptyTitle}
                 description={emptyDescription}

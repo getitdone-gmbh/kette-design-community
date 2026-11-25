@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Download, Trash2, UserPlus } from 'lucide-react';
 
@@ -17,7 +17,7 @@ describe('BatchBar', () => {
     render(<BatchBar selectedCount={3} onClear={() => {}} actions={actions()} />);
     expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toHaveClass('bg-background-brand-subtle', 'border-border-brand', 'rounded-surface');
     expect(screen.getByRole('status')).toHaveTextContent('3 selected');
-    expect(screen.getByRole('status')).toHaveClass('typography-ui-semibold');
+    expect(screen.getByText('3 selected')).toHaveClass('typography-ui-semibold');
   });
 
   it('renders a chip slot after the count and nothing without it', () => {
@@ -26,7 +26,23 @@ describe('BatchBar', () => {
     rerender(<BatchBar selectedCount={3} onClear={() => {}} actions={actions()} chip={<span>All 120 matches</span>} />);
     const chip = container.querySelector('[data-batch-chip]') as HTMLElement;
     expect(chip).toHaveTextContent('All 120 matches');
-    expect(screen.getByRole('status').nextElementSibling).toBe(chip);
+    expect(screen.getByText('3 selected').nextElementSibling).toBe(chip);
+  });
+
+  it('puts count and chip into one polite status region (KETTE-91 A11Y-KB-01)', () => {
+    const { container, rerender } = render(<BatchBar selectedCount={3} onClear={() => {}} actions={actions()} chip={<span>2 on other pages</span>} />);
+    const status = screen.getByRole('status');
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(status).toHaveTextContent('3 selected');
+    expect(status).toHaveTextContent('2 on other pages');
+    expect(status).toContainElement(container.querySelector('[data-batch-chip]') as HTMLElement);
+    // Only the chip changes: the text change happens inside the live region, the count text node stays untouched.
+    const count = screen.getByText('3 selected');
+    rerender(<BatchBar selectedCount={3} onClear={() => {}} actions={actions()} chip={<span>5 on other pages</span>} />);
+    expect(screen.getByRole('status')).toBe(status);
+    expect(screen.getByText('3 selected')).toBe(count);
+    expect(status).toHaveTextContent('5 on other pages');
   });
 
   it('clears from the Clear button and the leading checkbox', async () => {
@@ -175,5 +191,142 @@ describe('BatchBar href actions (ZERO-575)', () => {
     expect(audit.tagName).toBe('A');
     expect(audit).toHaveAttribute('href', '/audit');
     expect(screen.getByRole('menuitem', { name: 'Archive' }).tagName).toBe('DIV');
+  });
+
+  describe('More actions trigger without an enabled action (KETTE-83)', () => {
+    const allDisabled: BatchBarAction[] = [
+      { id: 'archive', label: 'Archive', disabled: true, onSelect: () => {} },
+      { id: 'merge', label: 'Merge', disabled: true, onSelect: () => {} },
+    ];
+
+    it('is gated with aria-disabled, stays focusable and does not open', async () => {
+      const user = userEvent.setup();
+      render(<BatchBar selectedCount={2} onClear={() => {}} moreActions={allDisabled} />);
+      const trigger = screen.getByRole('button', { name: 'More actions' });
+      expect(trigger).toHaveAttribute('aria-disabled', 'true');
+      expect(trigger).not.toBeDisabled();
+      trigger.focus();
+      expect(trigger).toHaveFocus();
+      await user.click(trigger);
+      await user.keyboard('{Enter}');
+      await user.keyboard('{ArrowDown}');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('opens as soon as one action is enabled', async () => {
+      const user = userEvent.setup();
+      render(<BatchBar selectedCount={2} onClear={() => {}} moreActions={[...allDisabled, { id: 'x', label: 'Export', onSelect: () => {} }]} />);
+      const trigger = screen.getByRole('button', { name: 'More actions' });
+      expect(trigger).not.toHaveAttribute('aria-disabled');
+      await user.click(trigger);
+      expect(await screen.findByRole('menu')).toBeInTheDocument();
+    });
+
+    it('stays closed when an open menu is blocked and an action is enabled again (KETTE-94 QA-KB-03)', async () => {
+      const user = userEvent.setup();
+      const enabled = (disabled: boolean): BatchBarAction[] => [
+        { id: 'archive', label: 'Archive', disabled, onSelect: () => {} },
+        { id: 'merge', label: 'Merge', disabled, onSelect: () => {} },
+      ];
+      const { rerender } = render(<BatchBar selectedCount={2} onClear={() => {}} moreActions={enabled(false)} />);
+      const trigger = screen.getByRole('button', { name: 'More actions' });
+      await user.click(trigger);
+      expect(await screen.findByRole('menu')).toBeInTheDocument();
+      rerender(<BatchBar selectedCount={2} onClear={() => {}} moreActions={enabled(true)} />);
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+      rerender(<BatchBar selectedCount={2} onClear={() => {}} moreActions={[...enabled(true), { id: 'x', label: 'Export', onSelect: () => {} }]} />);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'More actions' })).toHaveAttribute('aria-expanded', 'false');
+      // It still opens on demand afterwards.
+      await user.click(screen.getByRole('button', { name: 'More actions' }));
+      expect(await screen.findByRole('menu')).toBeInTheDocument();
+    });
+
+    it('counts actions that overflow from actions too', () => {
+      render(
+        <BatchBar
+          selectedCount={2}
+          onClear={() => {}}
+          maxInline={1}
+          actions={[{ id: 'a', label: 'Assign', onSelect: () => {} }, { id: 'b', label: 'Export', disabled: true }]}
+        />,
+      );
+      expect(screen.getByRole('button', { name: 'More actions' })).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+});
+
+const more = (disabled: boolean[]): BatchBarAction[] => disabled.map((d, i) => ({ id: `a${i}`, label: `Action ${i}`, disabled: d, onSelect: () => {} }));
+const bar = (moreActions: BatchBarAction[], extra: Record<string, unknown> = {}) => <BatchBar selectedCount={2} onClear={() => {}} moreActions={moreActions} {...extra} />;
+
+describe('BatchBar More menu sequences (QA-K2-01)', () => {
+  it('A: open, all disabled, enable one, disable all, enable all: never reopens by itself', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(bar(more([false, false])));
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+    for (const s of [[true, true], [false, true], [true, true], [false, false], [true, false]]) {
+      rerender(bar(more(s)));
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    }
+    expect(screen.getByRole('button', { name: 'More actions' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('B: blocked trigger does not open on click, Enter, Space or ArrowDown', async () => {
+    const user = userEvent.setup();
+    render(bar(more([true, true])));
+    const t = screen.getByRole('button', { name: 'More actions' });
+    await user.click(t);
+    t.focus();
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+    await user.keyboard('{ArrowDown}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(t).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('C: open, menu emptied (no more actions), actions come back: menu must not pop open by itself', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(bar(more([false, false])));
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+    rerender(bar([]));
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    rerender(bar(more([false, false])));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('D: open, whole bar unmounts and remounts: closed', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(bar(more([false])));
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+    rerender(<div />);
+    rerender(bar(more([false])));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('E: focus returns to the trigger (or stays in the bar) when an open menu gets blocked', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(bar(more([false, false])));
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    await screen.findByRole('menu');
+    await user.keyboard('{ArrowDown}');
+    rerender(bar(more([true, true])));
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' }));
+  });
+
+  it('F: maxInline change moves the last enabled action inline while open: menu with only disabled items closes', async () => {
+    const user = userEvent.setup();
+    const acts: BatchBarAction[] = [{ id: 'x', label: 'X', onSelect: () => {} }, { id: 'y', label: 'Y', onSelect: () => {} }];
+    const { rerender } = render(bar(more([true]), { actions: acts, maxInline: 1 }));
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+    rerender(bar(more([true]), { actions: acts, maxInline: 2 }));
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
   });
 });

@@ -59,6 +59,8 @@ export interface CodeSnippetProps
   label?: React.ReactNode;
   // Block only. `block` uses the code block type role (12/19, Figma Code block). `compact` keeps the earlier smaller code size.
   textSize?: 'block' | 'compact';
+  // Block and inline. Long lines break onto the next line (also inside a long word or URL) instead of scrolling sideways. Then nothing scrolls, so the code area is not a tab stop. Whitespace and line breaks of the source are kept, line numbers are left out. Default off.
+  wrap?: boolean;
 }
 
 // The snippet clips its content (overflow-hidden), so the focus ring of the scrollable code area is drawn inside it.
@@ -165,6 +167,7 @@ const CodeSnippet = React.forwardRef<HTMLDivElement, CodeSnippetProps>(
       highlight,
       label,
       textSize = 'block',
+      wrap = false,
       ...props
     },
     ref,
@@ -252,8 +255,10 @@ const CodeSnippet = React.forwardRef<HTMLDivElement, CodeSnippetProps>(
           {...props}
         >
           <code
-            className={cn('min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-item typography-code font-normal', focusRingInset)}
-            tabIndex={0}
+            className={cn('min-w-0 flex-1 rounded-item typography-code font-normal', wrap ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : ['overflow-x-auto whitespace-nowrap', focusRingInset])}
+            // A scrolling code line is a keyboard stop (WCAG 2.1.1); a wrapping one scrolls nothing and is not.
+            tabIndex={wrap ? undefined : 0}
+            role={wrap ? 'group' : undefined}
             aria-label={language ?? l.code}
           >
             {content}
@@ -267,7 +272,8 @@ const CodeSnippet = React.forwardRef<HTMLDivElement, CodeSnippetProps>(
     const lines = code.split('\n');
     const typeRole = textSize === 'compact' ? 'typography-code' : 'typography-code-block';
     const hasHeader = label !== undefined && label !== null && label !== false;
-    const gutter = lineNumbers ? (
+    // Wrapped lines no longer line up with a separate number column, so `wrap` leaves the line numbers out.
+    const gutter = lineNumbers && !wrap ? (
       <pre
         aria-hidden="true"
         data-gutter=""
@@ -284,13 +290,15 @@ const CodeSnippet = React.forwardRef<HTMLDivElement, CodeSnippetProps>(
     ) : null;
     const codeArea = (
       <pre
-        tabIndex={0}
+        // A scrolling code area is a keyboard stop (WCAG 2.1.1); a wrapping one scrolls nothing and is not.
+        tabIndex={wrap ? undefined : 0}
+        role={wrap ? 'group' : undefined}
         aria-label={language ?? l.code}
         className={cn(
-          'min-w-0 flex-1 overflow-x-auto py-4 pl-4 font-normal',
+          'min-w-0 flex-1 py-4 pl-4 font-normal',
+          wrap ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : ['overflow-x-auto', focusRingInset],
           typeRole,
           hasHeader ? 'pr-4' : 'pr-12',
-          focusRingInset,
         )}
       >
         <code>{content}</code>

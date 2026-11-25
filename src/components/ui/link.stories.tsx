@@ -15,6 +15,7 @@ const meta = {
     size: { control: { type: 'select' }, options: ['sm', 'md', 'lg', 'xl', '2xl'] },
     disabled: { control: { type: 'boolean' } },
     dotLeading: { control: { type: 'boolean' } },
+    inline: { control: { type: 'boolean' }, description: 'Link inside running text: wraps over lines, takes font and line height of the text, always underlined.' },
   },
 } satisfies Meta<typeof Link>;
 
@@ -118,6 +119,19 @@ export const MediumWeightNormalTracking: Story = {
   render: () => (
     <p className="typography-body tracking-wide">
       Read the <Link href="#" typography="inherit" weight="medium" tracking="normal">changelog</Link> or the <Link href="#" typography="inherit" weight="medium" tracking="inherit">release notes</Link>.
+    </p>
+  ),
+};
+
+// A link in running text wraps over lines with the paragraph and keeps its size and line height.
+export const InlineInText: Story = {
+  render: () => (
+    <p className="max-w-xs typography-text-small text-text-default">
+      Before you send the first offer, read the{' '}
+      <Link href="#" inline>
+        terms of service for freelancers and agencies
+      </Link>{' '}
+      and the privacy notice.
     </p>
   ),
 };

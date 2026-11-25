@@ -23,6 +23,7 @@ const meta = {
     readOnly: { control: { type: 'boolean' }, description: 'Shows the value without letting it change.', table: { defaultValue: { summary: 'false' } } },
     actions: { control: { type: 'boolean' }, description: 'Cancel and Apply row: picking only changes a draft until Apply.' },
     presets: { description: 'Quick choices such as the last 7 days.' },
+    weekStartsOn: { control: { type: 'select' }, options: [0, 1, 6], description: 'First day of the week, 0 Sunday to 6 Saturday. Unset follows the locale.' },
   },
   decorators: [
     // The single story view keeps room for the open calendar; a docs page lets the stage grow when it opens.
@@ -39,6 +40,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Single: Story = { args: { defaultValue: today } };
 export const Placeholder: Story = {};
+// The week starts on the day of the user's format settings, here Sunday.
+export const WeekStartsOnSunday: Story = { args: { defaultValue: today, weekStartsOn: 0 } };
 export const Invalid: Story = { args: { invalid: true } };
 export const Disabled: Story = { args: { disabled: true } };
 export const ReadOnly: Story = { args: { readOnly: true, defaultValue: today } };

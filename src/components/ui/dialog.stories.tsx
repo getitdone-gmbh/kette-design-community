@@ -135,6 +135,42 @@ export const RadioGroupInitialFocus: Story = {
   ),
 };
 
+const shortFields = Array.from({ length: 12 }, (_, index) => `Field ${index + 1}`);
+
+// Short window (up to 480px high): the whole panel scrolls while header and footer stay in view. The close cross sticks with the header and stays visible and clickable at every scroll position (KETTE-94 QA-KB-04, A11Y-KB-05).
+export const ScrollableShortStickyClose: Story = {
+  parameters: { layout: 'fullscreen', stickyClose: { width: 1024, height: 480 } },
+  render: () => (
+    <Dialog defaultOpen>
+      <DialogTrigger asChild>
+        <Button>Open dialog</Button>
+      </DialogTrigger>
+      <DialogContent scrollable>
+        <DialogHeader>
+          <DialogTitle>Edit record</DialogTitle>
+          <DialogDescription>Scroll the panel: title, cross and actions stay in view.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <form className="flex flex-col gap-4">
+            {shortFields.map((label) => (
+              <Label key={label} className="flex flex-col gap-1">
+                {label}
+                <Input />
+              </Label>
+            ))}
+          </form>
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ),
+};
+
 // Opt-in for dialogs without DialogBody: first form control wins over the tabs.
 export const FirstFieldFocus: Story = {
   render: () => (

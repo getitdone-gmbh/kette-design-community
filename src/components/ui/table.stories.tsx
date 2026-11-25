@@ -8,6 +8,7 @@ import { Checkbox } from './checkbox';
 import { Badge } from './badge';
 import { Chip } from './chip';
 import { LogoTile, type LogoTileColor } from './logo-tile';
+import { StatusDot } from './status-dot';
 
 import {
   type SortDirection,
@@ -43,6 +44,8 @@ const meta = {
     maxHeight: { description: 'Height cap of the scroll area; the table scrolls inside itself above it.' },
     elevated: { control: { type: 'boolean' }, description: 'Shadow around the table.' },
     scrollLabel: { description: 'Accessible name of the scroll area when the table overflows.' },
+    bordered: { control: { type: 'boolean' }, description: 'Own outer frame; false inside a card that already draws the edge.' },
+    phone: { control: { type: 'select' }, options: ['scroll', 'list'], description: 'Below 768px of its own width: `scroll` keeps the table and scrolls sideways, `list` shows a row list (lead, title, subtitle, value, chevron). Place cells with the `phone` prop of the cells.' },
   },
 } satisfies Meta<typeof Table>;
 
@@ -1338,4 +1341,203 @@ export const ScrollRegion: Story = {
     region.focus();
     await expect(region).toHaveFocus();
   },
+};
+
+// A lead cell in a narrow column (320px frame): with wrap the name and the supporting line break over lines instead of being cut. Only wrapping rows here, a cut row would widen the table to its full text.
+export const LeadCellWrap: Story = {
+  render: () => (
+    <div className="max-w-xs">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Demand</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableLeadCell wrap name="Senior Frontend Engineer for the payments platform" supportingText="Berlin, remote possible, starts in March" />
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  ),
+};
+
+// Inside a card the card is the edge: bordered false drops the frame of the table. The muted head fills the head row only, the row heads of the body stay on the surface.
+export const InCardWithRowHeads: Story = {
+  render: () => (
+    <div className="max-w-md rounded-surface border border-solid border-border-default p-4">
+      <Table bordered={false} headerTone="muted">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Candidate</TableHead>
+            <TableHead align="right">Score</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[
+            ['Anna Becker', '92'],
+            ['Ben Okafor', '87'],
+            ['Carla Diaz', '81'],
+          ].map(([name, score]) => (
+            <TableRow key={name}>
+              <TableHead scope="row">{name}</TableHead>
+              <TableCell className="text-right">{score}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ),
+};
+
+// Phone list (ZERO-911): below 768px of its own width a `phone="list"` table shows a full-width row list. The frame here is 390px wide, so the list shows at any viewport; the test runner also checks 320px.
+const pipelines = [
+  { name: 'Frontend Dev React', client: 'Nordlicht AG', stage: 'Interview', tone: 'success', value: '14 applic.', updated: '2026-11-20' },
+  { name: 'Agile Coach for a very long programme name that has to truncate', client: 'Digitalwerk KG, Business Unit Platform Services', stage: 'Review', tone: 'warning', value: '3 applic.', updated: '2026-11-18' },
+  { name: 'Data Engineer', client: 'Globex AG', stage: 'Draft', tone: 'neutral', value: '0 applic.', updated: '2026-11-02' },
+] as const;
+
+const phoneListInvariants = { widths: [390, 320], noOverflow: ['[data-phone=list]'], withinViewport: ['[data-slot=table-row-chevron] svg'] };
+
+export const PhoneList: Story = {
+  name: 'Phone list',
+  parameters: { layout: 'padded', layoutInvariants: phoneListInvariants },
+  render: () => (
+    <div className="w-full max-w-[390px]">
+      <Table phone="list" density="zero">
+        <TableCaption className="sr-only">Pipelines</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead phone="hidden">Stage</TableHead>
+            <TableHead>Pipeline</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Updated</TableHead>
+            <TableHead align="right">Applications</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pipelines.map((p) => (
+            // `onClick` makes the whole row the target and adds the chevron in the list; actions live on the detail page.
+            <TableRow key={p.name} onClick={() => undefined} aria-label={`Open ${p.name}`}>
+              <TableCell phone="lead">
+                <StatusDot tone={p.tone} size="md" label={p.stage} />
+              </TableCell>
+              <TableCell phone="title" className="font-medium">{p.name}</TableCell>
+              <TableCell phone="subtitle">{p.client}</TableCell>
+              <TableCell phone="hidden">{p.updated}</TableCell>
+              <TableCell phone="value" align="right">{p.value}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByRole('table')).toBeInTheDocument();
+    expect(canvas.getAllByRole('row')).toHaveLength(4);
+    expect(canvasElement.querySelectorAll('[data-slot="table-row-chevron"]')).toHaveLength(3);
+    // Each row is at least 52px high and nothing scrolls sideways.
+    await waitFor(() => {
+      const rows = Array.from(canvasElement.querySelectorAll('tbody tr'));
+      rows.forEach((row) => expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(52));
+      const region = canvasElement.querySelector('[data-phone=list]') as HTMLElement;
+      expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth);
+    });
+  },
+};
+
+// Without phone props the row places its cells by position: first title, second subtitle, last value, the rest hide. A TableLeadCell brings its logo and supporting line; select cells hide.
+export const PhoneListDefaults: Story = {
+  name: 'Phone list defaults',
+  parameters: { layout: 'padded', layoutInvariants: phoneListInvariants },
+  render: () => (
+    <div className="w-full max-w-[390px] space-y-6">
+      <Table phone="list">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Invoice</TableHead>
+            <TableHead>Method</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead align="right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {invoices.slice(0, 3).map((invoice) => (
+            <TableRow key={invoice.invoice} onClick={() => undefined} aria-label={`Open ${invoice.invoice}`}>
+              <TableCell>{invoice.invoice}</TableCell>
+              <TableCell>{invoice.paymentMethod}</TableCell>
+              <TableCell>{invoice.paymentStatus}</TableCell>
+              <TableCell align="right">{invoice.totalAmount}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Table phone="list">
+        <TableHeader>
+          <TableRow>
+            <TableHead select aria-label="Select all companies" />
+            <TableHead>Company</TableHead>
+            <TableHead>City</TableHead>
+            <TableHead align="right">Revenue</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[
+            { name: 'Nordlicht AG', site: 'nordlicht.de', city: 'Hamburg', revenue: '1.2m', color: 1 as LogoTileColor },
+            { name: 'Digitalwerk KG', site: 'digitalwerk.de', city: 'Munich', revenue: '840k', color: 3 as LogoTileColor },
+          ].map((c) => (
+            <TableRow key={c.name}>
+              <TableCell select>
+                <Checkbox aria-label={`Select ${c.name}`} />
+              </TableCell>
+              <TableLeadCell name={c.name} supportingText={c.site} logo={<LogoTile color={c.color}>{c.name[0]}</LogoTile>} />
+              <TableCell>{c.city}</TableCell>
+              <TableCell align="right">{c.revenue}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ),
+};
+
+// Every list has empty, loading and error states. State rows span the whole list row and wrap.
+export const PhoneListStates: Story = {
+  name: 'Phone list states',
+  parameters: { layout: 'padded', layoutInvariants: { widths: [390, 320], noOverflow: ['[data-phone=list]'] } },
+  render: () => (
+    <div className="w-full max-w-[390px] space-y-6">
+      <Table phone="list" scrollLabel="Empty pipelines">
+        <TableBody>
+          <TableEmpty columns={3} title="No pipelines yet" description="Create a pipeline to see it here." />
+        </TableBody>
+      </Table>
+      <Table phone="list" aria-busy>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={3}>
+              <TableLoading columns={3} rows={3} skeleton="row" />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <Table phone="list">
+        <TableBody>
+          <TableError columns={3} title="Pipelines not loaded" onRetry={() => undefined} />
+        </TableBody>
+      </Table>
+      <Table phone="list">
+        <TableBody>
+          <TableRow onClick={() => undefined} aria-label="Open Frontend Dev React">
+            <TableCell>Frontend Dev React</TableCell>
+            <TableCell>Nordlicht AG</TableCell>
+            <TableCell align="right">14 applic.</TableCell>
+          </TableRow>
+          <TableLoadingMore columns={3} onLoadMore={() => undefined} />
+        </TableBody>
+      </Table>
+    </div>
+  ),
 };

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "field",
+  "title": "Field",
+  "description": "Field from the Get IT Done design system.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/input.json",
+    "https://zero-design.itdone.de/r/label.json",
+    "https://zero-design.itdone.de/r/utils.json",
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/field.tsx",
+      "content": "'use client';\n\nimport * as React from 'react';\n\nimport { cn } from '@/lib/utils';\nimport { InputHint } from '@/components/ui/input';\nimport { Label } from '@/components/ui/label';\n\n// Props a Field hands to its control: id for the label, invalid and required state, and the ids that describe it.\nexport interface FieldControlProps {\n  id: string;\n  'aria-invalid'?: true;\n  'aria-describedby'?: string;\n  'aria-required'?: true;\n}\n\n// Ids around the control, second argument of the render function (for wrappers that name the control with aria-labelledby).\nexport interface FieldIds {\n  labelId: string;\n  errorId: string;\n  hintId: string;\n}\n\nexport interface FieldProps {\n  // Id of the control. The label, error and hint ids derive from it (`<id>-label`, `<id>-error`, `<id>-hint`).\n  id: string;\n  label: React.ReactNode;\n  // Adds the destructive star to the label (hidden from assistive tech) and aria-required to the control.\n  required?: boolean;\n  hint?: React.ReactNode;\n  // Shown above the hint while set. The control gets aria-invalid.\n  error?: React.ReactNode | null;\n  // Spans every column of the form grid.\n  wide?: boolean;\n  // Set to false when something else already names the error (for example a zero SettingsRow after a check): the error stays visible but is not in aria-describedby.\n  describeError?: boolean;\n  className?: string;\n  // The control as a single element (its props are merged), or a render function for controls behind a wrapper.\n  children: React.ReactElement | ((control: FieldControlProps, ids: FieldIds) => React.ReactNode);\n}\n\n// Form field without react-hook-form: label above (8), the control, then error and hint (4). Use FormField for react-hook-form.\nfunction Field({ id, label, required = false, hint, error, wide = false, describeError = true, className, children }: FieldProps) {\n  const labelId = `${id}-label`;\n  const errorId = `${id}-error`;\n  const hintId = `${id}-hint`;\n  const hasError = error !== undefined && error !== null && error !== false && error !== '';\n  const describedBy = [hasError && describeError ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') || undefined;\n  const control: FieldControlProps = {\n    id,\n    'aria-invalid': hasError ? true : undefined,\n    'aria-describedby': describedBy,\n    'aria-required': required ? true : undefined,\n  };\n  let content: React.ReactNode;\n  if (typeof children === 'function') {\n    content = children(control, { labelId, errorId, hintId });\n  } else {\n    const own = (children.props as { 'aria-describedby'?: string })['aria-describedby'];\n    content = React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {\n      ...control,\n      'aria-describedby': [describedBy, own].filter(Boolean).join(' ') || undefined,\n    });\n  }\n  return (\n    <div data-slot=\"field\" className={cn('flex min-w-0 flex-col gap-2', wide && 'col-span-full', className)}>\n      <Label id={labelId} htmlFor={id} required={required}>\n        {label}\n      </Label>\n      <div className=\"flex flex-col gap-1\">\n        {content}\n        {hasError ? (\n          <InputHint id={errorId} invalid data-field-error=\"\">\n            {error}\n          </InputHint>\n        ) : null}\n        {hint ? <InputHint id={hintId}>{hint}</InputHint> : null}\n      </div>\n    </div>\n  );\n}\nField.displayName = 'Field';\n\nexport { Field };\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

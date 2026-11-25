@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 
-// A popup layer inside a dialog or sheet (select list, menu, popover, combobox list) owns the first Escape.
+// A popup layer inside a dialog or sheet (select list, popover or menu in its popper, combobox list) owns the first Escape.
+// A static role="menu" that is part of the sheet (a user menu placed in a phone sheet) is no popup layer: Escape closes the sheet (ZERO-830). Radix menus always sit in a popper wrapper.
 // A chart plot with an open tooltip also owns the first Escape: it hides the tooltip.
 // The Radix Select trigger keeps focus while its list is open and reports it as aria-expanded.
-const NESTED_LAYER = '[data-radix-popper-content-wrapper],[role="listbox"],[role="menu"],button[role="combobox"][aria-expanded="true"],[data-chart-tooltip-open]';
+const NESTED_LAYER = '[data-radix-popper-content-wrapper],[role="listbox"],button[role="combobox"][aria-expanded="true"],[data-chart-tooltip-open]';
 
 // Marks a list that stays visible while its dialog or sheet is open. It never owns Escape.
 export const PERSISTENT_LIST = 'data-persistent-list';

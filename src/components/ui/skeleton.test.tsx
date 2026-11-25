@@ -19,6 +19,24 @@ describe('Skeleton component', () => {
     expect(screen.getByTestId('skeleton')).toHaveClass('h-12', 'w-12', 'rounded-full', 'animate-pulse');
   });
 
+  // DR-05 (ZERO-806): a pill placeholder for a chip needs its own radius; the block's token radii must give way
+  it('lets a consumer className radius replace the block radius', () => {
+    render(<Skeleton className="h-6 w-24 rounded-full" data-testid="skeleton" />);
+    const classes = screen.getByTestId('skeleton').className.split(/\s+/).filter((c) => /^rounded(-|$)/.test(c));
+    expect(classes).toEqual(['rounded-full']);
+  });
+
+  it('takes the radius from the radius prop (block variant only)', () => {
+    const { rerender } = render(<Skeleton radius="full" data-testid="skeleton" />);
+    expect(screen.getByTestId('skeleton')).toHaveClass('rounded-full');
+    expect(screen.getByTestId('skeleton')).not.toHaveClass('rounded-default');
+    rerender(<Skeleton radius="item" data-testid="skeleton" />);
+    expect(screen.getByTestId('skeleton')).toHaveClass('rounded-item');
+    rerender(<Skeleton radius="tight" className="rounded-control" data-testid="skeleton" />);
+    expect(screen.getByTestId('skeleton')).toHaveClass('rounded-control');
+    expect(screen.getByTestId('skeleton')).not.toHaveClass('rounded-tight');
+  });
+
   // The fill is a token with light and dark values, never a raw palette class.
   it('applies the token-driven background, never a raw Tailwind palette color class (TABLE-MAT-02)', () => {
     render(<Skeleton data-testid="skeleton" />);

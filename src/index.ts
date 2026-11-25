@@ -74,6 +74,8 @@ export * from './components/ui/feed-item';
 export * from './components/ui/file-icon';
 export * from './components/ui/file-upload';
 export * from './components/ui/filter-chip-bar';
+export * from './components/ui/field';
+export * from './components/ui/form-error-summary';
 export * from './components/ui/form-section';
 export * from './components/ui/heatmap';
 export * from './components/ui/help-icon';

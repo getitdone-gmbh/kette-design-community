@@ -613,6 +613,15 @@ describe('Chip in narrow containers', () => {
     expect(meta).not.toHaveClass('text-text-muted');
   });
 
+  it('hit chip: the meta follows the hit text colour, not the muted grey (KETTE-90)', () => {
+    const { container } = render(<Chip label="React" meta="3+ yrs" hit />);
+    expect(container.querySelector('[data-chip-meta]')).toHaveClass('text-current');
+    expect(container.querySelector('[data-chip-meta]')).not.toHaveClass('text-text-muted');
+    // Hierarchy: medium label, regular meta (DR-K2-05)
+    expect(container.firstElementChild).toHaveClass('font-medium');
+    expect(container.querySelector('[data-chip-meta]')).toHaveClass('font-regular');
+  });
+
   it('neutral chips keep the muted secondary text', () => {
     const { container } = render(<Chip label="Label" meta="3+ yrs" />);
     expect(container.querySelector('[data-chip-meta]')).toHaveClass('text-text-muted');
@@ -632,5 +641,24 @@ describe('Chip disabled click guard (0.28.1)', () => {
     render(<Chip label="Design" disabled onClick={onClick} />);
     fireEvent.click(screen.getByText('Design'));
     expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('Chip primary variant and remove button contrast (KETTE-77)', () => {
+  it('primary fills with the brand primary role, which is violet in runzero', () => {
+    const { container } = render(<Chip variant="primary" label="Brand" />);
+    expect(container.firstChild).toHaveClass('bg-primary', 'text-primary-foreground');
+  });
+
+  it.each(['primary', 'info', 'success', 'warning', 'destructive'] as const)('%s: the remove cross takes the on-fill text colour', (variant) => {
+    render(<Chip variant={variant} label="Design" onRemove={() => {}} />);
+    const button = screen.getByRole('button', { name: /Design/ });
+    expect(button).toHaveClass('text-current');
+    expect(button).not.toHaveClass('text-icon-subtle');
+  });
+
+  it('keeps the subtle icon colour on neutral variants', () => {
+    render(<Chip label="Design" onRemove={() => {}} />);
+    expect(screen.getByRole('button', { name: /Design/ })).toHaveClass('text-icon-subtle');
   });
 });

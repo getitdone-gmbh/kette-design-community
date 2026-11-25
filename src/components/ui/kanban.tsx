@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
   type PointerSensorOptions,
 } from '@dnd-kit/core';
-import { Plus } from 'lucide-react';
+import { ArrowDownToLine, Plus } from 'lucide-react';
 import {
   Children,
   createContext,
@@ -39,6 +39,7 @@ import { focusRing, transitionBase } from '../../lib/recipes';
 import { cn } from '../../lib/utils';
 import type { HeadingTag } from './heading-tag';
 import { DataStatePanel, SkeletonBar } from './data-state-panel';
+import type { LabelProp } from './labels';
 import { useLabels, usePreset } from './labels-context';
 
 export interface KanbanMove {
@@ -52,6 +53,17 @@ export interface KanbanMove {
 interface DropTarget {
   columnId: string;
   index: number;
+  // The column takes no cards from other columns (KanbanColumn dropDisabled): no drop marker, a release puts the card back.
+  refused?: boolean;
+}
+
+// Announcement for a card let go over a column with dropDisabled: a string, or a function of the card title and the origin column name.
+export type KanbanDropDisabledText = LabelProp<[title: string | undefined, origin: string]>;
+
+interface KanbanColumnOptions {
+  dropDisabled: boolean;
+  dropDisabledText?: KanbanDropDisabledText;
+  dropLabel?: string;
 }
 
 type KanbanColumnWidth = 'fixed' | 'fluid';
@@ -69,6 +81,7 @@ interface KanbanContextValue {
   registerFace: (id: string, face: ReactNode) => void;
   // A move made outside the board's own drag and keyboard model (the "Move to" menu): announces it and returns focus to the moved card.
   noteMove: (cardId: string, columnLabel: string) => void;
+  registerColumn: (id: string, options: KanbanColumnOptions | null) => void;
 }
 
 const KanbanContext = createContext<KanbanContextValue | null>(null);
@@ -92,6 +105,7 @@ const standaloneKanban: KanbanContextValue = {
   getBoard: () => null,
   registerFace: () => undefined,
   noteMove: () => undefined,
+  registerColumn: () => undefined,
 };
 
 // For KanbanMoveToMenu: reports a menu move to the surrounding Kanban. A no-op outside a Kanban.
@@ -262,6 +276,7 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
     // Touch lists are emptied after the event, so the press point is stored when it happens.
     const pointerRef = useRef<{ x: number; y: number } | null>(null);
     const faces = useRef(new Map<string, ReactNode>());
+    const columnOptions = useRef(new Map<string, KanbanColumnOptions>());
     const [dragId, setDragId] = useState<string | null>(null);
     interactingRef.current = Boolean(dragId || grabbedId);
     // Auto-scroll is armed once the pointer moved KANBAN_AUTOSCROLL_ARM_DISTANCE after the drag started.
@@ -287,12 +302,23 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
       return { el, column, columnId: column.dataset.columnId ?? '', index: cardElements(column).indexOf(el), others: siblings };
     }, []);
 
-    const describe = useCallback((t: DropTarget) => {
+    const columnName = useCallback((columnId: string) => {
       const board = boardRef.current;
-      if (!board) return '';
-      const column = columnElements(board).find((c) => c.dataset.columnId === t.columnId);
-      return column ? l.kanbanPosition(column.getAttribute('aria-label') ?? t.columnId, t.index + 1) : '';
-    }, [l]);
+      const column = board ? columnElements(board).find((c) => c.dataset.columnId === columnId) : undefined;
+      // Announcements say the visible title; the label may carry more (e.g. the stage state) for the region name.
+      return column ? column.dataset.columnTitle ?? column.getAttribute('aria-label') ?? columnId : null;
+    }, []);
+
+    const describe = useCallback((t: DropTarget) => {
+      const name = columnName(t.columnId);
+      return name == null ? '' : l.kanbanPosition(name, t.index + 1);
+    }, [columnName, l]);
+
+    // A column with dropDisabled refuses cards from other columns; its own cards still reorder and leave.
+    const refuses = useCallback(
+      (cardId: string, columnId: string) => Boolean(columnOptions.current.get(columnId)?.dropDisabled) && findCard(cardId)?.columnId !== columnId,
+      [findCard],
+    );
 
     const grab = useCallback(
       (id: string) => {
@@ -318,7 +344,13 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
     const finish = useCallback(
       (id: string, next: DropTarget) => {
         const info = findCard(id);
-        if (info && onMove) {
+        const refused = Boolean(info) && refuses(id, next.columnId);
+        if (info && onMove && refused) {
+          const title = info.el.dataset.cardTitle;
+          const origin = columnName(info.columnId) ?? info.columnId;
+          const text = columnOptions.current.get(next.columnId)?.dropDisabledText;
+          setAnnouncement(text === undefined ? l.kanbanDropDisabled(columnName(next.columnId) ?? next.columnId, title, origin) : typeof text === 'string' ? text : text(title, origin));
+        } else if (info && onMove) {
           const unchanged = info.columnId === next.columnId && info.index === next.index;
           if (!unchanged) {
             leftOrigin.current = false;
@@ -329,12 +361,12 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
             setAnnouncement(l.kanbanDroppedInPlace);
           }
         }
-        setFocusAfterMove({ id, fromColumnId: info && info.columnId !== next.columnId ? info.columnId : undefined });
+        setFocusAfterMove({ id, fromColumnId: info && !refused && info.columnId !== next.columnId ? info.columnId : undefined });
         setGrabbedId(null);
         targetRef.current = null;
         setTarget(null);
       },
-      [describe, findCard, onMove, l],
+      [columnName, describe, findCard, onMove, refuses, l],
     );
 
     const commit = useCallback(() => {
@@ -345,15 +377,30 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
       (next: DropTarget | null) => {
         const prev = targetRef.current;
         if (prev?.columnId === next?.columnId && prev?.index === next?.index) return;
-        targetRef.current = next;
-        setTarget(next);
-        if (next && grabbedId) setAnnouncement(describe(next));
+        const marked = next && grabbedId && refuses(grabbedId, next.columnId) ? { ...next, refused: true } : next;
+        targetRef.current = marked;
+        setTarget(marked);
+        if (!marked || !grabbedId) return;
+        // Over a refusing column the position does not matter: it is announced once on entering it.
+        if (marked.refused) {
+          if (!(prev?.refused && prev.columnId === marked.columnId)) setAnnouncement(l.kanbanDropDisabledTarget(columnName(marked.columnId) ?? marked.columnId));
+        } else {
+          // A card from another column hears the drop label in place of the column name, like the sighted user sees it in the marker; the label names the column already, so it is not said twice.
+          const dropLabel = columnOptions.current.get(marked.columnId)?.dropLabel;
+          const fromOther = dropLabel ? findCard(grabbedId)?.columnId !== marked.columnId : false;
+          setAnnouncement(fromOther && dropLabel ? l.kanbanPosition(dropLabel, marked.index + 1) : describe(marked));
+        }
       },
-      [describe, grabbedId],
+      [columnName, describe, findCard, grabbedId, refuses, l],
     );
 
     const registerFace = useCallback((id: string, face: ReactNode) => {
       faces.current.set(id, face);
+    }, []);
+
+    const registerColumn = useCallback((id: string, options: KanbanColumnOptions | null) => {
+      if (options) columnOptions.current.set(id, options);
+      else columnOptions.current.delete(id);
     }, []);
 
     const noteMove = useCallback(
@@ -584,8 +631,9 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
         getBoard: () => boardRef.current,
         registerFace,
         noteMove,
+        registerColumn,
       }),
-      [columnWidth, movable, grabbedId, target, updateTarget, grab, commit, cancel, registerFace, noteMove],
+      [columnWidth, movable, grabbedId, target, updateTarget, grab, commit, cancel, registerFace, noteMove, registerColumn],
     );
 
     if (state === 'loading') {
@@ -675,7 +723,14 @@ const Kanban = forwardRef<HTMLDivElement, KanbanProps>(
               {announcement}
             </div>
           </div>
-          <DragOverlay dropAnimation={reducedMotion ? null : undefined}>{dragId ? faces.current.get(dragId) : null}</DragOverlay>
+          <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+            {/* Over a refusing column the dragged copy shows the not-allowed cursor, it sits under the pointer. */}
+            {dragId ? (
+              <div data-drop-refused={target?.refused || undefined} className={target?.refused ? 'cursor-not-allowed [&_*]:cursor-not-allowed' : undefined}>
+                {faces.current.get(dragId)}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </KanbanContext.Provider>
     );
@@ -707,11 +762,13 @@ export interface KanbanColumnProps extends Omit<HTMLAttributes<HTMLElement>, 'ti
   title: ReactNode;
   // Heading element of the column title, so the board fits the document outline. Default h3.
   titleAs?: HeadingTag;
-  // Accessible name of the column. Defaults to the title when it is a string.
+  // Accessible name of the column. Defaults to the title when it is a string. Move announcements still say a string title, the label only stands in for other titles.
   label?: string;
   count?: number;
   // Right aligned header slot: a sum, a share or nothing.
   meta?: ReactNode;
+  // Header slot right after the count, e.g. a status badge. Does not raise the header row.
+  badge?: ReactNode;
   // Second header line under the title, e.g. a conversion rate or probability.
   headerExtra?: ReactNode;
   // Shown dashed when the column has no cards.
@@ -730,16 +787,33 @@ export interface KanbanColumnProps extends Omit<HTMLAttributes<HTMLElement>, 'ti
   dotColor?: string;
   // Reads the card id of a child element. Only needed when a wrapper hides the id; without it the id prop is tried, then the rendered card.
   getItemId?: (child: ReactElement) => string | undefined;
+  // Takes no cards from other columns: while a card is over it a dashed outline and the not-allowed cursor show, no drop marker, and on release the card stays where it was (onMove is not called). Its own cards still reorder and leave. Does not filter the KanbanMoveToMenu targets: leave the column out of them yourself.
+  dropDisabled?: boolean;
+  // Announcement when a card is let go over this column with dropDisabled. Wins over the provider text (kanbanDropDisabled).
+  dropDisabledText?: KanbanDropDisabledText;
+  // Text of the drop place while a card from another column is over this column, e.g. "Drop here · Proposal 50%": the marker becomes a dashed box with the text, and the keyboard move announces it. Moves inside the column keep the line.
+  dropLabel?: string;
+  // A control at the end of the title row, e.g. a select-all checkbox: the row keeps its height and a long title shortens with an ellipsis (full text as tooltip) instead of wrapping. false, null and undefined leave the slot out; other values such as "" or 0 render.
+  headerAction?: ReactNode;
 }
 
 const KanbanColumn = forwardRef<HTMLElement, KanbanColumnProps>(
-  ({ className, id, title, titleAs: Title = 'h3', label, count, meta, headerExtra, emptyLabel: emptyLabelProp, emptyText, addLabel, addText, onAdd, selected, stage, dotColor, getItemId, children, ...props }, ref) => {
+  ({ className, id, title, titleAs: Title = 'h3', label, count, meta, badge, headerExtra, emptyLabel: emptyLabelProp, emptyText, addLabel, addText, onAdd, selected, stage, dotColor, getItemId, dropDisabled = false, dropDisabledText, dropLabel, headerAction, children, ...props }, ref) => {
     const l = useLabels();
     const zero = usePreset() === 'zero';
     const emptyLabel = emptyText ?? emptyLabelProp ?? l.kanbanEmptyColumn;
     const ctx = useKanban();
     const cards = Children.toArray(children).filter(isValidElement) as ReactElement<{ id?: string }>[];
     const isTarget = ctx.target?.columnId === id && ctx.grabbedId != null;
+    const refusing = isTarget && Boolean(ctx.target?.refused);
+    const showMarker = isTarget && !refusing;
+    const { registerColumn } = ctx;
+    // false, null and undefined leave the slot out, so `mode && <Checkbox />` keeps the plain header outside the mode.
+    const hasAction = headerAction != null && headerAction !== false;
+    useEffect(() => {
+      registerColumn(id, { dropDisabled, dropDisabledText, dropLabel });
+      return () => registerColumn(id, null);
+    }, [registerColumn, id, dropDisabled, dropDisabledText, dropLabel]);
     const name = label ?? (typeof title === 'string' ? title : id);
     const listRef = useRef<HTMLUListElement | null>(null);
     // Position of the grabbed card read from the rendered card, so wrappers without an id prop still work.
@@ -765,15 +839,17 @@ const KanbanColumn = forwardRef<HTMLElement, KanbanColumnProps>(
         </div>
       ) : null;
 
+    // The label shows only for a card from another column; a reorder inside the column keeps the line.
+    const markerLabel = grabbedIndex < 0 ? dropLabel : undefined;
     const rendered: ReactNode[] = [];
     let slot = 0;
     cards.forEach((card, position) => {
       const grabbed = position === grabbedIndex;
-      if (isTarget && !grabbed && ctx.target?.index === slot) rendered.push(<DropMarker key="drop-marker" />);
+      if (showMarker && !grabbed && ctx.target?.index === slot) rendered.push(<DropMarker key="drop-marker" label={markerLabel} />);
       rendered.push(card);
       if (!grabbed) slot += 1;
     });
-    if (isTarget && ctx.target && ctx.target.index >= slot) rendered.push(<DropMarker key="drop-marker" />);
+    if (showMarker && ctx.target && ctx.target.index >= slot) rendered.push(<DropMarker key="drop-marker" label={markerLabel} />);
 
     return (
       <section
@@ -781,19 +857,24 @@ const KanbanColumn = forwardRef<HTMLElement, KanbanColumnProps>(
         aria-label={name}
         data-kanban-column=""
         data-column-id={id}
+        data-column-title={typeof title === 'string' ? title : undefined}
         data-selected={selected || undefined}
         data-stage={stage}
-        data-drop-target={isTarget || undefined}
+        data-drop-target={showMarker || undefined}
+        data-drop-disabled={dropDisabled || undefined}
+        data-drop-refused={refusing || undefined}
         className={cn(
           'flex snap-start flex-col gap-2 rounded-surface border border-solid border-transparent bg-muted p-2',
           columnWidthClass(ctx.columnWidth, !zero),
           'data-[selected=true]:border-border-focus data-[drop-target=true]:border-border-focus data-[drop-target=true]:bg-muted-strong',
+          // Refusing: an outline 2px inside the column instead of a border, so nothing shifts; the background stays.
+          'data-[drop-refused=true]:cursor-not-allowed data-[drop-refused=true]:outline-dashed data-[drop-refused=true]:outline-2 data-[drop-refused=true]:-outline-offset-2 data-[drop-refused=true]:outline-border-control',
           className,
         )}
         {...props}
       >
         <header className="mx-1 mt-1 flex flex-col gap-micro text-foreground">
-          <div className="typography-ui-semibold flex items-center gap-2">
+          <div className={cn('typography-ui-semibold flex items-center gap-2', hasAction && 'h-5')}>
             {dotColor ? (
               <span
                 aria-hidden="true"
@@ -804,9 +885,21 @@ const KanbanColumn = forwardRef<HTMLElement, KanbanColumnProps>(
             ) : stage ? (
               <span aria-hidden="true" data-column-dot="" className={cn('h-2 w-2 shrink-0 rounded-full', stageDot[stage])} />
             ) : null}
-            <Title className="typography-ui-semibold">{title}</Title>
+            <Title className={cn('typography-ui-semibold', hasAction && 'min-w-0 truncate')} title={hasAction && typeof title === 'string' ? title : undefined}>
+              {title}
+            </Title>
             {count != null ? <span className={cn('tabular-nums', headerMeta)}>{count}</span> : null}
-            {meta != null ? <span className={cn('ml-auto tabular-nums', headerMeta)}>{meta}</span> : null}
+            {badge != null ? (
+              <span data-kanban-badge="" className="-my-1 inline-flex shrink-0 items-center">
+                {badge}
+              </span>
+            ) : null}
+            {meta != null ? <span className={cn('ml-auto tabular-nums', hasAction && 'shrink-0 whitespace-nowrap', headerMeta)}>{meta}</span> : null}
+            {hasAction ? (
+              <span data-kanban-header-action="" className={cn('flex h-5 shrink-0 items-center', meta == null && 'ml-auto')}>
+                {headerAction}
+              </span>
+            ) : null}
           </div>
           {headerExtra != null ? <div className="typography-text-extra-small text-foreground" data-kanban-header-extra="">{headerExtra}</div> : null}
         </header>
@@ -840,7 +933,21 @@ KanbanColumn.displayName = 'KanbanColumn';
 const flattenActions = (node: ReactNode): ReactNode[] =>
   Children.toArray(node).flatMap((child) => (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment ? flattenActions(child.props.children) : [child]));
 
-const DropMarker = () => <li aria-hidden="true" data-kanban-drop-marker="" className="h-1 shrink-0 rounded-full bg-border-focus" />;
+// The line, or with a label the dashed drop box of the prototype (.kb-drop: 160 px high, brand subtle fill, brand text, arrow above the text at the top, so the dragged card below leaves it readable). Hidden from screen readers: the live region says the same.
+const DropMarker = ({ label }: { label?: string }) =>
+  label ? (
+    <li
+      aria-hidden="true"
+      data-kanban-drop-marker=""
+      data-drop-label=""
+      className="flex min-h-[theme(spacing.40)] shrink-0 flex-col items-center justify-start gap-2 rounded-surface border-2 border-dashed border-border-focus bg-background-brand-subtle p-3 text-center typography-ui-medium text-text-brand-on-subtle"
+    >
+      <ArrowDownToLine className="h-icon-sm w-icon-sm shrink-0" />
+      <span className="min-w-0">{label}</span>
+    </li>
+  ) : (
+    <li aria-hidden="true" data-kanban-drop-marker="" className="h-1 shrink-0 rounded-full bg-border-focus" />
+  );
 
 export interface KanbanCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   id: string;

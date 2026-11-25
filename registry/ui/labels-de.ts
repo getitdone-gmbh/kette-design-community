@@ -1,5 +1,8 @@
 import type { Labels } from '@/components/ui/labels';
 
+// Counts in pagination texts use the grouping of the dictionary locale (2,404 or 2.404).
+const grouped = new Intl.NumberFormat('de-DE');
+
 export const labelsDe: Labels = {
   add: 'Hinzufügen',
   addNew: 'Neu hinzufügen',
@@ -38,6 +41,8 @@ export const labelsDe: Labels = {
   previous: 'Zurück',
   required: 'Erforderlich',
   reset: 'Zurücksetzen',
+  customizeView: 'Ansicht anpassen',
+  resetToDefault: 'Auf Standard zurücksetzen',
   search: 'Suchen',
   searchEllipsis: 'Suchen ...',
   searchIn: (label) => `${label} durchsuchen`,
@@ -87,13 +92,13 @@ export const labelsDe: Labels = {
   pagination: 'Seitennavigation',
   pages: 'Seiten',
   page: (page) => `Seite ${page}`,
-  pageOf: (page, pageCount) => `Seite ${page} von ${pageCount}`,
+  pageOf: (page, pageCount) => `Seite ${grouped.format(page)} von ${grouped.format(pageCount)}`,
   previousPage: 'Vorherige Seite',
   nextPage: 'Nächste Seite',
   rowsPerPage: 'Zeilen pro Seite',
-  perPage: (count) => `${count} pro Seite`,
-  range: (first, last, total) => `${first} bis ${last}${total !== undefined ? ` von ${total}` : ''}`,
-  showing: (count, total) => `${count} von ${total} angezeigt`,
+  perPage: (n) => `${grouped.format(n)} pro Seite`,
+  range: (first, last, total) => `${grouped.format(first)} bis ${grouped.format(last)}${total !== undefined ? ` von ${grouped.format(total)}` : ''}`,
+  showing: (shown, total) => `${grouped.format(shown)} von ${grouped.format(total)} angezeigt`,
   goToPage: (page, count) => `Zu Seite ${page} von ${count}`,
   goToSlide: (slide, count) => `Zu Folie ${slide} von ${count}`,
   previousSlide: 'Vorherige Folie',
@@ -162,6 +167,8 @@ export const labelsDe: Labels = {
   kanbanPickedUp: (title, position) =>
     `${title ?? 'Karte'} aufgenommen. Mit den Pfeiltasten verschieben, mit der Leertaste ablegen, mit Escape abbrechen. ${position}`,
   kanbanDropped: (title, position) => `${title ?? 'Karte'} abgelegt. ${position}`,
+  kanbanDropDisabledTarget: (column) => `${column}, nimmt keine Karten an`,
+  kanbanDropDisabled: (column, title, origin) => `${column} nimmt keine Karten an. ${title ?? 'Die Karte'} bleibt in ${origin}.`,
   kanbanMoveTo: 'Verschieben nach',
   kanbanCardActions: (title) => `Aktionen für ${title}`,
   kanbanCurrentColumn: (column) => `${column} (aktuell)`,
@@ -205,6 +212,7 @@ export const labelsDe: Labels = {
   bulkActions: 'Sammelaktionen',
   deselectAll: 'Alle abwählen',
   selectedCount: (count) => `${count} ausgewählt`,
+  formErrorSummaryTitle: (count) => `Bitte ${count} Felder korrigieren, um fortzufahren.`,
   moreActions: 'Weitere Aktionen',
   noFiltersApplied: 'Keine Filter angewendet',
   filtersApplied: (count) => `${count} Filter angewendet`,
@@ -415,4 +423,10 @@ export const labelsDe: Labels = {
   annotationYes: 'Ja',
   annotationNo: 'Nein',
   annotationNotDeclared: 'Nicht angegeben',
+  back: 'Zurück',
+  backTo: (title) => `Zurück zu ${title}`,
+  sheetDiscardTitle: 'Änderungen verwerfen?',
+  sheetDiscardDescription: 'Die Änderungen sind noch nicht gespeichert.',
+  sheetDiscard: 'Verwerfen',
+  sheetKeepEditing: 'Weiter bearbeiten',
 };

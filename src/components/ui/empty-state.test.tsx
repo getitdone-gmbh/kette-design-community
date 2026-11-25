@@ -18,10 +18,10 @@ describe('EmptyState', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
-  it('default variant has no dashed border and renders actions in a row', () => {
+  it('default variant shares the dashed frame and renders actions in a row', () => {
     render(<EmptyState title="No projects" actions={<button type="button">New project</button>} />);
-    expect(screen.getByRole('status')).not.toHaveClass('border-dashed');
-    expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveClass('border-dashed');
+    expect(screen.getByRole('button', { name: 'New project' }).parentElement).toHaveClass('flex-wrap');
   });
 
   it('icon={null} renders no tile and a custom icon replaces the default', () => {
@@ -61,17 +61,17 @@ describe('EmptyState titleAs and xs size', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
-  it('xs size uses the tighter gap and lighter title', () => {
+  it('xs size uses the shared gap and the ui-medium title', () => {
     const { container } = render(<EmptyState size="xs" title="Empty" />);
-    expect(container.firstChild).toHaveClass('gap-3');
-    expect(screen.getByText('Empty')).toHaveClass('typography-label-highlight');
+    expect(container.firstChild).toHaveClass('gap-2');
+    expect(screen.getByText('Empty')).toHaveClass('typography-ui-medium');
   });
 
-  it('size page sets the page title type role with the large tile', () => {
+  it('size page sets the page title type role with the bare icon', () => {
     render(<EmptyState size="page" titleAs="h1" title="Page not found" icon={<span data-testid="ic" />} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toHaveClass('typography-page-title');
     expect(screen.getByRole('heading', { level: 1 })).not.toHaveClass('typography-ui-lg-semibold');
-    expect(screen.getByTestId('ic').parentElement).toHaveClass('h-avatar-xl', 'w-avatar-xl');
+    expect(screen.getByTestId('ic').parentElement).toHaveClass('h-icon-md', 'w-icon-md');
   });
 });
 
@@ -133,5 +133,50 @@ describe('EmptyState page adoption options', () => {
     render(<EmptyState variant="no-access" title="Recommended is part of jobsearch.zero" description="Your profile stays free." actions={<button type="button">Choose jobsearch.zero</button>} />);
     expect(screen.getByRole('status')).toHaveTextContent('Recommended is part of jobsearch.zero');
     expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+});
+
+describe('EmptyState shared body (ZERO-790)', () => {
+  it.each(['default', 'first-use', 'no-results', 'error', 'no-access'] as const)('%s renders the dashed frame, a bare icon and no tile', (variant) => {
+    const { container } = render(<EmptyState variant={variant} title="Title" icon={<svg data-testid="ic" />} />);
+    const root = container.firstChild as HTMLElement;
+    expect(root).toHaveClass('border-dashed', 'rounded-card', 'justify-center', 'flex-1', 'w-full');
+    expect(root).not.toHaveClass('rounded-surface');
+    const tile = screen.getByTestId('ic').parentElement as HTMLElement;
+    expect(tile).toHaveClass('h-icon-md', 'w-icon-md');
+    expect(tile.className).not.toMatch(/rounded-full|border-8|border-4|bg-muted|h-avatar/);
+  });
+
+  it('outlined={false} drops the frame classes but keeps the centred body', () => {
+    const { container } = render(<EmptyState outlined={false} title="Title" />);
+    const root = container.firstChild as HTMLElement;
+    expect(root).not.toHaveClass('border-dashed');
+    expect(root).not.toHaveClass('rounded-card');
+    expect(root).toHaveClass('justify-center', 'items-center', 'text-center');
+  });
+
+  it('error stays an alert and keeps the neutral dashed frame', () => {
+    render(<EmptyState variant="error" title="Could not load" />);
+    const root = screen.getByRole('alert');
+    expect(root).toHaveClass('border-dashed');
+    expect(root).not.toHaveClass('border-border-destructive');
+  });
+
+  it('xs and sm use the ui-medium title and the extra-small text of the data state panel', () => {
+    render(<EmptyState size="sm" title="Empty" description="Text" />);
+    expect(screen.getByText('Empty')).toHaveClass('typography-ui-medium');
+    expect(screen.getByText('Text')).toHaveClass('typography-text-extra-small');
+  });
+
+  it('size page keeps the page title role without a tile', () => {
+    render(<EmptyState size="page" titleAs="h1" title="Page not found" icon={<span data-testid="ic" />} />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('typography-page-title');
+    expect(screen.getByTestId('ic').parentElement?.className).not.toMatch(/h-avatar/);
+  });
+
+  it('keeps the icon decorative and tone primary colours only the icon', () => {
+    const { container } = render(<EmptyState tone="primary" title="t" />);
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelector('svg')?.parentElement).toHaveClass('text-icon-brand');
   });
 });

@@ -3,13 +3,26 @@
 import { OpenerCapture, useReturnFocusFallback } from '../../lib/return-focus';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, ChevronLeft, X } from 'lucide-react';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 import { MODAL_OVERLAY_ATTRIBUTE, useAfterModalClose, useModalInertRef } from './../../lib/modal-inert';
-import { focusFirst, focusLast, hasFocusable } from './../../lib/first-focusable';
+import {
+  focusFirst,
+  focusLast,
+  hasFocusable,
+  hidesPageTabbable,
+  isCoveredBy,
+  isTrailingGuard,
+  lastPageTabbableBefore,
+  nextTabIsInside,
+  pageTabTarget,
+  skipOnce,
+  tabbables,
+} from './../../lib/first-focusable';
 import { openedByActivation, openedByPointer } from './../../lib/opened-by-activation';
-import { EscapeGuardContext, guardNestedEscape, useGuardedOpen } from './../../lib/nested-layer';
+import { EscapeGuardContext, escapeBelongsToNestedLayer, guardNestedEscape, useGuardedOpen } from './../../lib/nested-layer';
 import { INSET_SCOPE_ATTRIBUTE, scrollInsetClasses, useStickyInset } from './../../lib/sticky-inset';
 import { displayVoice } from '../../lib/recipes';
 import { cn } from './../../lib/utils';
@@ -51,11 +64,91 @@ const Sheet = ({ modal = true, open, defaultOpen, onOpenChange, ...props }: Reac
 };
 Sheet.displayName = 'Sheet';
 
+// A sheet that leaves while open and another of the same kind that arrives in the same commit is a switch of the content (a row remounted it by key): the new one takes the place without a second entrance
+interface LeftSheet {
+  at: number;
+  node: HTMLElement | null;
+  kind: string;
+}
+let leftSheet: LeftSheet | null = null;
+const SWITCH_WINDOW_MS = 50;
+const useIsoLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+function useSwitchedIn(contentRef: React.MutableRefObject<HTMLDivElement | null>, kind: string) {
+  const [switched, setSwitched] = React.useState(false);
+  useIsoLayoutEffect(() => {
+    const node = contentRef.current;
+    const left = leftSheet;
+    // The same node coming back is the StrictMode double mount, not a switch; another side, mode or placement is a different sheet (the dock element itself may be new, a remounted SheetPanel rebuilds it)
+    if (left && now() - left.at < SWITCH_WINDOW_MS && left.node !== node && left.kind === kind) setSwitched(true);
+    return () => {
+      const current = contentRef.current ?? node;
+      if (current?.getAttribute('data-state') === 'open') leftSheet = { at: now(), node: current, kind };
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return switched;
+}
+
+// Only the entrance is skipped: the exit still plays when the switched sheet closes
+const noEntrance = 'data-[state=open]:data-[sheet-switched]:animate-none';
+
 const SheetTrigger = SheetPrimitive.Trigger;
 
-const SheetClose = SheetPrimitive.Close;
+// Close requests from inside the sheet (close button, SheetClose, swipe, Escape, outside click) pass through here: an open step or stage and the discard guard decide first.
+interface SheetStepsValue {
+  // The sheet panel, the confirm step portals into it so it covers the whole panel.
+  node: HTMLDivElement | null;
+  // True while the discard guard would stop a close (discardGuard and state dirty).
+  guarded: () => boolean;
+  // Closes the sheet, or shows the discard step while guarded.
+  requestClose: () => void;
+  // Escape handlers of open steps and stages, the last registered runs first. A handler returns true when it used the key.
+  escape: React.MutableRefObject<Array<() => boolean>>;
+}
+const SheetStepsContext = React.createContext<SheetStepsValue | null>(null);
+
+// Registers an Escape handler with the sheet while `active`.
+function useSheetEscape(active: boolean, handler: () => boolean) {
+  const steps = React.useContext(SheetStepsContext);
+  const handlerRef = React.useRef(handler);
+  handlerRef.current = handler;
+  React.useEffect(() => {
+    if (!active || !steps) return undefined;
+    const run = () => handlerRef.current();
+    steps.escape.current.push(run);
+    return () => {
+      steps.escape.current = steps.escape.current.filter((h) => h !== run);
+    };
+  }, [active, steps]);
+}
+
+// Radix Close that respects the discard guard: with unsaved changes it shows the discard step instead of closing.
+const SheetClose = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Close>, React.ComponentPropsWithoutRef<typeof SheetPrimitive.Close>>(
+  ({ onClick, ...props }, ref) => {
+    const steps = React.useContext(SheetStepsContext);
+    return (
+      <SheetPrimitive.Close
+        ref={ref}
+        onClick={(event) => {
+          onClick?.(event);
+          if (event.defaultPrevented || !steps?.guarded()) return;
+          event.preventDefault();
+          steps.requestClose();
+        }}
+        {...props}
+      />
+    );
+  },
+);
+SheetClose.displayName = 'SheetClose';
 
 const SheetPortal = SheetPrimitive.Portal;
+
+// Under prefers-reduced-motion the scrim and the panel appear and go without slide, fade or duration. The data-state forms match the specificity of the animate-in and animate-out rules.
+const sheetReducedMotion =
+  'motion-reduce:animate-none motion-reduce:data-[state=open]:animate-none motion-reduce:data-[state=closed]:animate-none motion-reduce:transition-none motion-reduce:duration-0';
 
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
@@ -67,7 +160,9 @@ const SheetOverlay = React.forwardRef<
       {...{ [MODAL_OVERLAY_ATTRIBUTE]: '' }}
       className={cn(
         'fixed inset-0 z-sheet data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        sheetReducedMotion,
         zero ? 'bg-overlay-scrim' : 'bg-overlay',
+        noEntrance,
         className,
       )}
       {...props}
@@ -166,6 +261,13 @@ interface SheetContentProps
   mobileFullscreen?: boolean;
   /** Runs once the sheet is completely gone: exit animation done, page no longer inert, scroll lock released and focus returned to the opener. Put "focus this field after closing" code here. */
   onAfterClose?: () => void;
+  // Grabber at the top edge of a bottom sheet (phone). Dragging it down closes the sheet like the close button; the close button stays the keyboard and screen reader way.
+  handle?: boolean;
+  // Protects unsaved input: while `state` is `dirty`, Escape, a click on the scrim, the close button, SheetClose and the swipe show "Discard changes?" as a step in the same sheet instead of closing.
+  discardGuard?: boolean;
+  // Texts of the discard step. Win over the provider text.
+  discardTitle?: string;
+  discardDescription?: string;
 }
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
@@ -192,11 +294,25 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       focusOnOpen,
       mobileFullscreen = false,
       onAfterClose,
+      handle = false,
+      discardGuard = false,
+      discardTitle,
+      discardDescription,
       ...props
     },
     ref,
   ) => {
     const returnFocus = useReturnFocusFallback(onCloseAutoFocus);
+    // The element that had focus before the sheet opened: a docked sheet hands Tab back to the page from there.
+    const openerRef = React.useRef<HTMLElement | null>(null);
+    const { remember } = returnFocus;
+    const rememberOpener = React.useCallback(
+      (element: HTMLElement | null, menuTrigger?: HTMLElement | null) => {
+        openerRef.current = element;
+        remember(element, menuTrigger);
+      },
+      [remember],
+    );
     const l = useLabels({ close: closeLabel });
     const zero = usePreset() === 'zero';
     // Zero: the default sheet is the rounded 8px inset overlay panel (md width, sections own their padding).
@@ -215,6 +331,25 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     // A modal sheet makes everything outside its portal inert while it is open, see lib/modal-inert.
     const inertRef = useModalInertRef<HTMLDivElement>(!nonModal);
     const nav = React.useContext(SheetNavContext);
+    const [discardOpen, setDiscardOpen] = React.useState(false);
+    const guardedNow = discardGuard && state === 'dirty';
+    const guardedRef = React.useRef(guardedNow);
+    guardedRef.current = guardedNow;
+    const escapeHandlers = React.useRef<Array<() => boolean>>([]);
+    const [panelNode, setPanelNode] = React.useState<HTMLDivElement | null>(null);
+    const steps = React.useMemo<SheetStepsValue>(
+      () => ({
+        node: panelNode,
+        guarded: () => guardedRef.current,
+        requestClose: () => {
+          if (guardedRef.current) setDiscardOpen(true);
+          else nav?.close();
+        },
+        escape: escapeHandlers,
+      }),
+      [panelNode, nav],
+    );
+    const swipe = useSheetSwipe(contentRef, steps.requestClose);
     // A queued jump from an earlier close that was vetoed must not run at the next close.
     React.useEffect(() => {
       if (nav) nav.afterClose.current.length = 0;
@@ -225,14 +360,20 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       const queued = nav?.afterClose.current.splice(0) ?? [];
       queued.forEach((run) => run());
     });
+    const [contentNode, setContentNode] = React.useState<HTMLDivElement | null>(null);
+    const [covers, setCovers] = useCoversPage(nonModal ? contentNode : null);
+    useDockedTabOrder(contentRef, openerRef, nonModal);
     const setRefs = (node: HTMLDivElement | null) => {
       contentRef.current = node;
+      setContentNode(node);
+      setPanelNode(node);
       inertRef(node);
       afterClose.capture(node);
       if (typeof ref === 'function') ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
     };
     const scoped = Boolean(container);
+    const switched = useSwitchedIn(contentRef, `${side}:${mode}:${scoped ? 'docked' : 'window'}`);
     const card = mode === 'card' || mode === 'centered';
     const centered = mode === 'centered';
     // Card modes default to the 520 card width when no size is given.
@@ -243,7 +384,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     // The close button is rendered before the content (first tab stop, as at the top). It is absolute and on z-chrome, so sticky headers up to z-sticky do not cover it.
     return (
       <SheetPortal container={container ?? undefined}>
-        {mode !== 'push' && <SheetOverlay className={scoped ? 'absolute' : undefined} />}
+        {mode !== 'push' && <SheetOverlay className={scoped ? 'absolute' : undefined} data-sheet-switched={switched || undefined} />}
         <SheetPrimitive.Content
           data-slot="sheet-content"
           ref={setRefs}
@@ -284,12 +425,43 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             guardNestedEscape(escapeGuard, event);
             // A docked sheet shares the page with other widgets: Escape only closes it while focus is inside.
             if (nonModal && !contentRef.current?.contains(document.activeElement)) event.preventDefault();
+            if (event.defaultPrevented || escapeBelongsToNestedLayer(event)) return;
+            // An open confirm step cancels, a pushed stage goes one stage back, then the discard guard asks before the sheet closes.
+            const handlers = escapeHandlers.current;
+            for (let i = handlers.length - 1; i >= 0; i -= 1) {
+              if (handlers[i]()) {
+                event.preventDefault();
+                return;
+              }
+            }
+            if (guardedRef.current) {
+              event.preventDefault();
+              setDiscardOpen(true);
+            }
           }}
           tabIndex={-1}
           onKeyDown={(event) => {
             onKeyDown?.(event);
+            if (event.defaultPrevented || event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+            // A docked sheet is part of the page, not a trap: Tab on its last element and Shift+Tab on its first go on to the page. Focus moves before the Radix focus scope sees the key, so it does not loop.
+            // Over the page (UX-PKG5-01) the target would be hidden: focus stays in the sheet (Radix loop) and the sheet is modal. Measured now, the layout may have changed since the last check.
+            if (nonModal && event.target !== event.currentTarget) {
+              const inside = tabbables(event.currentTarget);
+              const edge = event.shiftKey ? inside[0] : inside[inside.length - 1];
+              const atEdge = event.target === edge;
+              const overPage = atEdge && coversPage(event.currentTarget);
+              if (atEdge && overPage !== covers) setCovers(overPage);
+              if (atEdge && !overPage) {
+                const target = pageTabTarget(event.currentTarget, openerRef.current, !event.shiftKey);
+                if (target && !isCoveredBy(target, event.currentTarget)) {
+                  event.preventDefault();
+                  target.focus();
+                  return;
+                }
+              }
+            }
             // Focus on the container itself (focusOnOpen={false}): Shift+Tab goes to the last control instead of being pulled back by the focus trap.
-            if (event.defaultPrevented || event.key !== 'Tab' || !event.shiftKey || event.target !== event.currentTarget) return;
+            if (!event.shiftKey || event.target !== event.currentTarget) return;
             if (focusLast(event.currentTarget)) event.preventDefault();
           }}
           aria-busy={state === 'loading' || undefined}
@@ -299,20 +471,24 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
           data-sheet-inset={inset !== 'none' ? inset : undefined}
           data-sheet-scoped={scoped || undefined}
           data-sheet-mobile={mobileFullscreen ? 'fullscreen' : undefined}
+          data-sheet-switched={switched || undefined}
           style={stackDepth > 0 ? ({ '--sheet-depth': stackDepth, ...style } as React.CSSProperties) : style}
           onInteractOutside={(event) => {
             if (mode === 'push') event.preventDefault();
             onInteractOutside?.(event);
+            // Unsaved input: a click on the scrim asks first, focus moving out never closes.
+            if (event.defaultPrevented || !guardedRef.current) return;
+            event.preventDefault();
+            if (event.type === 'dismissableLayer.pointerDownOutside') setDiscardOpen(true);
           }}
           className={cn(
             // The container only takes programmatic focus (tabIndex -1), it is no control: no ring of its own.
             'outline-none',
             card ? sheetBase : sheetVariants({ side, sized }),
+            noEntrance,
             sized && widthSize && sheetSizeWidth[widthSize],
             scrollInsetClasses,
             !padded && 'flex flex-col gap-0 p-0',
-            mode === 'push' && side === 'right' && 'rounded-l-surface',
-            mode === 'push' && side === 'left' && 'rounded-r-surface',
             floating && 'inset-y-2 h-auto rounded-surface border border-solid',
             zero && (floating || card || mode === 'push') && 'border-border-default [--sheet-elevation:var(--elevation-raised,0_0_transparent)]',
             // A floating panel keeps its 8px inset on both sides, so a wide size never crosses the viewport edge.
@@ -337,24 +513,450 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
             stackDepth > 0 && 'right-[calc(var(--size-sheet-stack-offset)*var(--sheet-depth))] bg-muted',
             // The max-sm rules come after the plain ones in the CSS, so they replace inset, size, radius and the centred translate on a phone.
             mobileFullscreen && sheetMobileFullscreen,
+            sheetReducedMotion,
             className,
           )}
           {...props}
+          // While the sheet lies over the page it is modal, also when the consumer marks its push sheet aria-modal="false" (zero-pages SheetPanel).
+          aria-modal={nonModal && covers ? true : props['aria-modal']}
         >
-          <OpenerCapture onCapture={returnFocus.remember} />
-          <SheetPrimitive.Close data-slot="sheet-close" className={cn('absolute right-3 top-3 z-chrome inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary', 'h-10 w-10')}>
+          <OpenerCapture onCapture={rememberOpener} />
+          {handle && (
+            // Decorative grabber, 20px strip at the top edge; the swipe is a shortcut, the close button stays the accessible way.
+            <div
+              data-slot="sheet-handle"
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 z-raised flex h-5 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+              {...swipe}
+            >
+              <span className="h-1 w-9 rounded-full bg-border-control" />
+            </div>
+          )}
+          {/* 40px on a desktop, 44px below md and on every bottom sheet (touch target, ZERO-901). */}
+          <SheetPrimitive.Close
+            data-slot="sheet-close"
+            onClick={(event) => {
+              if (!guardedRef.current) return;
+              event.preventDefault();
+              setDiscardOpen(true);
+            }}
+            className={cn(
+              'absolute right-3 top-3 z-chrome inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary',
+              side === 'bottom' ? 'h-10 w-10 min-h-target-lg min-w-target-lg' : 'h-10 w-10 max-md:min-h-target-lg max-md:min-w-target-lg',
+              // The confirm step covers the panel: its two answers are the only way on.
+              '[[data-sheet-confirm]>&]:hidden',
+            )}
+          >
             <X className="h-icon-md w-icon-md" aria-hidden="true" />
             <span className="sr-only">{l.close}</span>
           </SheetPrimitive.Close>
-          <SheetStateContext.Provider value={state}>
-            <AutosaveScopeContext.Provider value={statusScope}>{children}</AutosaveScopeContext.Provider>
-          </SheetStateContext.Provider>
+          <SheetStepsContext.Provider value={steps}>
+            <SheetStateContext.Provider value={state}>
+              <AutosaveScopeContext.Provider value={statusScope}>{children}</AutosaveScopeContext.Provider>
+            </SheetStateContext.Provider>
+            {discardGuard && (
+              <SheetConfirm
+                open={discardOpen}
+                onOpenChange={setDiscardOpen}
+                title={discardTitle ?? l.sheetDiscardTitle}
+                description={discardDescription ?? l.sheetDiscardDescription}
+                confirmLabel={l.sheetDiscard}
+                cancelLabel={l.sheetKeepEditing}
+                tone="destructive"
+                onConfirm={() => {
+                  setDiscardOpen(false);
+                  nav?.close();
+                }}
+              />
+            )}
+          </SheetStepsContext.Provider>
         </SheetPrimitive.Content>
       </SheetPortal>
     );
   },
 );
 SheetContent.displayName = SheetPrimitive.Content.displayName;
+
+// A docked sheet that lies over the page instead of beside it (a phone, high zoom, a page that is not pushed) hides page controls: it then keeps Tab inside like a modal sheet and is announced as modal (UX-PKG5-01). Decided at the page Tab stops, not at the sheet width.
+function coversPage(node: HTMLElement): boolean {
+  const viewport = Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth);
+  if (node.offsetWidth > 0 && node.offsetWidth >= viewport - 1) return true;
+  return hidesPageTabbable(node);
+}
+
+function useCoversPage(node: HTMLElement | null): [boolean, (covers: boolean) => void] {
+  const [covers, setCovers] = React.useState(false);
+  React.useEffect(() => {
+    if (!node) {
+      setCovers(false);
+      return;
+    }
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setCovers(coversPage(node)));
+    };
+    // Only the sheet's own slide-in counts: hover and state transitions of its content bubble up here and never move the sheet
+    const own = (event: Event) => {
+      if (event.target === node) update();
+    };
+    update();
+    window.addEventListener('resize', update);
+    // The slide-in transform and a pushed page change the overlap without resizing the sheet.
+    node.addEventListener('animationend', own);
+    node.addEventListener('transitionend', own);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(node);
+    observer?.observe(document.body);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', update);
+      node.removeEventListener('animationend', own);
+      node.removeEventListener('transitionend', own);
+      observer?.disconnect();
+    };
+  }, [node]);
+  return [covers, setCovers];
+}
+
+// Focus guards and other layers, which the page Tab rule of a covering sheet leaves alone.
+const OTHER_LAYER = '[data-radix-focus-guard], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-radix-popper-content-wrapper]';
+
+// Tab order of a docked sheet beside the visible page (UX-PKG5-03, A11Y-PKG5-01): the sheet follows its opener (opener, sheet, next page element), the last page element leaves the document instead of running into the sheet at the end of body, Shift+Tab mirrors it. No trap, no loop.
+function useDockedTabOrder(contentRef: React.RefObject<HTMLElement | null>, openerRef: React.RefObject<HTMLElement | null>, enabled: boolean) {
+  React.useEffect(() => {
+    if (!enabled) return;
+    const docked = () => {
+      const root = contentRef.current;
+      const opener = openerRef.current;
+      if (!root?.isConnected || !opener?.isConnected || root.contains(opener) || coversPage(root)) return null;
+      return { root, opener };
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      // A sheet over the page hides the page controls: Tab from the page goes into the sheet, like a modal sheet (UX-PKG5-01). Focus in another layer (a second sheet, a popover) is left alone.
+      const root = contentRef.current;
+      if (root?.isConnected && target instanceof HTMLElement && !root.contains(target) && !target.closest(OTHER_LAYER) && coversPage(root)) {
+        const inside = tabbables(root);
+        if (inside.length === 0) return;
+        event.preventDefault();
+        (event.shiftKey ? inside[inside.length - 1] : inside[0]).focus();
+        return;
+      }
+      const state = docked();
+      if (!state || !(target instanceof HTMLElement) || state.root.contains(target)) return;
+      const inside = tabbables(state.root);
+      if (inside.length === 0) return;
+      if (event.shiftKey) {
+        if (target !== pageTabTarget(state.root, state.opener, true)) return;
+        event.preventDefault();
+        inside[inside.length - 1].focus();
+      } else if (target === state.opener) {
+        event.preventDefault();
+        inside[0].focus();
+      } else if (nextTabIsInside(state.root, target)) {
+        skipOnce(state.root);
+      }
+    };
+    // Shift+Tab from the browser bar enters at the end of body (a focus guard after the sheet): hand it to the last page element.
+    const onFocusIn = (event: FocusEvent) => {
+      const state = docked();
+      if (!state || event.relatedTarget || !(event.target instanceof Element) || !isTrailingGuard(state.root, event.target)) return;
+      lastPageTabbableBefore(state.root)?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [contentRef, openerRef, enabled]);
+}
+
+// Swipe down on the grabber of a bottom sheet. The panel follows the finger; let go past a quarter of its height (at most 120px) and it closes through requestClose (the discard guard asks first), otherwise it springs back.
+function useSheetSwipe(panelRef: React.RefObject<HTMLElement | null>, requestClose: () => void) {
+  const drag = React.useRef<{ id: number; start: number; dy: number } | null>(null);
+  const reset = (panel: HTMLElement | null, animate: boolean) => {
+    if (!panel) return;
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    panel.style.transition = animate && !reduce ? 'transform 200ms ease-out' : '';
+    panel.style.transform = '';
+  };
+  return {
+    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      drag.current = { id: event.pointerId, start: event.clientY, dy: 0 };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+      const state = drag.current;
+      const panel = panelRef.current;
+      if (!state || state.id !== event.pointerId || !panel) return;
+      state.dy = Math.max(0, event.clientY - state.start);
+      panel.style.transition = 'none';
+      panel.style.transform = `translateY(${state.dy}px)`;
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+      const state = drag.current;
+      drag.current = null;
+      const panel = panelRef.current;
+      if (!state || state.id !== event.pointerId) return;
+      const limit = Math.min(120, (panel?.offsetHeight ?? 0) / 4);
+      reset(panel, true);
+      if (state.dy > limit) requestClose();
+    },
+    onPointerCancel: () => {
+      drag.current = null;
+      reset(panelRef.current, true);
+    },
+  };
+}
+
+interface SheetConfirmProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  // The question, e.g. "Delete stage?".
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  confirmLabel: string;
+  // Defaults to the provider text for Cancel.
+  cancelLabel?: string;
+  // `destructive` paints the confirm button red and puts the first focus on Cancel.
+  tone?: 'default' | 'destructive';
+  onConfirm: () => void;
+  // Work in progress: only the confirm button is busy and blocked, Cancel stays available.
+  pending?: boolean;
+}
+
+// Confirmation as a step in the same sheet (phone rule: one modal layer, no dialog over a sheet). It covers the whole panel with the question and two answers; Escape and Cancel go back to the sheet, focus returns to where it was.
+const SheetConfirm = ({ open, onOpenChange, title, description, confirmLabel, cancelLabel, tone = 'default', onConfirm, pending = false }: SheetConfirmProps) => {
+  const steps = React.useContext(SheetStepsContext);
+  const l = useLabels({ cancel: cancelLabel });
+  const zero = usePreset() === 'zero';
+  const titleId = React.useId();
+  const descriptionId = React.useId();
+  const layerRef = React.useRef<HTMLDivElement | null>(null);
+  const cancelRef = React.useRef<HTMLButtonElement | null>(null);
+  const confirmRef = React.useRef<HTMLButtonElement | null>(null);
+  const node = steps?.node ?? null;
+  useSheetEscape(open, () => {
+    onOpenChange(false);
+    return true;
+  });
+  useIsoLayoutEffect(() => {
+    if (!open || !node) return undefined;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Everything else in the panel is inert while the step is open: Tab stays on the two answers.
+    const made: HTMLElement[] = [];
+    Array.from(node.children).forEach((child) => {
+      if (!(child instanceof HTMLElement) || child === layerRef.current || child.inert) return;
+      child.inert = true;
+      made.push(child);
+    });
+    node.setAttribute('data-sheet-confirm', '');
+    (tone === 'destructive' ? cancelRef.current : confirmRef.current ?? cancelRef.current)?.focus({ preventScroll: true });
+    return () => {
+      made.forEach((child) => {
+        child.inert = false;
+      });
+      node.removeAttribute('data-sheet-confirm');
+      if (before?.isConnected && !before.closest('[inert]')) before.focus({ preventScroll: true });
+      else node.focus({ preventScroll: true });
+    };
+  }, [open, node]);
+  if (!open || !node) return null;
+  return createPortal(
+    <div
+      ref={layerRef}
+      role="group"
+      aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
+      data-slot="sheet-confirm"
+      className={cn(
+        'absolute inset-0 z-chrome flex flex-col rounded-[inherit] bg-background',
+        'animate-in fade-in-0 slide-in-from-right-8 duration-200 motion-reduce:animate-none',
+      )}
+    >
+      <div className="flex items-center border-0 border-b border-solid border-hairline py-4 pl-5 pr-5">
+        <h2 id={titleId} className={cn('m-0 min-w-0', zero ? 'typography-sheet-title' : 'text-base font-semibold', 'text-foreground')}>
+          {title}
+        </h2>
+      </div>
+      {description && (
+        <p id={descriptionId} className={cn('m-0 px-5 py-4', zero ? 'typography-ui-relaxed' : 'text-sm', 'text-text-subtle')}>
+          {description}
+        </p>
+      )}
+      <div className="mt-auto flex items-center justify-end gap-2 border-0 border-t border-solid border-hairline px-5 py-3">
+        <Button ref={cancelRef} type="button" variant="ghost" className="max-md:min-h-target-lg" onClick={() => onOpenChange(false)}>
+          {l.cancel}
+        </Button>
+        <Button
+          ref={confirmRef}
+          type="button"
+          variant={tone === 'destructive' ? 'destructive' : 'primary'}
+          className="max-md:min-h-target-lg"
+          loading={pending}
+          disabled={pending}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </Button>
+      </div>
+    </div>,
+    node,
+  );
+};
+SheetConfirm.displayName = 'SheetConfirm';
+
+interface SheetStagesValue {
+  stack: string[];
+  direction: 'forward' | 'back';
+  labels: React.MutableRefObject<Record<string, string>>;
+  push: (id: string) => void;
+  back: () => void;
+  reset: () => void;
+}
+const SheetStagesContext = React.createContext<SheetStagesValue | null>(null);
+
+interface SheetStagesProps {
+  // Id of the first stage, the sheet itself. Defaults to the id of the first SheetStage child.
+  root?: string;
+  // Reports the stage in front and the stack after every push and back.
+  onStageChange?: (stage: string, stack: string[]) => void;
+  children: React.ReactNode;
+}
+
+// Push navigation inside one sheet (phone rule: a sub task such as picking a status slides in within the same sheet, no sheet over a sheet). Escape and the back button go one stage back before the sheet closes.
+const SheetStages = ({ root: rootProp, onStageChange, children }: SheetStagesProps) => {
+  const firstId = React.useMemo(() => {
+    let found: string | undefined;
+    React.Children.forEach(children, (child) => {
+      if (!found && React.isValidElement<{ id?: string }>(child) && typeof child.props.id === 'string') found = child.props.id;
+    });
+    return found;
+  }, [children]);
+  const root = rootProp ?? firstId ?? 'root';
+  const [stack, setStack] = React.useState<string[]>([root]);
+  const [direction, setDirection] = React.useState<'forward' | 'back'>('forward');
+  const labels = React.useRef<Record<string, string>>({});
+  const changeRef = React.useRef(onStageChange);
+  changeRef.current = onStageChange;
+  const update = React.useCallback((next: string[], dir: 'forward' | 'back') => {
+    setDirection(dir);
+    setStack(next);
+    changeRef.current?.(next[next.length - 1], next);
+  }, []);
+  const value = React.useMemo<SheetStagesValue>(
+    () => ({
+      stack,
+      direction,
+      labels,
+      push: (id) => {
+        if (stack[stack.length - 1] !== id) update([...stack.filter((s) => s !== id), id], 'forward');
+      },
+      back: () => {
+        if (stack.length > 1) update(stack.slice(0, -1), 'back');
+      },
+      reset: () => {
+        if (stack.length > 1) update([stack[0]], 'back');
+      },
+    }),
+    [stack, direction, update],
+  );
+  useSheetEscape(stack.length > 1, () => {
+    value.back();
+    return true;
+  });
+  return <SheetStagesContext.Provider value={value}>{children}</SheetStagesContext.Provider>;
+};
+SheetStages.displayName = 'SheetStages';
+
+// Stage in front, depth (0 on the root), push, back and reset of the nearest SheetStages.
+function useSheetStages() {
+  const ctx = React.useContext(SheetStagesContext);
+  if (!ctx) throw new Error('useSheetStages must be used inside SheetStages');
+  return { stage: ctx.stack[ctx.stack.length - 1], depth: ctx.stack.length - 1, push: ctx.push, back: ctx.back, reset: ctx.reset };
+}
+
+interface SheetStageProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'id'> {
+  id: string;
+  // Title in the stage header (pushed stages). The root stage brings its own SheetHeader.
+  title?: React.ReactNode;
+  // Plain text of the title for the back button name ("Back to Task"). Defaults to `title` when that is a string.
+  label?: string;
+  // Right side of the stage header, before the close button, e.g. an AutosaveStatus.
+  headerEnd?: React.ReactNode;
+}
+
+// One stage of SheetStages. The root stage shows its children as they are; a pushed stage gets a 52px header with a 44px back button and its title. Stages under the front one stay mounted but hidden and inert, so their input survives a push.
+const SheetStage = React.forwardRef<HTMLDivElement, SheetStageProps>(({ id, title, label, headerEnd, className, children, ...props }, ref) => {
+  const ctx = React.useContext(SheetStagesContext);
+  const l = useLabels();
+  const zero = usePreset() === 'zero';
+  const headingRef = React.useRef<HTMLHeadingElement | null>(null);
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  const plain = label ?? (typeof title === 'string' ? title : undefined);
+  if (ctx && plain) ctx.labels.current[id] = plain;
+  const index = ctx ? ctx.stack.indexOf(id) : 0;
+  const front = ctx ? index === ctx.stack.length - 1 : true;
+  const isRoot = ctx ? ctx.stack[0] === id : true;
+  const parent = ctx && index > 0 ? ctx.stack[index - 1] : undefined;
+  const parentLabel = parent ? ctx?.labels.current[parent] : undefined;
+  const wasFront = React.useRef(front);
+  useIsoLayoutEffect(() => {
+    const entering = front && !wasFront.current;
+    const leaving = !front && wasFront.current;
+    wasFront.current = front;
+    // Leaving by a push: remember the control that pushed, so back can return focus to it.
+    if (leaving && ctx?.direction === 'forward') openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!entering) return;
+    if (ctx?.direction === 'forward' && !isRoot) headingRef.current?.focus({ preventScroll: true });
+    if (ctx?.direction === 'back') {
+      const opener = openerRef.current;
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      else headingRef.current?.focus({ preventScroll: true });
+    }
+  }, [front]);
+  if (index === -1) return null;
+  const headingId = `${id}-stage-title`;
+  return (
+    <div
+      ref={ref}
+      data-slot="sheet-stage"
+      data-stage={id}
+      data-stage-front={front || undefined}
+      role={isRoot ? undefined : 'group'}
+      aria-labelledby={isRoot ? undefined : headingId}
+      hidden={!front}
+      {...(!front ? { inert: '' } : {})}
+      className={cn(
+        front && isRoot && 'contents',
+        front && !isRoot && 'flex min-h-0 flex-1 flex-col',
+        front && ctx && ctx.stack.length > 1 && 'animate-in fade-in-0 duration-200 motion-reduce:animate-none',
+        front && ctx?.direction === 'forward' && !isRoot && 'slide-in-from-right-8',
+        front && ctx?.direction === 'back' && 'slide-in-from-left-8',
+        className,
+      )}
+      {...props}
+    >
+      {!isRoot && (
+        <div data-slot="sheet-stage-header" className="flex shrink-0 items-center gap-1 border-0 border-b border-solid border-hairline py-1 pl-2 pr-16">
+          <Button type="button" variant="ghost" size="icon" className="min-h-target-lg min-w-target-lg shrink-0" aria-label={parentLabel ? l.backTo(parentLabel) : l.back} onClick={() => ctx?.back()}>
+            <ChevronLeft className="h-icon-md w-icon-md" aria-hidden="true" />
+          </Button>
+          <h2 ref={headingRef} id={headingId} tabIndex={-1} className={cn('m-0 min-w-0 flex-1 truncate outline-none', zero ? 'typography-sheet-title' : 'text-base font-semibold', 'text-foreground')}>
+            {title}
+          </h2>
+          {headerEnd}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+});
+SheetStage.displayName = 'SheetStage';
 
 interface SheetHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   /** `zero` is the compact record header: bottom hairline, own padding (use with `padded={false}`). */
@@ -390,7 +992,7 @@ interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   // Retry of the default status, for the error and offline states. A status handed over by `statusPlacement="footer"` brings its own.
   onRetry?: () => void;
   retryLabel?: string;
-  /** Zero footer only. Left side status, defaults to the autosave status derived from the sheet state. */
+  /** Zero footer only. Left side status, defaults to the autosave status derived from the sheet state (also for `undefined` and `null`). `false` switches the status off: nothing is drawn on the left and the sheet keeps any status placed elsewhere. */
   status?: React.ReactNode;
   /** Zero footer only. Secondary action on the left (for example "Download error list"), shown instead of the status. */
   leftAction?: React.ReactNode;
@@ -404,7 +1006,8 @@ const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ classN
   const zero = usePreset() === 'zero';
   const variant = variantProp ?? (zero ? 'zero' : 'default');
   // Only the zero footer draws the status; while it is mounted the sheet may hide every other status.
-  const shows = variant === 'zero' && !leftAction && !status;
+  const statusOff = status === false;
+  const shows = variant === 'zero' && !leftAction && !status && !statusOff;
   React.useLayoutEffect(() => {
     if (!setFooterShown || !shows) return undefined;
     setFooterShown(true);
@@ -421,14 +1024,17 @@ const SheetFooter = React.forwardRef<HTMLDivElement, SheetFooterProps>(({ classN
         {...props}
       >
         <AutosaveScopeContext.Provider value={null}>
-          {leftAction ?? status ?? (
-            <AutosaveStatus
-              state={scope?.handed?.state ?? (state === 'dirty' ? 'dirty' : state === 'error' ? 'error' : 'saved')}
-              label={scope?.handed?.label}
-              onRetry={onRetry ?? scope?.handed?.onRetry}
-              retryLabel={retryLabel ?? scope?.handed?.retryLabel}
-            />
-          )}
+          {leftAction ??
+            (statusOff
+              ? null
+              : status ?? (
+                  <AutosaveStatus
+                    state={scope?.handed?.state ?? (state === 'dirty' ? 'dirty' : state === 'error' ? 'error' : 'saved')}
+                    label={scope?.handed?.label}
+                    onRetry={onRetry ?? scope?.handed?.onRetry}
+                    retryLabel={retryLabel ?? scope?.handed?.retryLabel}
+                  />
+                ))}
         </AutosaveScopeContext.Provider>
         <div className="ml-auto flex items-center gap-2">{children}</div>
       </div>
@@ -816,4 +1422,11 @@ export {
   SheetPortal,
   SheetTitle,
   SheetTrigger,
+  SheetConfirm,
+  type SheetConfirmProps,
+  SheetStages,
+  type SheetStagesProps,
+  SheetStage,
+  type SheetStageProps,
+  useSheetStages,
 };

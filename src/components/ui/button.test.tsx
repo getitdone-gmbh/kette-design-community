@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
 import { Button } from './button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
 describe('Button component', () => {
   it('renders the label', () => {
@@ -449,3 +451,177 @@ describe('Button status corner', () => {
   });
 });
 
+
+describe('Button gated (aria-disabled)', () => {
+  it('stays focusable, is not natively disabled and exposes aria-disabled', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Button>Before</Button>
+        <Button aria-disabled="true">Export</Button>
+      </>,
+    );
+    const button = screen.getByRole('button', { name: 'Export' });
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveAttribute('data-gated', 'true');
+    await user.tab();
+    await user.tab();
+    expect(button).toHaveFocus();
+  });
+
+  it('calls onGatedClick instead of onClick and stops the event', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const onGatedClick = vi.fn();
+    const onParent = vi.fn();
+    render(
+      <div onClick={onParent}>
+        <Button aria-disabled onClick={onClick} onGatedClick={onGatedClick}>
+          Export
+        </Button>
+      </div>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Export' }));
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onParent).not.toHaveBeenCalled();
+  });
+
+  it('runs onGatedClick on Enter and Space and never submits a form', async () => {
+    const user = userEvent.setup();
+    const onGatedClick = vi.fn();
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Button type="submit" aria-disabled="true" onGatedClick={onGatedClick}>
+          Send
+        </Button>
+      </form>,
+    );
+    const button = screen.getByRole('button', { name: 'Send' });
+    button.focus();
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+    expect(onGatedClick).toHaveBeenCalledTimes(2);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('describes the reason for assistive tech and keeps the accessible name', () => {
+    render(
+      <Button aria-disabled="true" aria-describedby="other" gatedReason="Only owners can export.">
+        Export
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: 'Export' });
+    const ids = (button.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(ids).toContain('other');
+    expect(ids).toHaveLength(2);
+    expect(document.getElementById(ids[1])).toHaveTextContent('Only owners can export.');
+    expect(button).not.toHaveTextContent('Only owners');
+  });
+
+  it('adds no description without a gate', () => {
+    render(<Button gatedReason="Only owners can export.">Export</Button>);
+    expect(screen.getByRole('button', { name: 'Export' })).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText('Only owners can export.')).toBeNull();
+  });
+
+  it('dims like disabled in every state and keeps the focus ring', () => {
+    render(<Button aria-disabled="true">Export</Button>);
+    const button = screen.getByRole('button', { name: 'Export' });
+    expect(button).toHaveClass('data-[gated=true]:opacity-disabled', 'data-[gated=true]:cursor-not-allowed');
+    // Keyboard focus keeps the dim (eased to the done token) and draws the ring in the strongest ink.
+    expect(button).toHaveClass('data-[gated=true]:focus-visible:[opacity:var(--opacity-done)]', 'data-[gated=true]:focus-visible:ring-text-default');
+    expect(button).not.toHaveClass('data-[gated=true]:focus-visible:opacity-100');
+    expect(button.className).toContain('focus-visible:ring-focus');
+    // Native disabled sets pointer-events none via the disabled: variant; the gate must not rely on a native disabled attribute.
+    expect(button).not.toHaveAttribute('disabled');
+  });
+
+  it.each(['default', 'primary', 'destructive', 'outline', 'secondary', 'ghost', 'link'] as const)('has no hover, pressed or open state layer on %s while gated', (variant) => {
+    const { rerender } = render(
+      <Button variant={variant} underline>
+        Export
+      </Button>,
+    );
+    const names = (screen.getByRole('button').className.split(/\s+/));
+    // The rest state does have them, so the test sees the removal.
+    expect(names.some((name) => name.startsWith('hover:') || name.startsWith('active:'))).toBe(true);
+    rerender(
+      <Button variant={variant} underline aria-disabled="true">
+        Export
+      </Button>,
+    );
+    const gated = screen.getByRole('button').className.split(/\s+/);
+    expect(gated.filter((name) => /^(hover|active|data-\[state=open\]):/.test(name))).toEqual([]);
+    expect(gated.some((name) => name.startsWith('focus-visible:'))).toBe(true);
+  });
+
+  it('keeps native disabled and loading apart from the gate', () => {
+    const onGatedClick = vi.fn();
+    render(
+      <>
+        <Button disabled aria-disabled="true" onGatedClick={onGatedClick}>
+          Native
+        </Button>
+        <Button loading aria-disabled="true" onGatedClick={onGatedClick}>
+          Busy
+        </Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Native' })).not.toHaveAttribute('data-gated');
+    expect(screen.getByRole('button', { name: /Busy/ })).not.toHaveAttribute('data-gated');
+  });
+
+  it('shows a tooltip on keyboard focus of a gated button inside TooltipTrigger', async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button aria-disabled="true" onGatedClick={() => undefined}>
+              Export
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Only owners can export.</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Export' })).toHaveFocus();
+    expect((await screen.findAllByText('Only owners can export.')).length).toBeGreaterThan(0);
+  });
+
+  it('announces the reason once in the recommended Tooltip combination (no gatedReason)', async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button aria-disabled="true" onGatedClick={() => undefined}>
+              Export
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Only owners can export.</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await user.tab();
+    const button = screen.getByRole('button', { name: 'Export' });
+    await screen.findAllByText('Only owners can export.');
+    expect(button).toHaveAccessibleDescription('Only owners can export.');
+  });
+
+  it('works with asChild', async () => {
+    const user = userEvent.setup();
+    const onGatedClick = vi.fn();
+    render(
+      <Button asChild aria-disabled="true" onGatedClick={onGatedClick}>
+        <a href="/export">Export</a>
+      </Button>,
+    );
+    await user.click(screen.getByText('Export'));
+    expect(onGatedClick).toHaveBeenCalledTimes(1);
+  });
+});

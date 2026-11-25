@@ -110,8 +110,8 @@ export const PlainDialog: Story = {
     src = replaceOnce(src, "import { MaterialIcon } from '../icons/Icon';\n", "import { LayoutDashboard } from 'lucide-react';\n", file);
     return src.split('<MaterialIcon name="dashboard" ').join('<LayoutDashboard ');
   },
-  // The story named Error shadows the global Error inside this file.
-  'sheet-zero.stories.tsx': (src, file) => replaceOnce(src, "throw new Error('Focus did not move into the push sheet')", "throw new globalThis.Error('Focus did not move into the push sheet')", file),
+  // The story named Error shadows the global Error inside this file. The library writes globalThis.Error itself since 0.46.0, then the patch has nothing to do.
+  'sheet-zero.stories.tsx': (src, file) => src.includes("throw new globalThis.Error('Focus did not move into the push sheet')") ? src : replaceOnce(src,"throw new Error('Focus did not move into the push sheet')", "throw new globalThis.Error('Focus did not move into the push sheet')", file),
   'drawer.stories.tsx': (src, file) => {
     src = replaceOnce(src, "import { Bar, BarChart, ResponsiveContainer } from 'recharts';\n", '', file);
     src = replaceOnce(src, "import { Button } from './button';", "import { Button } from './button';\nimport { Sparkline } from './chart';", file);

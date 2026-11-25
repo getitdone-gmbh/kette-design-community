@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { vi } from 'vitest';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
@@ -81,7 +81,9 @@ describe('Sheet sizes and modes', () => {
       </>,
     );
     expect(document.querySelector('.bg-overlay')).not.toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toHaveClass('rounded-l-surface', 'p-0');
+    // A push sheet is part of the page edge: square corners
+    expect(screen.getByRole('dialog')).toHaveClass('p-0');
+    expect(screen.getByRole('dialog').className).not.toMatch(/rounded-[lr]-surface/);
     await user.click(screen.getByText('Outside'));
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     // A docked sheet only closes on Escape while focus is inside it (0.15).
@@ -1068,5 +1070,403 @@ describe('SheetContent mobileFullscreen', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).not.toHaveAttribute('data-sheet-mobile');
     expect(dialog).not.toHaveClass('max-sm:inset-0');
+  });
+});
+
+// R-LIB-03 (L-14): no slide or fade under prefers-reduced-motion, on the panel and the scrim.
+describe('Sheet reduced motion (R-LIB-03)', () => {
+  const reduce = ['motion-reduce:animate-none', 'motion-reduce:data-[state=open]:animate-none', 'motion-reduce:data-[state=closed]:animate-none', 'motion-reduce:transition-none'];
+
+  it.each(['modal', 'push', 'overlay', 'card', 'centered'] as const)('drops the animation in %s mode', (mode) => {
+    render(<Example mode={mode} modal={mode !== 'push'} />);
+    expect(screen.getByRole('dialog')).toHaveClass(...reduce);
+  });
+
+  it('drops the animation on the scrim', () => {
+    render(<Example />);
+    const overlay = document.querySelector('[data-state="open"].fixed.inset-0') as HTMLElement;
+    expect(overlay).not.toBeNull();
+    expect(overlay).toHaveClass(...reduce);
+  });
+});
+
+// R-LIB-04 (L-15, ZERO-640): a docked push sheet is no focus trap. Tab leaves it to the page, a modal sheet keeps looping.
+describe('Push sheet Tab order (R-LIB-04)', () => {
+  const Page = ({ modal }: { modal: boolean }) => {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <>
+        <button type="button">Before</button>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open details
+        </button>
+        <Sheet open={open} onOpenChange={setOpen} modal={modal}>
+          <SheetContent mode={modal ? 'modal' : 'push'}>
+            <SheetTitle>Details</SheetTitle>
+            <SheetDescription>Docked</SheetDescription>
+            <button type="button">First inside</button>
+            <button type="button">Last inside</button>
+          </SheetContent>
+        </Sheet>
+        <button type="button">After</button>
+      </>
+    );
+  };
+
+  it('Tab from the last element of a push sheet goes to the page element after the opener', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    await screen.findByRole('dialog');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'After' }));
+  });
+
+  it('Shift+Tab from the first element of a push sheet goes back to the opener', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    (dialog.querySelector('[data-slot="sheet-close"]') as HTMLElement).focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open details' }));
+  });
+
+  it('keeps the push sheet open and Escape working inside it', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    await screen.findByRole('dialog');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    screen.getByRole('button', { name: 'First inside' }).focus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  // UX-PKG5-01: a push sheet as wide as the viewport (phone, high zoom) hides the page, so it behaves like a modal sheet.
+  const coverViewport = (dialog: HTMLElement) => {
+    Object.defineProperty(dialog, 'offsetWidth', { configurable: true, get: () => window.innerWidth });
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
+
+  it('a push sheet that covers the page keeps Tab inside and is announced as modal (UX-PKG5-01)', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toHaveAttribute('aria-modal');
+    coverViewport(dialog);
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-modal', 'true'));
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    (dialog.querySelector('[data-slot="sheet-close"]') as HTMLElement).focus();
+    await user.tab({ shift: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  // UX-PKG5-01 re-check: the decision is made at the target. Rects stand in for the layout jsdom does not have.
+  const place = (el: HTMLElement, left: number, width: number, top = 0, height = 40) => {
+    el.getBoundingClientRect = () => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+  };
+  const relayout = () =>
+    act(async () => {
+      window.dispatchEvent(new Event('resize'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  const pageButtons = () => ['Before', 'Open details', 'After'].map((name) => screen.getByRole('button', { name }));
+
+  it('a push sheet a few px narrower than the viewport that hides the page keeps Tab inside (375 in 390)', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    place(dialog, 0, 375, 0, 844);
+    pageButtons().forEach((button, i) => place(button, 16, 200, 100 + i * 60));
+    await relayout();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    (dialog.querySelector('[data-slot="sheet-close"]') as HTMLElement).focus();
+    await user.tab({ shift: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('a push sheet that lies over the page without pushing it keeps Tab inside (640, 200 % zoom)', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    place(dialog, 105, 520, 0, 800);
+    const [before, opener, after] = pageButtons();
+    place(before, 8, 80, 20);
+    place(opener, 8, 80, 80);
+    place(after, 200, 120, 80);
+    await relayout();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('Tab on the page while a push sheet lies over it goes into the sheet, not to a hidden control', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    place(dialog, 105, 520, 0, 800);
+    const [before, opener, after] = pageButtons();
+    place(before, 8, 80, 20);
+    place(opener, 8, 80, 80);
+    place(after, 200, 120, 80);
+    await relayout();
+    opener.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(dialog.querySelector('[data-slot="sheet-close"]'));
+    after.focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Last inside' }));
+  });
+
+  it('a push sheet over the page is modal even when the consumer marks it aria-modal false', async () => {
+    render(
+      <Sheet open modal={false}>
+        <SheetContent mode="push" aria-modal="false">
+          <SheetTitle>Details</SheetTitle>
+          <SheetDescription>Docked</SheetDescription>
+          <button type="button">Inside</button>
+        </SheetContent>
+      </Sheet>,
+    );
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'false');
+    Object.defineProperty(dialog, 'offsetWidth', { configurable: true, get: () => window.innerWidth });
+    await relayout();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+  });
+
+  it('a push sheet beside the page hands Tab to the page and stays non-modal (L-15)', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    place(dialog, 760, 520, 0, 800);
+    pageButtons().forEach((button, i) => place(button, 16 + i * 220, 200, 80));
+    await relayout();
+    expect(dialog).not.toHaveAttribute('aria-modal');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'After' }));
+  });
+
+  // UX-PKG5-03 / A11Y-PKG5-01: the docked sheet sits right after its opener in the Tab order and the end of the page leaves the document.
+  it('Tab from the opener enters the push sheet', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    screen.getByRole('button', { name: 'Open details' }).focus();
+    await user.tab();
+    expect(document.activeElement).toBe(dialog.querySelector('[data-slot="sheet-close"]'));
+  });
+
+  it('Shift+Tab from the page element after the opener goes to the last element of the push sheet', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    await screen.findByRole('dialog');
+    screen.getByRole('button', { name: 'After' }).focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Last inside' }));
+  });
+
+  it('Tab from the last page element steps over the push sheet, so focus leaves the document', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    const after = screen.getByRole('button', { name: 'After' });
+    after.focus();
+    fireEvent.keyDown(after, { key: 'Tab' });
+    expect(dialog).toHaveAttribute('inert');
+    const guards = Array.from(document.querySelectorAll('[data-radix-focus-guard]'));
+    expect(guards[guards.length - 1]).toHaveAttribute('inert');
+    await waitFor(() => expect(dialog).not.toHaveAttribute('inert'));
+    expect(guards[guards.length - 1]).not.toHaveAttribute('inert');
+  });
+
+  it('Shift+Tab from outside the document lands on the last page element, not in the push sheet', async () => {
+    const user = userEvent.setup();
+    render(<Page modal={false} />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    await screen.findByRole('dialog');
+    (document.activeElement as HTMLElement).blur();
+    const guards = Array.from(document.querySelectorAll<HTMLElement>('[data-radix-focus-guard]'));
+    guards[guards.length - 1].focus();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'After' }));
+  });
+
+  it('a modal sheet still loops: Tab from the last element returns to the first', async () => {
+    const user = userEvent.setup();
+    render(<Page modal />);
+    await user.click(screen.getByRole('button', { name: 'Open details' }));
+    const dialog = await screen.findByRole('dialog');
+    screen.getByRole('button', { name: 'Last inside' }).focus();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+});
+
+describe('Sheet switch without a second entrance', () => {
+  // The cleanup of the test before unmounts an open sheet, which would count as a switch
+  beforeEach(() => new Promise((resolve) => setTimeout(resolve, 80)));
+
+  const Switching = ({ id, modal }: { id: string; modal?: boolean }) => (
+    <Sheet key={id} open modal={modal}>
+      <SheetContent>
+        <SheetTitle>{id}</SheetTitle>
+        <SheetDescription>Details</SheetDescription>
+      </SheetContent>
+    </Sheet>
+  );
+
+  it('plays the entrance on the first open', () => {
+    render(<Switching id="a" />);
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('data-sheet-switched');
+  });
+
+  it('skips the entrance when another row remounts the open sheet', () => {
+    const { rerender } = render(<Switching id="a" />);
+    rerender(<Switching id="b" />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('b');
+    expect(dialog).toHaveAttribute('data-sheet-switched');
+    expect(dialog.className).toContain('data-[state=open]:data-[sheet-switched]:animate-none');
+    expect(document.querySelector('[data-sheet-switched][data-state="open"]:not([role="dialog"])')).not.toBeNull();
+  });
+
+  it('plays the entrance on the first open in StrictMode', () => {
+    render(
+      <React.StrictMode>
+        <Switching id="a" />
+      </React.StrictMode>,
+    );
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('data-sheet-switched');
+  });
+
+  it('skips the entrance on a switch in StrictMode', () => {
+    const { rerender } = render(
+      <React.StrictMode>
+        <Switching id="a" />
+      </React.StrictMode>,
+    );
+    rerender(
+      <React.StrictMode>
+        <Switching id="b" />
+      </React.StrictMode>,
+    );
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-sheet-switched');
+  });
+
+  it('skips the entrance when the push sheet and its dock are rebuilt together', () => {
+    const Docked = ({ id }: { id: string }) => {
+      const [dock, setDock] = React.useState<HTMLDivElement | null>(null);
+      return (
+        <div>
+          <div ref={setDock} />
+          {dock && (
+            <Sheet open modal={false}>
+              <SheetContent mode="push" container={dock}>
+                <SheetTitle>{id}</SheetTitle>
+                <SheetDescription>Details</SheetDescription>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
+      );
+    };
+    // The switch window is 50ms on performance.now: on a loaded runner the two commits (dock element, then sheet) can take longer, so the clock stands still for this test
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    try {
+      const { rerender } = render(<Docked key="a" id="a" />);
+      rerender(<Docked key="b" id="b" />);
+      expect(screen.getByRole('dialog')).toHaveTextContent('b');
+      expect(screen.getByRole('dialog')).toHaveAttribute('data-sheet-switched');
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('plays the entrance when a sheet of another side replaces the open one', () => {
+    const Other = ({ left }: { left: boolean }) => (
+      <Sheet key={left ? 'left' : 'right'} open>
+        <SheetContent side={left ? 'left' : 'right'}>
+          <SheetTitle>Panel</SheetTitle>
+          <SheetDescription>Details</SheetDescription>
+        </SheetContent>
+      </Sheet>
+    );
+    const { rerender } = render(<Other left={false} />);
+    rerender(<Other left />);
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('data-sheet-switched');
+  });
+
+  it('plays the entrance again after the sheet was closed', async () => {
+    const { rerender } = render(<Switching id="a" />);
+    rerender(<></>);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    rerender(<Switching id="b" />);
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('data-sheet-switched');
+  });
+});
+
+describe('SheetFooter status switch (KETTE-87)', () => {
+  const renderFooter = (status?: React.ReactNode, withMeta = false) =>
+    render(
+      <Sheet open>
+        <SheetContent padded={false} statusPlacement="footer">
+          <SheetHeader>
+            <SheetTitle>Edit company</SheetTitle>
+            <SheetDescription>Record</SheetDescription>
+            {withMeta ? (
+              <SheetMeta>
+                <AutosaveStatus state="dirty" />
+              </SheetMeta>
+            ) : null}
+          </SheetHeader>
+          <SheetFooter variant="zero" status={status}>
+            <button type="button">Save</button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>,
+    );
+
+  it('shows the default Saved status for undefined', () => {
+    renderFooter(undefined);
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+  });
+
+  it('keeps showing the default status for null', () => {
+    renderFooter(null);
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+  });
+
+  it('shows no status at all for false and keeps the actions on the right', () => {
+    renderFooter(false);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    const footer = screen.getByRole('dialog').querySelector('div.min-h-sheet-footer') as HTMLElement;
+    expect(within(footer).getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
+
+  it('with false the status placed in the header stays where it is', () => {
+    renderFooter(false, true);
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('dialog').querySelector('div.min-h-sheet-footer [role="status"]')).toBeNull();
   });
 });

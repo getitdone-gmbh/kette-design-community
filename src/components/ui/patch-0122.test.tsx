@@ -7,14 +7,14 @@ import { Pagination } from './pagination';
 
 // 0.12.2: pagers show a loading summary instead of the row range and block navigation while a page loads
 describe('Pagination loading', () => {
-  it('compact shows the loading text, is aria-busy and disables its controls', () => {
+  it('compact shows the loading text, is aria-busy and gates its controls with aria-disabled (KETTE-84)', () => {
     render(<Pagination variant="compact" total={120} pageSize={25} page={2} loading />);
     const nav = screen.getByRole('navigation');
     expect(nav).toHaveAttribute('aria-busy', 'true');
     expect(nav).toHaveTextContent('Loading…');
     expect(nav).not.toHaveTextContent('26');
-    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Page 3' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Previous page' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Page 3' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('uses the provider locale and the prop override', () => {

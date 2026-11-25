@@ -352,4 +352,17 @@ describe('Select long list (KETTE-69)', () => {
     expect(listbox).toHaveClass('max-h-80');
     expect(listbox.className).not.toContain('max-h-[var(--radix-select-content-available-height)]');
   });
+  // KETTE-60: the trigger is a button (centred by default), the value reads from the left like in an Input; the list never grows past the trigger.
+  it('aligns the trigger text to the left', () => {
+    renderSelect();
+    expect(screen.getByRole('combobox')).toHaveClass('text-left');
+  });
+
+  it('caps the popper list at the trigger width or 16rem (short options of a narrow trigger stay on one line) and lets long labels wrap', async () => {
+    renderSelect();
+    await userEvent.click(screen.getByRole('combobox'));
+    const listbox = await waitFor(() => screen.getByRole('listbox'));
+    expect(listbox.closest('[data-radix-popper-content-wrapper]')?.firstElementChild?.className ?? listbox.className).toContain('max-w-[min(max(var(--radix-select-trigger-width),16rem),calc(100vw-1rem))]');
+    expect(screen.getByRole('option', { name: 'Apple' })).toHaveClass('[overflow-wrap:anywhere]');
+  });
 });

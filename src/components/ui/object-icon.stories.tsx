@@ -43,3 +43,24 @@ export const SemanticTones: Story = {
     </div>
   ),
 };
+
+// Add-on and brand tones: Die Kette (teal), run.zero (strong, inverse), bundles (muted).
+export const AddonTones: Story = {
+  render: () => (
+    <div className="flex items-center gap-3">
+      {(['teal', 'strong', 'muted'] as const).map((tone) => (
+        <div key={tone} className="flex items-center gap-2">
+          <ObjectIcon tone={tone} size="sm" label={tone}>
+            <FileText />
+          </ObjectIcon>
+          <ObjectIcon tone={tone} size="md" label={tone}>
+            <FileText />
+          </ObjectIcon>
+          <ObjectIcon tone={tone} size="lg" label={tone}>
+            <FileText />
+          </ObjectIcon>
+        </div>
+      ))}
+    </div>
+  ),
+};

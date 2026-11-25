@@ -1,9 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect } from '@storybook/jest';
+import { userEvent, waitFor, within } from '@storybook/testing-library';
 import { DesignSystemProvider } from './design-system-provider';
 import { useState } from 'react';
 
+import { Badge } from './badge';
+
 import { DropdownMenuItem } from './dropdown-menu';
 import { Chip } from './chip';
+import { Checkbox } from './checkbox';
 import { DndContext, useDraggable } from '@dnd-kit/core';
 import { Kanban, KanbanCard, KanbanColumn, kanbanAutoScroll, useKanbanSensors, type KanbanMove } from './kanban';
 import { applyKanbanMove, moveToColumn, type KanbanColumnData } from './kanban-move';
@@ -285,6 +290,207 @@ const ConfirmBoard = () => {
   );
 };
 export const MoveRejected: Story = { render: () => <ConfirmBoard /> };
+
+// A switched-off stage keeps its cards but takes no new ones. Its own cards still reorder and leave.
+// Offer starts with a card, as in the product: an empty column would show its dashed empty frame inside the dashed outline.
+const dropDisabledInitial: Record<string, Card[]> = { ...initial, offer: [{ id: 'd', title: 'Cloud Architect', sub: 'Initech, Cologne' }] };
+
+const DropDisabledBoard = () => {
+  const [cols, setCols] = useState(dropDisabledInitial);
+  return (
+    <Kanban aria-label="Pipeline" onMove={(move) => setCols((prev) => moveCard(prev, move))}>
+      {Object.entries(cols).map(([id, cards]) => (
+        <KanbanColumn
+          key={id}
+          id={id}
+          title={titles[id]}
+          // As in the product, the region name carries the stage state; announcements still say the title.
+          label={id === 'offer' ? 'Offer, stage is off, does not accept cards' : undefined}
+          count={cards.length}
+          dropDisabled={id === 'offer'}
+          badge={id === 'offer' ? <Badge variant="outline" className="bg-background">Off</Badge> : undefined}
+          emptyLabel="No Demands in this stage"
+        >
+          {cards.map((c) => (
+            <KanbanCard key={c.id} id={c.id} title={c.title} subtitle={c.sub} />
+          ))}
+        </KanbanColumn>
+      ))}
+    </Kanban>
+  );
+};
+
+export const DropDisabled: Story = {
+  name: 'Drop disabled',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`dropDisabled` on a `KanbanColumn`: while a card from another column is over it, a dashed outline 2px inside the column and the not-allowed cursor show, no drop marker. On release the card stays where it was, `onMove` is not called and the live region says the column does not accept cards (`kanbanDropDisabled`, per column `dropDisabledText`). `badge` puts a status badge right after the count. Announcements name a column by its string `title`, so a `label` with more detail (here the stage state) stays the region name without being read twice. `dropDisabled` does not filter the targets of `KanbanMoveToMenu`: leave the column out of `targets` yourself.',
+      },
+    },
+  },
+  render: () => <DropDisabledBoard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const offer = canvas.getByRole('region', { name: 'Offer, stage is off, does not accept cards' });
+    await expect(within(offer).getByText('Off')).toBeInTheDocument();
+    // Keyboard move of the Qualified card onto the switched-off Offer column.
+    canvas.getByRole('button', { name: /Data Engineer/ }).focus();
+    await userEvent.keyboard(' ');
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(offer).toHaveAttribute('data-drop-refused', 'true'));
+    await expect(canvas.getByRole('status')).toHaveTextContent(/^Offer, does not accept cards$/);
+    const style = getComputedStyle(offer);
+    await expect(style.outlineStyle).toBe('dashed');
+    await expect(style.outlineWidth).toBe('2px');
+    await expect(style.outlineOffset).toBe('-2px');
+    await expect(style.cursor).toBe('not-allowed');
+    await expect(offer.querySelector('[data-kanban-drop-marker]')).toBeNull();
+    await userEvent.keyboard(' ');
+    await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Offer does not accept cards. Data Engineer stays in Qualified.'));
+    await expect(canvas.getByRole('region', { name: 'Qualified' })).toContainElement(canvas.getByRole('button', { name: /Data Engineer/ }));
+  },
+};
+
+// ZERO-756 L-36: `dropLabel` per column. A card from another column shows the dashed drop box with the label, a reorder inside a column keeps the line.
+const probabilities: Record<string, number> = { lead: 10, qualified: 30, offer: 50 };
+const DropLabelBoard = () => {
+  const [cols, setCols] = useState(initial);
+  return (
+    <Kanban aria-label="Pipeline" onMove={(move) => setCols((prev) => moveCard(prev, move))}>
+      {Object.entries(cols).map(([id, cards]) => (
+        <KanbanColumn key={id} id={id} title={titles[id]} count={cards.length} dropLabel={`Drop here · ${titles[id]} ${probabilities[id]}%`} emptyLabel="No Demands in this stage">
+          {cards.map((c) => (
+            <KanbanCard key={c.id} id={c.id} title={c.title} subtitle={c.sub} />
+          ))}
+        </KanbanColumn>
+      ))}
+    </Kanban>
+  );
+};
+
+export const DropLabel: Story = {
+  name: 'Drop label',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`dropLabel` on a `KanbanColumn`: while a card from another column is over it, the drop place is a dashed box with the label (arrow icon, brand subtle fill, 160px high) and the keyboard move announces the label before the position. A reorder inside the column keeps the line. The play function picks up the Lead card with Space and moves it right, so the box shows.',
+      },
+    },
+  },
+  render: () => <DropLabelBoard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    canvas.getByRole('button', { name: /Senior Java Developer/ }).focus();
+    await userEvent.keyboard(' ');
+    await userEvent.keyboard('{ArrowRight}');
+    const qualified = canvas.getByRole('region', { name: 'Qualified' });
+    await waitFor(() => expect(qualified.querySelector('[data-drop-label]')).toHaveTextContent('Drop here · Qualified 30%'));
+    await expect(canvas.getByRole('status')).toHaveTextContent(/^Drop here · Qualified 30%, position 1$/);
+  },
+};
+
+// The same box while a card is dragged with the mouse: the play function presses on the Lead card and moves the pointer over Qualified without letting go. The dragged card sits below the label, the text at the top of the box stays readable.
+const pointer = (target: EventTarget, type: string, x: number, y: number) =>
+  target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+
+export const DropLabelMouseDrag: Story = {
+  name: 'Drop label, mouse drag',
+  parameters: { docs: { description: { story: 'Mouse drag state of `dropLabel`: the card is held over the next column, the label at the top of the box stays visible above it.' } } },
+  render: () => <DropLabelBoard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByRole('button', { name: /Senior Java Developer/ });
+    const qualified = canvas.getByRole('region', { name: 'Qualified' });
+    // The test runner starts the story in whatever viewport the previous story left: wait for a laid out board and bring the target column into view (at 390 it starts off screen).
+    await waitFor(() => expect(card.getBoundingClientRect().width > 0 && qualified.getBoundingClientRect().width > 0).toBe(true));
+    qualified.scrollIntoView({ block: 'nearest', inline: 'end' });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Press on the visible part of the card (it may be partly scrolled away on a phone).
+    const from = card.getBoundingClientRect();
+    const startX = Math.max(from.left, 0) + (Math.min(from.right, window.innerWidth) - Math.max(from.left, 0)) / 2;
+    const startY = from.top + from.height / 2;
+    pointer(card, 'pointerdown', startX, startY);
+    let step = 0;
+    // Keep moving towards the middle of the target column until the box shows; each try is one more pointer step, so a slow runner simply takes more steps.
+    await waitFor(
+      () => {
+        const to = qualified.getBoundingClientRect();
+        step = Math.min(step + 1, 8);
+        pointer(document, 'pointermove', startX + ((to.left + to.width / 2 - startX) * step) / 8, startY + 60);
+        expect(qualified.querySelector('[data-drop-label]')).toHaveTextContent('Drop here · Qualified 30%');
+      },
+      { timeout: 8000, interval: 50 },
+    );
+    // Like the prototype ghost: the held card rests in the lower part of the box, under the label at the top.
+    const box = (qualified.querySelector('[data-drop-label]') as HTMLElement).getBoundingClientRect();
+    pointer(document, 'pointermove', box.left + box.width / 2, box.top + box.height * 0.7);
+    await waitFor(() => expect(qualified.querySelector('[data-drop-label]')).toHaveTextContent('Drop here · Qualified 30%'), { timeout: 4000 });
+  },
+};
+
+// A select-all checkbox per column in a selection mode: the title row keeps its height, a long title shortens with an ellipsis.
+const HeaderActionBoard = () => {
+  const [selected, setSelected] = useState<string[]>([]);
+  const longTitles: Record<string, string> = { ...titles, qualified: 'Qualified after the first call' };
+  return (
+    <Kanban aria-label="Pipeline" columnWidth="fixed">
+      {Object.entries(initial).map(([id, cards]) => {
+        const ids = cards.map((c) => c.id);
+        const n = ids.filter((x) => selected.includes(x)).length;
+        return (
+          <KanbanColumn
+            key={id}
+            id={id}
+            title={longTitles[id]}
+            count={cards.length}
+            meta={id === 'qualified' ? 'Limit 2' : undefined}
+            headerAction={
+              <Checkbox
+                size="sm"
+                aria-label={`Select all in ${longTitles[id]}`}
+                checked={n === 0 ? false : n === ids.length ? true : 'indeterminate'}
+                onCheckedChange={() => setSelected((prev) => (n === ids.length ? prev.filter((x) => !ids.includes(x)) : [...new Set([...prev, ...ids])]))}
+              />
+            }
+            emptyLabel="No Demands in this stage"
+          >
+            {cards.map((c) => (
+              <KanbanCard key={c.id} id={c.id} title={c.title} subtitle={c.sub} />
+            ))}
+          </KanbanColumn>
+        );
+      })}
+    </Kanban>
+  );
+};
+
+export const HeaderAction: Story = {
+  name: 'Header action',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`headerAction` puts a control at the end of the title row, after `meta`, for example a select-all checkbox in a selection mode. The row keeps its height, so the columns do not move when the mode starts, and a long title shortens with an ellipsis instead of wrapping.',
+      },
+    },
+  },
+  render: () => <HeaderActionBoard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const lead = canvas.getByRole('region', { name: 'Lead' });
+    const qualified = canvas.getByRole('region', { name: 'Qualified after the first call' });
+    const rowHeight = (col: HTMLElement) => (col.querySelector('header > div') as HTMLElement).getBoundingClientRect().height;
+    await expect(rowHeight(qualified)).toBe(rowHeight(lead));
+    const title = within(qualified).getByRole('heading');
+    await expect(getComputedStyle(title).textOverflow).toBe('ellipsis');
+    const box = canvas.getByRole('checkbox', { name: 'Select all in Lead' });
+    await userEvent.click(box);
+    await waitFor(() => expect(box).toHaveAttribute('aria-checked', 'true'));
+  },
+};
 
 // Columns share the board width (flex 1 1 0) and shrink down to the column minimum (208px) before the board scrolls. `overflowHint` fades the side that can still scroll.
 export const FluidColumnsWithOverflowHint: Story = {

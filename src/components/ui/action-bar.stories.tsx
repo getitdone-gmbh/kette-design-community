@@ -175,3 +175,14 @@ export const WithLinks: Story = {
     moreActions: [{ id: 'audit', label: 'Audit log', href: '#audit' }, { id: 'archive', label: 'Archive', onSelect: () => {} }],
   },
 };
+
+// Every action in the More menu is disabled (KETTE-83): the trigger is gated (aria-disabled), stays focusable and does not open.
+export const MoreActionsAllDisabled: Story = {
+  args: {
+    actions: actions.slice(0, 2),
+    moreActions: [
+      { id: 'archive', label: 'Archive', disabled: true, onSelect: () => {} },
+      { id: 'merge', label: 'Merge', disabled: true, onSelect: () => {} },
+    ],
+  },
+};

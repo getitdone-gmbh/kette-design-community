@@ -655,3 +655,49 @@ describe('LineBarChart money values (KETTE-63)', () => {
     expect(ticks.some((t) => t.includes('€'))).toBe(false);
   });
 });
+
+// R-LIB-13 (ZERO-593): the histogram fills its container like LineBarChart width="auto".
+describe('Histogram width auto (R-LIB-13)', () => {
+  let observers: { cb: ResizeObserverCallback; el: Element }[] = [];
+  const bins = [{ label: '0', value: 1 }, { value: 4 }, { value: 5 }, { label: '100', value: 1 }];
+  beforeEach(() => {
+    observers = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        cb: ResizeObserverCallback;
+        constructor(cb: ResizeObserverCallback) {
+          this.cb = cb;
+        }
+        observe(el: Element) {
+          observers.push({ cb: this.cb, el });
+        }
+        unobserve() {}
+        disconnect() {
+          observers = observers.filter((o) => o.cb !== this.cb);
+        }
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => 410);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('draws at the measured container width and follows resizes', () => {
+    const { container } = render(<Histogram title="Scores" width="auto" bins={bins} />);
+    const svg = () => container.querySelector('svg') as SVGElement;
+    expect(svg()).toHaveAttribute('width', '410');
+    expect(svg()).toHaveAttribute('viewBox', '0 0 410 144');
+    expect(container.querySelector('[data-chart-fluid]')).toBeInTheDocument();
+    act(() => observers[0].cb([{ contentRect: { width: 640 } } as ResizeObserverEntry], {} as ResizeObserver));
+    expect(svg()).toHaveAttribute('width', '640');
+  });
+
+  it('keeps the fixed pixel width by default', () => {
+    const { container } = render(<Histogram title="Scores" bins={bins} />);
+    expect(container.querySelector('svg')).toHaveAttribute('width', '320');
+    expect(observers).toHaveLength(0);
+  });
+});

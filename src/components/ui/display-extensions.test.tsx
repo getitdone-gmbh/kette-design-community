@@ -124,10 +124,11 @@ describe('Toast inverse variant', () => {
     expect(screen.getByRole('button', { name: 'Undo' }).className).toContain('group-[.inverse]:underline');
   });
 
-  it('default toast is unchanged', () => {
+  // The default toast is the light snackbar Alex approved on 24.11.2026 (card surface, hairline)
+  it('default toast is the light snackbar', () => {
     renderToast();
     const toast = screen.getByText('Task deleted').closest('li') as HTMLElement;
-    expect(toast).toHaveClass('bg-surface-canvas');
+    expect(toast).toHaveClass('snack', 'bg-card', 'border-border-default');
     expect(toast).not.toHaveClass('inverse');
   });
 });

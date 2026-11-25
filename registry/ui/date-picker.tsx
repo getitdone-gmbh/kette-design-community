@@ -91,6 +91,8 @@ export interface DatePickerPanelProps {
   fromDate?: Date;
   toDate?: Date;
   defaultMonth?: Date;
+  // First day of the week in the grid, 0 Sunday to 6 Saturday (for example from the user's format settings). Unset keeps the locale rule (German weeks start on Monday).
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   className?: string;
 }
 
@@ -109,6 +111,7 @@ const DatePickerPanel = ({
   fromDate,
   toDate,
   defaultMonth,
+  weekStartsOn,
   className,
 }: DatePickerPanelProps) => {
   const l = useLabels();
@@ -140,6 +143,7 @@ const DatePickerPanel = ({
           numberOfMonths={months}
           showOutsideDays={false}
           defaultMonth={start}
+          {...(weekStartsOn !== undefined ? { weekStartsOn } : {})}
           disabled={disabledDays}
           fromDate={fromDate}
           toDate={toDate}
@@ -235,7 +239,7 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
       setOpenInner(next);
       onOpenChange?.(next);
     };
-    const { presets, numberOfMonths, disabledDays, fromDate, toDate, defaultMonth, ...ariaRest } = rest;
+    const { presets, numberOfMonths, disabledDays, fromDate, toDate, defaultMonth, weekStartsOn, ...ariaRest } = rest;
     const text = formatDatePickerValue(selected, formatValue, locale);
 
     const handleChange = (next: DatePickerValue) => {
@@ -288,6 +292,7 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
             fromDate={fromDate}
             toDate={toDate}
             defaultMonth={defaultMonth}
+            weekStartsOn={weekStartsOn}
             onApply={
               actions
                 ? () => {

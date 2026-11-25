@@ -138,12 +138,23 @@ export const HorizontalManyItems: Story = {
       },
       { timeout: 8000, interval: 100 },
     );
+    // The centring on load glides (smooth scroll) unless the user prefers reduced motion, and on a loaded runner that glide runs long. The keys are pressed once the row stopped moving, so a late frame of the glide never overwrites the position the keys set.
+    let lastLeft = -1;
+    let still = 0;
+    await waitFor(
+      () => {
+        still = row.scrollLeft === lastLeft ? still + 1 : 0;
+        lastLeft = row.scrollLeft;
+        expect(still).toBeGreaterThanOrEqual(6);
+      },
+      { timeout: 10000, interval: 100 },
+    );
     canvas.getByRole('button', { name: /Section 14/ }).focus();
     await userEvent.keyboard('{End}');
-    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1), { timeout: 5000 });
+    await waitFor(() => expect(row.scrollLeft).toBeGreaterThanOrEqual(row.scrollWidth - row.clientWidth - 1), { timeout: 10000 });
     await waitFor(() => expect(row).not.toHaveAttribute('data-fade-end'));
     await userEvent.keyboard('{Home}');
-    await waitFor(() => expect(row.scrollLeft).toBe(0));
+    await waitFor(() => expect(row.scrollLeft).toBe(0), { timeout: 10000 });
     await waitFor(() => expect(row).not.toHaveAttribute('data-fade-start'));
   },
 };

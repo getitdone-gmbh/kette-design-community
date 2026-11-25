@@ -247,7 +247,7 @@
   --colors-inline-code-foreground-default: 15 23 42;
   --colors-input-background-default: 255 255 255;
   --colors-input-background-hover: 241 245 249;
-  --colors-input-border-default: 226 232 240;
+  --colors-input-border-default: 126 141 163;
   --colors-input-foreground-filled: 15 23 42;
   --colors-input-foreground-hint: 100 116 139;
   --colors-input-foreground-hint-error: 185 28 28;
@@ -326,7 +326,7 @@
   --colors-table-foreground-default: 15 23 42;
   --colors-textarea-background-default: 255 255 255;
   --colors-textarea-background-hover: 241 245 249;
-  --colors-textarea-border-default: 203 213 225;
+  --colors-textarea-border-default: 126 141 163;
   --colors-textarea-foreground-filled: 15 23 42;
   --colors-textarea-foreground-hint: 100 116 139;
   --colors-textarea-foreground-label: 15 23 42;
@@ -342,7 +342,7 @@
   --colors-utility-foreground: 15 23 42;
   --colors-utility-hairline: 15 23 42;
   --colors-utility-hairline-alpha: 0.0588;
-  --colors-utility-input: 226 232 240;
+  --colors-utility-input: 126 141 163;
   --colors-utility-muted: 241 245 249;
   --colors-utility-muted-foreground: 71 85 105;
   --colors-utility-muted-strong: 203 213 225;
@@ -404,6 +404,8 @@
   --semantic-border-destructive: 220 38 38;
   --semantic-border-destructive-subtle: 252 165 165;
   --semantic-border-disabled: 226 232 240;
+  --semantic-border-field: 126 141 163;
+  --semantic-border-field-hover: 71 85 105;
   --semantic-border-focus: 37 99 235;
   --semantic-border-info: 37 99 235;
   --semantic-border-input: 226 232 240;
@@ -422,8 +424,11 @@
   --semantic-chart-subtle-7: 243 232 255;
   --semantic-chart-subtle-8: 255 228 230;
   --semantic-chart-subtle-non-working: 241 245 249;
+  --semantic-chart-2: 124 58 237;
   --semantic-chart-3: 17 94 89;
   --semantic-chart-3-on: 255 255 255;
+  --semantic-chart-5: 3 105 161;
+  --semantic-chart-5-on: 255 255 255;
   --semantic-chart-6: 236 72 153;
   --semantic-chart-7: 107 33 168;
   --semantic-chart-7-on: 255 255 255;
@@ -458,6 +463,12 @@
   --semantic-interaction-active-alpha: 0.0784;
   --semantic-interaction-hover: 0 0 0;
   --semantic-interaction-hover-alpha: 0.0392;
+  --semantic-interaction-state-layer-focus: 15 23 42;
+  --semantic-interaction-state-layer-focus-alpha: 0.102;
+  --semantic-interaction-state-layer-hover: 15 23 42;
+  --semantic-interaction-state-layer-hover-alpha: 0.0784;
+  --semantic-interaction-state-layer-pressed: 15 23 42;
+  --semantic-interaction-state-layer-pressed-alpha: 0.102;
   --semantic-link-active: 30 64 175;
   --semantic-link-default: 29 78 216;
   --semantic-link-disabled: 203 213 225;

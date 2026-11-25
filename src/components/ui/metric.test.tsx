@@ -301,3 +301,23 @@ describe('MetricItem labelAddon (KETTE-63)', () => {
     expect(screen.getByText('Plain').parentElement).not.toHaveClass('items-center');
   });
 });
+
+// R-LIB-12 (ZERO-593): a metric label can wrap instead of being cut.
+describe('MetricItem labelWrap (R-LIB-12)', () => {
+  it('wraps the label with labelWrap', () => {
+    render(<MetricItem label="Candidates above the threshold" value="42" labelWrap />);
+    const label = screen.getByText('Candidates above the threshold');
+    expect(label).not.toHaveClass('truncate');
+    expect(label).toHaveClass('break-words');
+  });
+
+  it('wraps the label next to an addon too', () => {
+    render(<MetricItem label="Candidates above the threshold" labelAddon={<span>?</span>} value="42" labelWrap />);
+    expect(screen.getByText('Candidates above the threshold')).not.toHaveClass('truncate');
+  });
+
+  it('truncates by default', () => {
+    render(<MetricItem label="Candidates above the threshold" value="42" />);
+    expect(screen.getByText('Candidates above the threshold')).toHaveClass('truncate');
+  });
+});

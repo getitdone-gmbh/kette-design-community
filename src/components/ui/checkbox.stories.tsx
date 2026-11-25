@@ -88,3 +88,14 @@ export const Comfortable: Story = {
     </div>
   ),
 };
+
+// Partial selection (for example a table header with some rows selected) shows a minus, never the check mark.
+export const Indeterminate: Story = {
+  render: () => (
+    <div className="flex items-center gap-4">
+      <Checkbox aria-label="Some rows selected" checked="indeterminate" />
+      <Checkbox aria-label="Some rows selected, small" size="sm" checked="indeterminate" />
+      <Checkbox aria-label="All rows selected" checked />
+    </div>
+  ),
+};

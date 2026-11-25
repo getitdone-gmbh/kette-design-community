@@ -13,6 +13,7 @@ const meta = {
   // onClick turns the item into a button, so it must not get an auto action arg
   parameters: { actions: { argTypesRegex: '^on(?!Click)[A-Z].*' } },
   args: { label: 'Open demands', value: '24', delta: '+3 vs last week', deltaTone: 'success' },
+  argTypes: { labelWrap: { control: { type: 'boolean' }, description: 'Wraps a long label over lines instead of cutting it.' } },
 } satisfies Meta<typeof MetricItem>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -246,4 +247,17 @@ export const ZeroPreset: Story = {
       </DesignSystemProvider>
     ),
   ],
+};
+
+// Long labels in a narrow strip: labelWrap breaks them over lines, nothing is cut.
+export const LabelWrap: Story = {
+  render: () => (
+    <div className="max-w-md">
+      <KpiStrip aria-label="Scoring KPIs">
+        <MetricItem labelWrap label="Candidates above the threshold" value="42" />
+        <MetricItem labelWrap label="Median score of the pool" value="71" />
+        <MetricItem labelWrap label="Profiles without a score" value="9" />
+      </KpiStrip>
+    </div>
+  ),
 };
