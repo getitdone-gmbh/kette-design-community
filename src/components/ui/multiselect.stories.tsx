@@ -1620,10 +1620,10 @@ const OutsideLabelDemo = () => {
   const [selected, setSelected] = useState<string[]>(['anna', 'ben']);
   const people = [
     { id: 'anna', label: 'Anna Becker' },
-    { id: 'ben', label: 'Ben Okafor' },
-    { id: 'carla', label: 'Carla Diaz' },
-    { id: 'david', label: 'David Kim' },
-    { id: 'eva', label: 'Eva Novak' },
+    { id: 'ben', label: 'Tobias Lindner' },
+    { id: 'carla', label: 'Sarah Tran' },
+    { id: 'david', label: 'Jonas Weber' },
+    { id: 'eva', label: 'Mia Hofmann' },
   ];
   return (
     <div className="flex w-full max-w-[480px] flex-col gap-1">

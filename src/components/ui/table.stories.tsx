@@ -1377,8 +1377,8 @@ export const InCardWithRowHeads: Story = {
         <TableBody>
           {[
             ['Anna Becker', '92'],
-            ['Ben Okafor', '87'],
-            ['Carla Diaz', '81'],
+            ['Tobias Lindner', '87'],
+            ['Sarah Tran', '81'],
           ].map(([name, score]) => (
             <TableRow key={name}>
               <TableHead scope="row">{name}</TableHead>
@@ -1485,8 +1485,8 @@ export const PhoneListDefaults: Story = {
         </TableHeader>
         <TableBody>
           {[
-            { name: 'Nordlicht AG', site: 'nordlicht.de', city: 'Hamburg', revenue: '1.2m', color: 1 as LogoTileColor },
-            { name: 'Digitalwerk KG', site: 'digitalwerk.de', city: 'Munich', revenue: '840k', color: 3 as LogoTileColor },
+            { name: 'Nordlicht AG', site: 'nordlicht.example.com', city: 'Hamburg', revenue: '1.2m', color: 1 as LogoTileColor },
+            { name: 'Digitalwerk KG', site: 'digitalwerk.example.com', city: 'Munich', revenue: '840k', color: 3 as LogoTileColor },
           ].map((c) => (
             <TableRow key={c.name}>
               <TableCell select>

@@ -171,6 +171,13 @@ const cast = [
   ['carol@example.com', 'sarah.tran@example.com'],
   ['david@example.com', 'mia.hofmann@example.com'],
   ['eve@example.com', 'jonas.meier@example.com'],
+  // Library 0.40.0 to 0.48.1 (MultiSelect OutsideLabel, Table row heads and company list)
+  ['Ben Okafor', 'Tobias Lindner'],
+  ['Carla Diaz', 'Sarah Tran'],
+  ['David Kim', 'Jonas Weber'],
+  ['Eva Novak', 'Mia Hofmann'],
+  ["site: 'nordlicht.de'", "site: 'nordlicht.example.com'"],
+  ["site: 'digitalwerk.de'", "site: 'digitalwerk.example.com'"],
   ['Acme Corp', 'Acme GmbH'],
   ['DGTL', 'NWH'],
   ['+1 (408) 996\u20131010', '+49 30 12345678'],
