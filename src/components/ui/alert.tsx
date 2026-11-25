@@ -1,7 +1,7 @@
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { X } from 'lucide-react';
+import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -68,7 +68,7 @@ const ALERT_LINK = [
   '[&_[data-slot=button][data-variant=link]:hover]:decoration-2',
 ];
 
-const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absolute'], {
+const alertVariants = cva(['relative w-full border border-solid'], {
   variants: {
     variant: {
       default: 'border-general-border-default bg-surface-canvas text-text-default [&>svg]:text-text-default',
@@ -95,23 +95,39 @@ const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absol
         ...ALERT_LINK,
       ],
     },
-    // `default` is the established layout. `compact` is a single-line note: no border, severity tint
+    // `default` is the established layout. `compact` is a soft note: no border, severity tint
     // fill, surface radius, `ui` type role, and an `icon-md` glyph sized from the control tokens.
     size: {
       default: [
-        'rounded-card p-4 text-sm leading-3',
-        '[&>svg~*:not([data-slot=alert-close])]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:left-4 [&>svg]:top-[1.2rem] [&>svg]:h-4 [&>svg]:w-4',
+        'rounded-card p-4 text-sm leading-3 [&>svg]:absolute',
+        // The icon sits on the middle of the first text line: padding plus half the difference between line height and icon size, title and description share the alert line height
+        '[&>svg~*:not([data-slot=alert-close])]:pl-7 [&>svg+div]:mt-0 [&>svg]:left-4 [&>svg]:top-[calc(theme(spacing.4)+(1lh-theme(spacing.4))/2)] [&>svg]:h-4 [&>svg]:w-4',
       ],
       compact: [
         'rounded-surface border-transparent px-control-px-lg py-control-py-md typography-ui text-text-default',
-        '[&>svg]:left-control-px-lg [&>svg]:top-control-py-md [&>svg]:h-icon-md [&>svg]:w-icon-md [&>svg]:text-icon-default',
-        '[&>svg~*:not([data-slot=alert-close])]:pl-[calc(theme(spacing.icon-md)+theme(spacing.gap-control))]',
+        // Icon, text and an end action row share the baseline of the first text line (grid columns icon, text, actions); the icon sits on the middle of that line, half the icon minus half the cap height below the baseline; 8 px from icon to text like the prototype note; text and inline elements belong in AlertTitle or AlertDescription, a loose inline element would take its own grid cell
+        'grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline',
+        '[&>svg]:relative [&>svg]:col-start-1 [&>svg]:row-start-1 [&>svg]:mr-2 [&>svg]:-mt-icon-md [&>svg]:top-[calc((theme(spacing.icon-md)-1cap)/2)] [&>svg]:h-icon-md [&>svg]:w-icon-md [&>svg]:shrink-0 [&>svg]:text-icon-default',
+        '[&>:where(:not(svg,[data-slot=alert-close]))]:col-start-2',
+        // An AlertClose sits in the right padding, so the text and an end action row stay clear of it
+        '[&:has(>[data-slot=alert-close])]:pr-10',
+        // The description only keeps its top margin under a title, so a note without title has the same padding above and below
+        '[&>[data-slot=alert-description]]:mt-0 [&>[data-slot=alert-title]+[data-slot=alert-description]]:mt-1',
       ],
     },
-    // Where an AlertActions row sits. `below` (default) stacks it under the text. `end` puts it on the right, vertically centred, once the alert itself is at least 36rem wide (container query on a wrapper, not the viewport, so an alert in a narrow column or next to a sidebar still stacks). Compose AlertActions as a direct child of Alert.
+    // Where an AlertActions row sits. `below` (default) stacks it under the text. `end` puts it on the right once the alert itself is wide enough, 36rem in the default size and 27rem in compact (container query on a wrapper, not the viewport, so an alert in a narrow column or next to a sidebar still stacks): vertically centred in the default size, on the first text line in compact. Compose AlertActions as a direct child of Alert.
     actionsPlacement: {
       below: '',
-      end: [
+      end: '',
+    },
+    // Product preset (DesignSystemProvider `preset`). `zero` uses 12/16 padding and the brand tint for the info tone in the compact (soft note) size.
+    preset: { default: '', zero: '' },
+  },
+  compoundVariants: [
+    {
+      size: 'default',
+      actionsPlacement: 'end',
+      className: [
         '@xl:grid @xl:grid-cols-[minmax(0,1fr)_auto] @xl:gap-x-4',
         // The icon is absolutely positioned: keep it out of the column rule so it stays anchored to the padding box at every breakpoint.
         '@xl:[&>*:not(svg)]:col-start-1',
@@ -119,11 +135,17 @@ const alertVariants = cva(['relative w-full border border-solid', '[&>svg]:absol
         '@xl:[&>[data-slot=alert-actions]]:mt-0 @xl:[&>[data-slot=alert-actions]]:self-center @xl:[&>[data-slot=alert-actions]]:pl-0',
       ],
     },
-    // Product preset (DesignSystemProvider `preset`). `zero` uses 12/16 padding and the brand tint for the info tone in the compact (soft note) size.
-    preset: { default: '', zero: '' },
-  },
-  compoundVariants: [
-    { preset: 'zero', size: 'compact', className: 'px-4 py-3 [&>svg]:left-4 [&>svg]:top-3 [&>svg~*:not([data-slot=alert-close])]:pl-[calc(theme(spacing.icon-md)+theme(spacing.gap-control))]' },
+    {
+      size: 'compact',
+      actionsPlacement: 'end',
+      // Like the prototype note: narrow, the actions wrap under the text on the right; from 27rem alert width (room for about 200 px of text next to two small buttons, as in the prototype note) they take the third column on the first row and sit on the baseline of the first text line while the text keeps its own rows
+      className: [
+        '[&>[data-slot=alert-actions]]:mt-2 [&>[data-slot=alert-actions]]:justify-end',
+        '@[27rem]:[&>[data-slot=alert-actions]]:col-start-3 @[27rem]:[&>[data-slot=alert-actions]]:row-start-1 @[27rem]:[&>[data-slot=alert-actions]]:row-span-3',
+        '@[27rem]:[&>[data-slot=alert-actions]]:mt-0 @[27rem]:[&>[data-slot=alert-actions]]:ml-2',
+      ],
+    },
+    { preset: 'zero', size: 'compact', className: 'px-4 py-3' },
     { preset: 'zero', size: 'compact', variant: 'info', className: 'bg-background-brand-subtle' },
     { variant: 'default', size: 'compact', className: 'bg-muted' },
     { variant: 'decent', size: 'compact', className: 'bg-muted' },
@@ -154,35 +176,55 @@ const alertRoleByVariant: Record<NonNullable<VariantProps<typeof alertVariants>[
   destructive: 'alert',
 };
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & Omit<VariantProps<typeof alertVariants>, 'preset'>
->(({ className, variant, size, actionsPlacement, role, 'aria-live': ariaLive, ...props }, ref) => {
-  const zero = usePreset() === 'zero';
-  const resolvedVariant = variant ?? 'default';
-  const resolvedRole = role ?? alertRoleByVariant[resolvedVariant];
-  const resolvedAriaLive = ariaLive ?? (resolvedRole === 'alert' ? 'assertive' : 'polite');
-  const alert = (
-    <div
-      data-slot="alert"
-      data-variant={resolvedVariant}
-      ref={ref}
-      role={resolvedRole}
-      aria-live={resolvedAriaLive}
-      data-actions-placement={actionsPlacement ?? undefined}
-      className={cn(alertVariants({ variant, size: size ?? (zero ? 'compact' : 'default'), actionsPlacement, preset: zero ? 'zero' : 'default' }), 'shadow-[shadow:var(--bevel-alert)]', className)}
-      {...props}
-    />
-  );
-  // A container query styles descendants only, so the alert gets a measuring frame when the actions move to the end.
-  return actionsPlacement === 'end' ? (
-    <div data-slot="alert-frame" className="w-full min-w-0 @container">
-      {alert}
-    </div>
-  ) : (
-    alert
-  );
-});
+// Default symbol per severity for `icon`. The symbol is decorative: the severity is also carried by the role, the title and the colour roles.
+const alertIconByVariant: Record<NonNullable<VariantProps<typeof alertVariants>['variant']>, React.ElementType> = {
+  default: Info,
+  decent: Info,
+  info: Info,
+  success: CircleCheck,
+  warning: TriangleAlert,
+  destructive: CircleAlert,
+};
+
+export interface AlertProps extends React.HTMLAttributes<HTMLDivElement>, Omit<VariantProps<typeof alertVariants>, 'preset'> {
+  // Leading symbol. `true` shows the default symbol of the variant (info, check, triangle, alert circle). Pass an svg element (for example a lucide icon) for another one. Omit or `false` for no symbol. The symbol is decorative (aria-hidden) and sits on the middle of the first text line.
+  icon?: boolean | React.ReactElement;
+}
+
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
+  ({ className, variant, size, actionsPlacement, icon, role, 'aria-live': ariaLive, children, ...props }, ref) => {
+    const zero = usePreset() === 'zero';
+    const resolvedVariant = variant ?? 'default';
+    const resolvedRole = role ?? alertRoleByVariant[resolvedVariant];
+    const resolvedAriaLive = ariaLive ?? (resolvedRole === 'alert' ? 'assertive' : 'polite');
+    // The symbol is the first direct child svg, so the icon column and the line alignment of the Alert apply to it like to a hand placed icon.
+    const DefaultIcon = alertIconByVariant[resolvedVariant];
+    const symbol = !icon ? null : icon === true ? <DefaultIcon aria-hidden="true" data-slot="alert-icon" /> : React.cloneElement(icon, { 'aria-hidden': true, 'data-slot': 'alert-icon' } as React.Attributes);
+    const alert = (
+      <div
+        data-slot="alert"
+        data-variant={resolvedVariant}
+        ref={ref}
+        role={resolvedRole}
+        aria-live={resolvedAriaLive}
+        data-actions-placement={actionsPlacement ?? undefined}
+        className={cn(alertVariants({ variant, size: size ?? (zero ? 'compact' : 'default'), actionsPlacement, preset: zero ? 'zero' : 'default' }), 'shadow-[shadow:var(--bevel-alert)]', className)}
+        {...props}
+      >
+        {symbol}
+        {children}
+      </div>
+    );
+    // A container query styles descendants only, so the alert gets a measuring frame when the actions move to the end.
+    return actionsPlacement === 'end' ? (
+      <div data-slot="alert-frame" className="w-full min-w-0 @container">
+        {alert}
+      </div>
+    ) : (
+      alert
+    );
+  },
+);
 Alert.displayName = 'Alert';
 
 export interface AlertTitleProps extends React.HTMLAttributes<HTMLElement> {
@@ -195,7 +237,7 @@ const AlertTitle = React.forwardRef<HTMLElement, AlertTitleProps>(({ className, 
   return (
     // The rule can't see through the `{...props}` spread; every consumer passes visible title text as children (see stories/tests).
     // eslint-disable-next-line jsx-a11y/heading-has-content
-    <Title ref={ref} className={cn('font-semibold leading-none', className)} {...props} />
+    <Title ref={ref} data-slot="alert-title" className={cn('font-semibold', className)} {...props} />
   );
 });
 AlertTitle.displayName = 'AlertTitle';
@@ -204,7 +246,7 @@ const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttrib
   ({ className, ...props }, ref) => {
     // Zero reads the description as the ui type role (13/20), the default theme keeps text-sm.
     const zero = usePreset() === 'zero';
-    return <div ref={ref} className={cn(zero ? 'typography-ui' : 'text-sm', '[&_p]:leading-base mt-1', className)} {...props} />;
+    return <div ref={ref} data-slot="alert-description" className={cn(zero ? 'typography-ui' : 'text-sm', '[&_p]:leading-base mt-1', className)} {...props} />;
   },
 );
 AlertDescription.displayName = 'AlertDescription';

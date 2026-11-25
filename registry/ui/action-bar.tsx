@@ -123,7 +123,7 @@ export interface BatchBarProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   onClear: () => void;
   /** Inline actions, shown as outlined buttons up to `maxInline`; the rest moves into the More menu. */
   actions?: BatchBarAction[];
-  /** Always in the More menu. */
+  /** Always in the More menu. While every action in the menu is `disabled` the More trigger is gated (`aria-disabled`, focusable, does not open). */
   moreActions?: BatchBarAction[];
   /** Inline actions shown before overflowing into the More menu. Default 3. */
   maxInline?: number;
@@ -160,6 +160,12 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
     const ariaLabel = ariaLabelProp ?? l.bulkActions;
     const inline = actions.slice(0, Math.max(0, maxInline));
     const menu = [...actions.slice(Math.max(0, maxInline)), ...moreActions];
+    // Nothing in the menu can run: the trigger stays in the tab order but does not open.
+    const menuBlocked = menu.length > 0 && menu.every((action) => action.disabled);
+    // The menu state is owned here: a menu that is blocked, emptied or gone must close for good and never reopen by itself when its actions come back (KETTE-94 QA-KB-03, QA-K2-01: no controlled to uncontrolled switch, no stolen focus). Reset while rendering, so no frame shows a stale open state.
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const menuAvailable = menu.length > 0 && !menuBlocked;
+    if (menuOpen && !menuAvailable) setMenuOpen(false);
     return (
       <div
         ref={ref}
@@ -172,14 +178,15 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
         {...props}
       >
         <Checkbox checked aria-label={l.deselectAll} onCheckedChange={() => onClear()} />
-        <span role="status" aria-live="polite" className="typography-ui-semibold">
-          {countLabel(selectedCount)}
+        {/* One polite region for count and chip: a change of either one is announced, and only the changed text is read (no double announcement). */}
+        <span role="status" aria-live="polite" className="flex items-center gap-2">
+          <span className="typography-ui-semibold">{countLabel(selectedCount)}</span>
+          {chip != null && chip !== false ? (
+            <span data-batch-chip="" className="flex shrink-0 items-center">
+              {chip}
+            </span>
+          ) : null}
         </span>
-        {chip != null && chip !== false ? (
-          <span data-batch-chip="" className="flex shrink-0 items-center">
-            {chip}
-          </span>
-        ) : null}
         <button
           type="button"
           onClick={onClear}
@@ -218,13 +225,15 @@ const BatchBar = React.forwardRef<HTMLDivElement, BatchBarProps>(
             return action.render ? <React.Fragment key={action.id}>{action.render(button)}</React.Fragment> : button;
           })}
           {menu.length > 0 && (
-            <DropdownMenu>
+            <DropdownMenu open={menuOpen} onOpenChange={(next) => setMenuOpen(next && menuAvailable)}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   aria-label={moreLabel}
+                  aria-disabled={menuBlocked || undefined}
                   className={cn(
                     'inline-flex h-control-sm w-control-sm items-center justify-center rounded-control text-icon-default hover:bg-background-brand-subtle-hover',
+                    'aria-disabled:cursor-not-allowed aria-disabled:opacity-disabled aria-disabled:hover:bg-transparent',
                     transitionBase,
                     focusRing,
                   )}

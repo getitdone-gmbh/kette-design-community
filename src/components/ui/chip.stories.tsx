@@ -21,7 +21,7 @@ const meta = {
     invalidLabel: { control: { type: 'text' }, description: 'Screen reader suffix of an invalid static chip. Wins over the provider text.' },
     variant: {
       control: { type: 'select' },
-      options: ['default', 'neutral', 'secondary', 'info', 'success', 'destructive', 'warning'],
+      options: ['default', 'neutral', 'muted', 'secondary', 'primary', 'info', 'success', 'destructive', 'warning'],
       description: 'The variant of the chip.',
       defaultValue: 'default',
     },
@@ -296,7 +296,10 @@ export const Styles: Story = {
 };
 
 export const Dashed: Story = { args: { label: 'Add filter', size: 'control', variant: 'outline', dashed: true } as ChipProps };
+// The meta follows the hit text colour (KETTE-90: muted grey on the hit fill is 4.03:1 in zero dark).
 export const Hit: Story = { args: { label: 'React', size: 'control', variant: 'outline', hit: true } as ChipProps };
+
+export const HitWithMeta: Story = { args: { label: 'React', meta: '3+ yrs', size: 'control', variant: 'outline', hit: true } as ChipProps };
 export const WithMeta: Story = { args: { label: 'React', size: 'control', variant: 'outline', meta: '3+ yrs' } as ChipProps };
 export const WithCount: Story = { args: { label: 'Open', size: 'control', variant: 'outline', count: 5 } as ChipProps };
 

@@ -84,6 +84,19 @@ const TagInput = React.forwardRef<HTMLInputElement, TagInputProps>(
       return match ? labelOf(match) : tag;
     };
     const expanded = open && options.length > 0 && !readOnly && !disabled;
+    // An open list owns the first Escape. Sheets and dialogs listen on the document, so the key is taken on the window in the capture phase, before any of them sees it.
+    React.useEffect(() => {
+      if (!expanded) return undefined;
+      const onKey = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape' || event.target !== inputRef.current) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        setActive(-1);
+      };
+      window.addEventListener('keydown', onKey, true);
+      return () => window.removeEventListener('keydown', onKey, true);
+    }, [expanded]);
     const optionId = (index: number) => `${listId}-option-${index}`;
 
     const commitTags = (next: string[]) => {

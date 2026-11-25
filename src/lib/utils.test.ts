@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { TOKEN_FONT_SIZES, TOKEN_LINE_HEIGHTS, cn } from './utils';
+import { TOKEN_FONT_SIZES, TOKEN_LINE_HEIGHTS, TOKEN_RADII, cn } from './utils';
 
 const require = createRequire(import.meta.url);
 
@@ -23,6 +23,39 @@ const presetTokenLineHeights = (): string[] => {
   const defaults = new Set(Object.keys(defaultTheme.lineHeight));
   return Object.keys(resolved.theme.lineHeight).filter((key) => !defaults.has(key));
 };
+
+// Border-radius keys of the installed token preset that Tailwind's default theme does not ship
+const presetTokenRadii = (): string[] => {
+  const resolveConfig = require('tailwindcss/resolveConfig');
+  const defaultTheme = require('tailwindcss/defaultTheme');
+  const preset = require('../../tailwind/preset.cjs');
+  const resolved = resolveConfig({ content: [], presets: [preset] });
+  const defaults = new Set(Object.keys(defaultTheme.borderRadius));
+  return Object.keys(resolved.theme.borderRadius).filter((key) => !defaults.has(key));
+};
+
+describe('cn / tailwind-merge token radii (ZERO-806)', () => {
+  it('TOKEN_RADII matches the border radii of the installed token preset', () => {
+    expect([...TOKEN_RADII].sort()).toEqual(presetTokenRadii().sort());
+  });
+
+  // Regression (DR-05): `rounded-default` and `rounded-tight` were unknown to tailwind-merge, so a consumer `rounded-full` stayed next to them and lost in the cascade
+  it('a later radius replaces the token radii', () => {
+    expect(cn('rounded-default', 'rounded-tight', 'rounded-full')).toBe('rounded-full');
+    expect(cn('rounded-card', 'rounded-none')).toBe('rounded-none');
+    expect(cn('rounded-md', 'rounded-default')).toBe('rounded-default');
+  });
+
+  it('a later side radius replaces a token side radius and a full radius replaces the sides', () => {
+    expect(cn('rounded-l-surface', 'rounded-l-none')).toBe('rounded-l-none');
+    expect(cn('rounded-l-surface rounded-r-surface', 'rounded-none')).toBe('rounded-none');
+    expect(cn('rounded-none', 'rounded-l-surface')).toBe('rounded-none rounded-l-surface');
+  });
+
+  it('keeps a token radius next to unrelated utilities', () => {
+    expect(cn('rounded-tight bg-muted', 'h-4')).toBe('rounded-tight bg-muted h-4');
+  });
+});
 
 describe('cn / tailwind-merge token line heights', () => {
   it('TOKEN_LINE_HEIGHTS matches the line heights of the installed token preset', () => {

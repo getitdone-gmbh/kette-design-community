@@ -1017,7 +1017,7 @@ describe('Table scrollRegion="always" (C-9)', () => {
     expect(region).not.toHaveAttribute('aria-labelledby');
   });
 
-  it('keeps native table semantics: no stacked mode and no display override on table parts', () => {
+  it('keeps native table semantics: no display override on table parts outside the phone list', () => {
     const { container } = render(regionTable());
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getAllByRole('columnheader')).toHaveLength(2);
@@ -1064,5 +1064,487 @@ describe('Table scrollRegion="always" (C-9)', () => {
       </Table>,
     );
     expect(container.querySelector('[data-slot="table-scroll-fade"]')).toBeNull();
+  });
+});
+
+// R-LIB-09 (ZERO-563): a lead cell can wrap its name and supporting line instead of cutting them.
+describe('TableLeadCell wrap (R-LIB-09)', () => {
+  const lead = (wrap?: boolean) =>
+    render(
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableLeadCell name="Senior Frontend Engineer for the payments platform" supportingText="Berlin, remote possible" wrap={wrap} />
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+  it('wraps name and supporting text with wrap', () => {
+    lead(true);
+    const name = screen.getByText('Senior Frontend Engineer for the payments platform');
+    const supporting = screen.getByText('Berlin, remote possible');
+    for (const el of [name, supporting]) {
+      expect(el).not.toHaveClass('truncate');
+      expect(el).toHaveClass('break-words');
+    }
+  });
+
+  it('keeps truncating by default', () => {
+    lead();
+    expect(screen.getByText('Senior Frontend Engineer for the payments platform')).toHaveClass('truncate');
+    expect(screen.getByText('Berlin, remote possible')).toHaveClass('truncate');
+  });
+});
+
+// R-LIB-11 (ZERO-593): a table without its own frame, and headerTone only on the head row.
+describe('Table bordered and headerTone on the head only (R-LIB-11)', () => {
+  const table = (props: { bordered?: boolean; headerTone?: 'default' | 'muted' }) =>
+    render(
+      <Table {...props}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Score</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableHead scope="row">Anna</TableHead>
+            <TableCell>82</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+  it('drops the outer frame with bordered false', () => {
+    const { container } = table({ bordered: false });
+    const frame = container.querySelector('table')?.parentElement as HTMLElement;
+    expect(frame).toHaveClass('border-0');
+    expect(frame).not.toHaveClass('border');
+  });
+
+  it('keeps the frame by default', () => {
+    const { container } = table({});
+    const frame = container.querySelector('table')?.parentElement as HTMLElement;
+    expect(frame).toHaveClass('border', 'border-solid');
+  });
+
+  it('fills head cells with the muted tone but not a row head in the body', () => {
+    table({ headerTone: 'muted' });
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toHaveClass('bg-muted');
+    const rowHead = screen.getByRole('rowheader', { name: 'Anna' });
+    expect(rowHead).toHaveAttribute('scope', 'row');
+    expect(rowHead).not.toHaveClass('bg-muted');
+    expect(rowHead).not.toHaveClass('text-text-muted');
+  });
+});
+
+describe('Table phone list (ZERO-911)', () => {
+  const P = '[@container_kette-table_(max-width:767.98px)]:';
+  const rows = [
+    { name: 'Frontend', client: 'Acme', status: 'Open', budget: '12,000' },
+    { name: 'Data Engineer', client: 'Globex', status: 'Closed', budget: '8,500' },
+  ];
+  const listTable = (props: { onRowClick?: (name: string) => void; phone?: 'scroll' | 'list' } = {}) => (
+    <Table phone={props.phone ?? 'list'}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Client</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead align="right">Budget</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.name} onClick={props.onRowClick ? () => props.onRowClick?.(row.name) : undefined} aria-label={props.onRowClick ? `Open ${row.name}` : undefined}>
+            <TableCell>{row.name}</TableCell>
+            <TableCell>{row.client}</TableCell>
+            <TableCell>{row.status}</TableCell>
+            <TableCell align="right">{row.budget}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  it('leaves the default scroll table unchanged', () => {
+    const { container } = render(listTable({ phone: 'scroll', onRowClick: () => undefined }));
+    const table = screen.getByRole('table');
+    expect(table).not.toHaveAttribute('role');
+    expect(table.parentElement).not.toHaveAttribute('data-phone');
+    expect(table.parentElement?.className).not.toContain('container-type');
+    expect(container.querySelector('[data-phone]')).toBeNull();
+    expect(container.querySelector('[data-slot="table-row-chevron"]')).toBeNull();
+    for (const el of container.querySelectorAll('table, thead, tbody, tr, th, td')) {
+      expect(el.className).not.toContain('@container');
+      expect(el).not.toHaveAttribute('aria-colindex');
+    }
+  });
+
+  it('keeps table, row, header and cell roles explicitly in list mode', () => {
+    const { container } = render(listTable());
+    const table = screen.getByRole('table');
+    expect(table).toHaveAttribute('role', 'table');
+    expect(table.parentElement).toHaveAttribute('data-phone', 'list');
+    expect(table.parentElement).toHaveClass('[container-type:inline-size]', '[container-name:kette-table]');
+    expect(container.querySelector('thead')).toHaveAttribute('role', 'rowgroup');
+    expect(container.querySelector('tbody')).toHaveAttribute('role', 'rowgroup');
+    expect(screen.getAllByRole('row')).toHaveLength(3);
+    for (const row of screen.getAllByRole('row')) expect(row).toHaveAttribute('role', 'row');
+    expect(screen.getAllByRole('columnheader')).toHaveLength(4);
+    expect(screen.getAllByRole('cell')).toHaveLength(8);
+    expect(screen.getByRole('cell', { name: 'Frontend' })).toHaveAttribute('role', 'cell');
+  });
+
+  it('hides the header visually, not with display none, so the headers stay for screen readers', () => {
+    const { container } = render(listTable());
+    const thead = container.querySelector('thead') as HTMLElement;
+    expect(thead).toHaveClass(`${P}sr-only`);
+    expect(thead).not.toHaveClass(`${P}hidden`);
+    expect(screen.getByRole('columnheader', { name: 'Budget' })).not.toHaveClass(`${P}hidden`);
+  });
+
+  it('places cells by position without phone props: title, subtitle, hidden, value', () => {
+    render(listTable());
+    expect(screen.getByRole('cell', { name: 'Frontend' })).toHaveAttribute('data-phone', 'title');
+    expect(screen.getByRole('cell', { name: 'Acme' })).toHaveAttribute('data-phone', 'subtitle');
+    expect(screen.getByRole('cell', { name: 'Open' })).toHaveAttribute('data-phone', 'hidden');
+    expect(screen.getByRole('cell', { name: 'Open' })).toHaveClass(`${P}hidden`);
+    const value = screen.getByRole('cell', { name: '12,000' });
+    expect(value).toHaveAttribute('data-phone', 'value');
+    expect(value).toHaveClass(`${P}[grid-area:1/4/3/5]`, `${P}truncate`, `${P}text-right`);
+    expect(screen.getByRole('cell', { name: 'Frontend' })).toHaveClass(`${P}[grid-area:1/3/2/4]`, `${P}truncate`, `${P}typography-ui-medium`);
+  });
+
+  it('states the column of every cell, so hidden cells do not shift the header association', () => {
+    render(listTable());
+    expect(screen.getByRole('columnheader', { name: 'Budget' })).toHaveAttribute('aria-colindex', '4');
+    expect(screen.getByRole('cell', { name: '12,000' })).toHaveAttribute('aria-colindex', '4');
+    expect(screen.getByRole('cell', { name: 'Acme' })).toHaveAttribute('aria-colindex', '2');
+  });
+
+  it('a two-cell row shows title and value', () => {
+    render(
+      <Table phone="list">
+        <TableBody>
+          <TableRow>
+            <TableCell>Total</TableCell>
+            <TableCell>2,500</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    expect(screen.getByRole('cell', { name: 'Total' })).toHaveAttribute('data-phone', 'title');
+    expect(screen.getByRole('cell', { name: '2,500' })).toHaveAttribute('data-phone', 'value');
+  });
+
+  it('explicit phone roles win and cells without one hide', () => {
+    render(
+      <Table phone="list">
+        <TableBody>
+          <TableRow>
+            <TableCell phone="lead">dot</TableCell>
+            <TableCell>Acme</TableCell>
+            <TableCell phone="title">Frontend</TableCell>
+            <TableCell phone="value">Open</TableCell>
+            <TableCell phone="meta">Today</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    expect(screen.getByRole('cell', { name: 'dot' })).toHaveClass(`${P}[grid-area:1/2/3/3]`);
+    expect(screen.getByRole('cell', { name: 'Acme' })).toHaveAttribute('data-phone', 'hidden');
+    expect(screen.getByRole('cell', { name: 'Frontend' })).toHaveAttribute('data-phone', 'title');
+    expect(screen.getByRole('cell', { name: 'Open' })).toHaveAttribute('data-phone', 'value');
+    expect(screen.getByRole('cell', { name: 'Today' })).toHaveClass(`${P}[grid-area:2/4/3/5]`);
+    expect(screen.getByRole('row')).toHaveClass(`${P}grid`, `${P}min-h-[calc(var(--size-row)+theme(spacing.2))]`);
+  });
+
+  it('shows a decorative chevron only on interactive rows', () => {
+    const { container, rerender } = render(listTable({ onRowClick: () => undefined }));
+    const chevrons = container.querySelectorAll('[data-slot="table-row-chevron"]');
+    expect(chevrons).toHaveLength(2);
+    chevrons.forEach((chevron) => {
+      expect(chevron).toHaveAttribute('aria-hidden', 'true');
+      expect(chevron).toHaveClass('hidden', `${P}flex`);
+      expect(chevron.querySelector('svg')).toHaveClass('text-icon-subtle');
+    });
+    // Decorative cells stay out of the cell count.
+    expect(screen.getAllByRole('cell')).toHaveLength(8);
+    rerender(listTable());
+    expect(container.querySelector('[data-slot="table-row-chevron"]')).toBeNull();
+  });
+
+  it('a disabled row gets no chevron', () => {
+    const { container } = render(
+      <Table phone="list">
+        <TableBody>
+          <TableRow onClick={() => undefined} disabled>
+            <TableCell>Locked</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    expect(container.querySelector('[data-slot="table-row-chevron"]')).toBeNull();
+  });
+
+  it('keeps keyboard activation and the tab stop on interactive rows', async () => {
+    const user = userEvent.setup();
+    const onRowClick = vi.fn();
+    render(listTable({ onRowClick }));
+    const row = screen.getByRole('row', { name: 'Open Frontend' });
+    expect(row).toHaveAttribute('tabindex', '0');
+    await user.tab();
+    expect(row).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    expect(onRowClick).toHaveBeenCalledWith('Frontend');
+    await user.click(screen.getByRole('cell', { name: 'Globex' }));
+    expect(onRowClick).toHaveBeenLastCalledWith('Data Engineer');
+  });
+
+  it('a TableLeadCell takes the lead, title and subtitle areas and hides action cells; the select cell starts the row', () => {
+    render(
+      <Table phone="list">
+        <TableHeader>
+          <TableRow>
+            <TableHead select aria-label="Select all" />
+            <TableHead>Company</TableHead>
+            <TableHead>City</TableHead>
+            <TableHead>Revenue</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell select>
+              <input type="checkbox" aria-label="Select Acme" />
+            </TableCell>
+            <TableLeadCell name="Acme" supportingText="acme.com" logo={<LogoTile color={1}>A</LogoTile>} />
+            <TableCell>Berlin</TableCell>
+            <TableCell>1,200</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const lead = screen.getByRole('cell', { name: /acme\.com/ });
+    expect(lead).toHaveAttribute('data-phone', 'title');
+    expect(lead).toHaveClass(`${P}[grid-area:1/2/3/4]`);
+    expect(lead).not.toHaveClass(`${P}[grid-area:1/3/2/4]`);
+    expect(screen.getByRole('cell', { name: 'Berlin' })).toHaveAttribute('data-phone', 'hidden');
+    expect(screen.getByRole('cell', { name: '1,200' })).toHaveAttribute('data-phone', 'value');
+    expect(screen.getByRole('checkbox', { name: 'Select Acme' }).closest('td')).toHaveAttribute('data-phone', 'select');
+    expect(screen.getByRole('columnheader', { name: 'Select all' })).toHaveAttribute('data-select', 'true');
+  });
+
+  it('renders empty, error and loading more rows across the whole row', () => {
+    render(
+      <Table phone="list">
+        <TableBody>
+          <TableEmpty columns={1} message="Nothing here" />
+          <TableError columns={3} onRetry={() => undefined} />
+          <TableLoadingMore columns={3} loading />
+        </TableBody>
+      </Table>,
+    );
+    const cells = screen.getAllByRole('cell');
+    expect(cells).toHaveLength(3);
+    cells.forEach((cell) => {
+      expect(cell).toHaveAttribute('data-phone', 'full');
+      expect(cell).toHaveClass(`${P}[grid-column:1/-1]`);
+      expect(cell).not.toHaveClass(`${P}truncate`);
+    });
+    expect(screen.getByText('Nothing here')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('a spanning cell without a role spans the row', () => {
+    render(
+      <Table phone="list">
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={4}>Pager</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>,
+    );
+    expect(screen.getByRole('cell', { name: 'Pager' })).toHaveAttribute('data-phone', 'full');
+  });
+
+  it('a row head in the body is placed like a cell', () => {
+    render(
+      <Table phone="list">
+        <TableBody>
+          <TableRow>
+            <TableHead scope="row">Anna</TableHead>
+            <TableCell>Design</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const head = screen.getByRole('rowheader', { name: 'Anna' });
+    expect(head).toHaveAttribute('data-phone', 'title');
+    expect(screen.getByRole('cell', { name: 'Design' })).toHaveAttribute('data-phone', 'value');
+  });
+
+  it('uses only tokens, no raw palette classes', () => {
+    const { container } = render(listTable({ onRowClick: () => undefined }));
+    for (const el of container.querySelectorAll('*')) {
+      const cls = el.getAttribute('class') ?? '';
+      expect(cls).not.toMatch(rawPaletteClass);
+      expect(cls).not.toMatch(/\d\.5(\s|$|\])/);
+    }
+  });
+
+  it('renders the announcement as a polite live region inside its root and nothing while undefined', () => {
+    const { container, rerender } = render(<Table><TableBody><TableRow><TableCell>a</TableCell></TableRow></TableBody></Table>);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    rerender(<Table announcement=""><TableBody><TableRow><TableCell>a</TableCell></TableRow></TableBody></Table>);
+    const region = screen.getByRole('status');
+    expect(region).toHaveAttribute('aria-live', 'polite');
+    expect(region).toBeEmptyDOMElement();
+    rerender(<Table announcement="Loading"><TableBody><TableRow><TableCell>a</TableCell></TableRow></TableBody></Table>);
+    expect(region).toHaveTextContent('Loading');
+    expect(container.children).toHaveLength(1);
+  });
+});
+
+describe('Table phoneQuery (ZERO-1001)', () => {
+  const P = '[@container_kette-table_(max-width:767.98px)]:';
+  const sortTable = (props: Partial<React.ComponentProps<typeof Table>> = {}) => (
+    <Table phone="list" {...props}>
+      <TableHeader>
+        <TableRow>
+          <TableHead sortable onSort={() => undefined}>
+            Name
+          </TableHead>
+          <TableHead>Client</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow>
+          <TableCell>Frontend</TableCell>
+          <TableCell>Acme</TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  );
+  const realClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+  const realMatchMedia = window.matchMedia;
+  const setViewport = (phoneViewport: boolean) => {
+    window.matchMedia = ((query: string) => ({
+      matches: phoneViewport && query.includes('max-width: 767.98px'),
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  };
+  beforeEach(() => {
+    // A narrow container: 400px, below the 768px list width.
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 400 });
+  });
+  afterEach(() => {
+    if (realClientWidth) Object.defineProperty(HTMLElement.prototype, 'clientWidth', realClientWidth);
+    window.matchMedia = realMatchMedia;
+  });
+
+  it('container (default) names the scroll area as container at every viewport width', () => {
+    setViewport(false);
+    render(sortTable());
+    const area = screen.getByRole('table').parentElement as HTMLElement;
+    expect(area).toHaveClass('[container-type:inline-size]', '[container-name:kette-table]');
+    expect(area).not.toHaveAttribute('data-phone-query');
+    // Narrow container: the list is on, so the hidden header's sort button leaves the tab order.
+    expect(screen.getByRole('button', { name: /Name/ })).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('viewport makes the scroll area a container only below the md viewport width', () => {
+    setViewport(false);
+    render(sortTable({ phoneQuery: 'viewport' }));
+    const area = screen.getByRole('table').parentElement as HTMLElement;
+    expect(area).toHaveAttribute('data-phone-query', 'viewport');
+    expect(area).toHaveClass('max-md:[container-type:inline-size]', 'max-md:[container-name:kette-table]');
+    expect(area).not.toHaveClass('[container-type:inline-size]');
+    expect(area).not.toHaveClass('[container-name:kette-table]');
+    // Desktop viewport: a narrow container stays a table, the sort button stays in the tab order.
+    expect(screen.getByRole('button', { name: /Name/ })).not.toHaveAttribute('tabindex');
+    // The list classes stay the same container classes, so consumer classes keep working in both modes.
+    expect(screen.getByRole('cell', { name: 'Frontend' })).toHaveClass(`${P}truncate`);
+  });
+
+  it('viewport shows the list on a phone viewport', () => {
+    setViewport(true);
+    render(sortTable({ phoneQuery: 'viewport' }));
+    expect(screen.getByRole('button', { name: /Name/ })).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('phoneQuery has no effect on a scroll table', () => {
+    setViewport(true);
+    render(sortTable({ phone: 'scroll', phoneQuery: 'viewport' }));
+    const area = screen.getByRole('table').parentElement as HTMLElement;
+    expect(area.className).not.toContain('container');
+    expect(area).not.toHaveAttribute('data-phone-query');
+  });
+});
+
+describe('Table phone list select-all bar and selected badges (DSG2-02, A11YG2F-01)', () => {
+  const P = '[@container_kette-table_(max-width:767.98px)]:';
+
+  it('the select-all head sits on the select column of the rows: same start offset, checkbox centred in the 44px target', () => {
+    render(
+      <Table phone="list">
+        <TableHeader>
+          <TableRow>
+            <TableHead select>
+              <input type="checkbox" data-slot="checkbox" aria-label="Select all rows" />
+            </TableHead>
+            <TableHead>Name</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell select>
+              <input type="checkbox" data-slot="checkbox" aria-label="Select Frontend" />
+            </TableCell>
+            <TableCell>Frontend</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const head = screen.getByRole('checkbox', { name: 'Select all rows' }).closest('th') as HTMLElement;
+    const cell = screen.getByRole('checkbox', { name: 'Select Frontend' }).closest('td') as HTMLElement;
+    // Rows pull their select cell over the row padding (-ml-3); the head does the same, so the band starts at the row gutter.
+    expect(cell).toHaveClass(`${P}-ml-3`);
+    expect(head).toHaveClass(`${P}-ml-3`);
+    expect(head).not.toHaveClass(`${P}pl-3`);
+    // The band fills the bar edge to edge: over the end padding (pr-4) of the row, the bar row has no vertical padding and the head takes the row height.
+    expect(head).toHaveClass(`${P}-mr-4`, `${P}min-h-[calc(var(--size-row)+theme(spacing.2))]`);
+    expect(head.closest('thead')).toHaveClass(`${P}[&:has([data-select])_tr]:py-0`);
+    // Checkbox at (44 - 16) / 2 from the start, like the centred row checkbox.
+    expect(head).toHaveClass(`${P}pl-[calc((var(--size-touch-target-lg,44px)-theme(spacing.4))/2)]`);
+  });
+
+  it('a selected row lifts subtle badges onto the page surface, so their shape stays visible on the selected wash', () => {
+    render(
+      <Table>
+        <TableBody>
+          <TableRow selected>
+            <TableCell>Approved</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Open</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const [selectedRow, plainRow] = screen.getAllByRole('row');
+    expect(selectedRow).toHaveClass('[&_[data-slot=badge][data-variant=subtle]]:bg-background');
+    expect(plainRow).not.toHaveClass('[&_[data-slot=badge][data-variant=subtle]]:bg-background');
   });
 });

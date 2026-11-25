@@ -2,6 +2,7 @@ import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
 import { userEvent, waitFor, within } from '@storybook/testing-library';
 
+import { BellIcon } from 'lucide-react';
 import * as React from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
@@ -40,7 +41,13 @@ type Story = StoryObj<typeof meta>;
 
 type TabsProps = React.ComponentProps<typeof Tabs>;
 
+const forcedColors = { selected: '[role="tab"][data-state="active"]', others: '[role="tab"][data-state="inactive"]' };
+// Filled variants also get the pixel check (readable label on the Highlight fill); the line variant has a bar instead.
+const forcedColorsFilled = { ...forcedColors, filled: true };
+
 export const Default: Story = {
+  // KETTE-96: in forced colors (Windows high contrast) the selected tab must still differ from the others; the test runner emulates it.
+  parameters: { forcedColors: forcedColorsFilled },
   args: {
     children: (
       <Tabs defaultValue="account" className="w-[400px]">
@@ -56,6 +63,8 @@ export const Default: Story = {
 };
 
 export const Line: Story = {
+  // KETTE-96: in forced colors (Windows high contrast) the selected tab must still differ from the others; the test runner emulates it.
+  parameters: { forcedColors },
   args: {
     children: (
       <Tabs defaultValue="account" className="w-[400px]">
@@ -349,6 +358,8 @@ export const WithDestructiveCount: Story = {
 };
 
 export const WithCountSegmented: Story = {
+  // KETTE-96: in forced colors (Windows high contrast) the selected tab must still differ from the others; the test runner emulates it.
+  parameters: { forcedColors: forcedColorsFilled },
   args: {
     children: (
       <Tabs defaultValue="open" className="w-[400px]">
@@ -367,6 +378,8 @@ export const WithCountSegmented: Story = {
 
 /** Segmented control (zero look): control-height triggers, `tab` type role, count rendered as plain text. */
 export const Segment: Story = {
+  // KETTE-96: in forced colors (Windows high contrast) the selected tab must still differ from the others; the test runner emulates it.
+  parameters: { forcedColors: forcedColorsFilled },
   args: {
     children: (
       <Tabs defaultValue="all" className="w-[400px]">
@@ -439,6 +452,8 @@ export const SegmentSevenTabsNarrow: Story = {
 
 // Figma Vertical tabs: set orientation on Tabs and variant on the list.
 export const Vertical: Story = {
+  // KETTE-96: in forced colors (Windows high contrast) the selected tab must still differ from the others; the test runner emulates it.
+  parameters: { forcedColors: forcedColorsFilled },
   args: {
     children: (
       <Tabs defaultValue="details" orientation="vertical" className="flex w-[480px] gap-6">
@@ -490,4 +505,104 @@ export const SizesNextToButtons: Story = {
       </div>
     ),
   } as TabsProps,
+};
+
+const longLabels = [
+  'Verbindungseinstellungen und Berechtigungen',
+  'Short',
+  'Authentication and authorization settings for connected servers',
+  'Logs',
+];
+
+// KETTE-95: a wrapping list at 320px with long labels (also with WCAG 1.4.12 text spacing): triggers grow in height and wrap start-aligned instead of overflowing sideways. Short labels keep the 32px height.
+export const LongLabelsWrap: Story = {
+  parameters: {
+    viewport: { defaultViewport: 'mobile' },
+    docs: {
+      description: {
+        story:
+          'Long labels need a wrapping list: set `wrap` on `TabsList` (variants `segmented` and `segment`). The tabs flow onto several rows and a long label wraps start-aligned inside its tab, with a minimum height instead of a fixed one. Without `wrap` the row stays on one line (use a scrolling row, a `line` or `vertical` list or a Select for very long labels). Lists with a `size` keep one-line labels in their fixed track.',
+      },
+    },
+  },
+  args: {
+    children: (
+      <div className="flex w-[320px] flex-col gap-6" data-testid="long-labels">
+        {(['segmented', 'segment'] as const).map((variant) => (
+          <Tabs key={variant} defaultValue="0">
+            <TabsList variant={variant} aria-label={`Long labels, ${variant}`} wrap className="w-full [&_[role=tab]]:![letter-spacing:0.12em] [&_[role=tab]]:![word-spacing:0.16em] [&_[role=tab]]:![line-height:1.5]">
+              {longLabels.map((label, i) => (
+                <TabsTrigger key={label} value={String(i)}>
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        ))}
+      </div>
+    ),
+  } as TabsProps,
+  play: async ({ canvasElement }) => {
+    const root = within(canvasElement).getByTestId('long-labels');
+    // No sideways overflow of the container, every trigger stays inside its list.
+    await waitFor(() => expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth));
+    root.querySelectorAll('[role="tablist"]').forEach((list) => {
+      const box = list.getBoundingClientRect();
+      expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
+      list.querySelectorAll('[role="tab"]').forEach((tab) => {
+        const r = tab.getBoundingClientRect();
+        expect(r.right).toBeLessThanOrEqual(box.right + 1);
+      });
+    });
+    // A long label wraps and grows the trigger beyond the single-line height of a short one (the height itself depends on the theme preset).
+    const short = within(root).getAllByRole('tab', { name: 'Logs' })[0];
+    const long = within(root).getAllByRole('tab', { name: /Authentication/ })[0];
+    expect(long.getBoundingClientRect().height).toBeGreaterThan(short.getBoundingClientRect().height);
+  },
+};
+
+// KETTE-95: a wrapping list with a count, an icon and one unbroken long word at 320px: the word breaks inside its tab, nothing overflows or is clipped at the start.
+export const LongLabelsWrapContent: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  args: {
+    children: (
+      <div className="flex w-[320px] flex-col gap-6" data-testid="wrap-content">
+        {(['segmented', 'segment'] as const).map((variant) => (
+          <Tabs key={variant} defaultValue="0">
+            <TabsList variant={variant} wrap aria-label={`Wrap content, ${variant}`} className="w-full">
+              <TabsTrigger value="0" count={128}>
+                Authentication and authorization settings
+              </TabsTrigger>
+              <TabsTrigger value="1">
+                <BellIcon aria-hidden className="mr-1 h-4 w-4 shrink-0" />
+                Alerts
+              </TabsTrigger>
+              <TabsTrigger value="2">Donaudampfschifffahrtsgesellschaftskapitaensmuetzenhalterung</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ))}
+      </div>
+    ),
+  } as TabsProps,
+  play: async ({ canvasElement }) => {
+    const root = within(canvasElement).getByTestId('wrap-content');
+    await waitFor(() => expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth));
+    root.querySelectorAll('[role="tablist"]').forEach((list) => {
+      const box = list.getBoundingClientRect();
+      expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
+      list.querySelectorAll('[role="tab"]').forEach((tab) => {
+        const r = tab.getBoundingClientRect();
+        expect(r.left).toBeGreaterThanOrEqual(box.left - 1);
+        expect(r.right).toBeLessThanOrEqual(box.right + 1);
+        expect(r.bottom).toBeLessThanOrEqual(box.bottom + 1);
+        expect(tab.scrollWidth).toBeLessThanOrEqual(tab.clientWidth + 1);
+      });
+      // The count stays on one line at its natural width and the icon keeps its 16px, while the label wraps.
+      const count = list.querySelector('[data-slot="tabs-count"]') as HTMLElement;
+      expect(count.getClientRects().length).toBe(1);
+      expect(count.getBoundingClientRect().height).toBeLessThan(count.parentElement!.getBoundingClientRect().height);
+      expect(Math.round(count.getBoundingClientRect().width)).toBe(Math.round(count.scrollWidth));
+      expect(Math.round(list.querySelector('svg')!.getBoundingClientRect().width)).toBe(16);
+    });
+  },
 };

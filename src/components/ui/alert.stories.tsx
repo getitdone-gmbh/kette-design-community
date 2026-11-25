@@ -151,9 +151,120 @@ export const Compact: Story = {
       {(['default', 'info', 'success', 'warning', 'destructive'] as const).map((variant) => (
         <Alert key={variant} variant={variant} size="compact">
           <InfoIcon aria-hidden="true" />
-          <AlertDescription className="mt-0">Changes apply to everyone in this workspace ({variant}).</AlertDescription>
+          <AlertDescription>Changes apply to everyone in this workspace ({variant}).</AlertDescription>
         </Alert>
       ))}
+    </div>
+  ),
+};
+
+const LONG_NOTE =
+  'Invoices for this client are sent from the shared billing address. Replies go to the project lead, and the client sees the payment terms of the contract on every invoice.';
+
+// Compact note over several lines, with and without a title: the icon stays on the middle of the first text line.
+export const CompactMultiline: Story = {
+  render: () => (
+    <div className="flex max-w-md flex-col gap-3">
+      <Alert variant="info" size="compact">
+        <InfoIcon aria-hidden="true" />
+        <AlertDescription>{LONG_NOTE}</AlertDescription>
+      </Alert>
+      <Alert variant="warning" size="compact">
+        <TriangleAlert aria-hidden="true" />
+        <AlertTitle>Billing address shared</AlertTitle>
+        <AlertDescription>{LONG_NOTE}</AlertDescription>
+      </Alert>
+    </div>
+  ),
+};
+
+// Compact note with actions under the text, in the text column.
+export const CompactWithActions: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3">
+      <Alert variant="warning" size="compact">
+        <TriangleAlert aria-hidden="true" />
+        <AlertDescription>Your trial ends in 3 days.</AlertDescription>
+        <AlertActions>
+          <Button size="sm" variant="outline">
+            Upgrade
+          </Button>
+          <Button size="sm" variant="ghost">
+            Later
+          </Button>
+        </AlertActions>
+      </Alert>
+      <Alert variant="info" size="compact" className="max-w-md">
+        <InfoIcon aria-hidden="true" />
+        <AlertDescription>{LONG_NOTE}</AlertDescription>
+        <AlertActions>
+          <Button size="sm" variant="outline">
+            Open billing settings
+          </Button>
+        </AlertActions>
+      </Alert>
+    </div>
+  ),
+};
+
+// Compact note with actions at the end: text, icon and buttons share the baseline of the first line. Below 27rem alert width the actions move under the text.
+export const CompactActionsEnd: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3">
+      {(['default', 'info', 'success', 'warning', 'destructive'] as const).map((variant) => (
+        <Alert key={variant} variant={variant} size="compact" actionsPlacement="end">
+          <InfoIcon aria-hidden="true" />
+          <AlertDescription>Admins activate apps under Settings ({variant}).</AlertDescription>
+          <AlertActions>
+            <Button size="sm" variant="outline">
+              Go to settings
+            </Button>
+          </AlertActions>
+        </Alert>
+      ))}
+      <Alert variant="info" size="compact" actionsPlacement="end">
+        <InfoIcon aria-hidden="true" />
+        <AlertDescription>{LONG_NOTE}</AlertDescription>
+        <AlertActions>
+          <Button size="sm" variant="outline">
+            Apply
+          </Button>
+          <Button size="sm" variant="ghost">
+            Dismiss
+          </Button>
+        </AlertActions>
+      </Alert>
+      <Alert variant="warning" size="compact" actionsPlacement="end">
+        <TriangleAlert aria-hidden="true" />
+        <AlertTitle>Billing address shared</AlertTitle>
+        <AlertDescription>{LONG_NOTE}</AlertDescription>
+        <AlertActions>
+          <Button size="sm" variant="outline">
+            Change
+          </Button>
+        </AlertActions>
+      </Alert>
+      <Alert variant="default" size="compact" actionsPlacement="end">
+        <InfoIcon aria-hidden="true" />
+        <AlertDescription>With a close button the actions stay clear of it.</AlertDescription>
+        <AlertActions>
+          <Button size="sm" variant="outline">
+            Undo
+          </Button>
+        </AlertActions>
+        <AlertClose />
+      </Alert>
+      <div className="max-w-sm">
+        <Alert variant="info" size="compact" actionsPlacement="end">
+          <InfoIcon aria-hidden="true" />
+          <AlertDescription>Narrow column: the action moves under the text.</AlertDescription>
+          <AlertActions>
+            <Button size="sm" variant="outline">
+              Go to settings
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
     </div>
   ),
 };
@@ -251,4 +362,40 @@ export const InlineLinks: Story = {
       }
     }
   },
+};
+
+// `icon` shows the default symbol of the variant, centred on the first text line.
+export const WithIcon: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      {(['default', 'decent', 'info', 'success', 'warning', 'destructive'] as const).map((variant) => (
+        <Alert key={variant} variant={variant} icon>
+          <AlertTitle>{variant}</AlertTitle>
+          <AlertDescription>The symbol follows the variant and stays decorative.</AlertDescription>
+        </Alert>
+      ))}
+    </div>
+  ),
+};
+
+export const IconOnOneLine: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <Alert variant="info" icon>
+        <AlertDescription>Only a description: the symbol sits on the middle of that line.</AlertDescription>
+      </Alert>
+      <Alert variant="info" icon size="compact">
+        <AlertDescription>Compact size with the default symbol.</AlertDescription>
+      </Alert>
+    </div>
+  ),
+};
+
+export const CustomIcon: Story = {
+  render: () => (
+    <Alert variant="success" icon={<Terminal />}>
+      <AlertTitle>Custom symbol</AlertTitle>
+      <AlertDescription>Pass an svg element to replace the default symbol.</AlertDescription>
+    </Alert>
+  ),
 };

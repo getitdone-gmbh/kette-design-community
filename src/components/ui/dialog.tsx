@@ -84,7 +84,10 @@ const focusInitial = (event: Event, firstField: boolean) => {
   if (!body && !control) return;
   event.preventDefault();
   const target = control ?? Array.from(content.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).find((el) => el !== body) ?? content;
-  target.focus();
+  // preventScroll: a panel that scrolls as a whole (short windows) must open at the top, not scrolled to a footer button
+  target.focus({ preventScroll: true });
+  // A form control that opens partly under a sticky footer is brought into view (A11Y-K2-02). Buttons are not: the panel must open at the top, not scrolled to a footer action.
+  if (control) target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
 };
 
 const DialogOverlay = React.forwardRef<
@@ -134,7 +137,7 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof Dialo
 }
 
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
-  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, closeClassName, initialFocus = 'auto', role = 'dialog', onAfterClose, onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, onInteractOutside, ...props }, ref) => {
+  ({ className, children, size: sizeProp, scrollable = false, hideClose = false, closeLabel, closeClassName, initialFocus = 'auto', role = 'dialog', onAfterClose, onOpenAutoFocus, onEscapeKeyDown, onCloseAutoFocus, onInteractOutside, onKeyDown, ...props }, ref) => {
   const returnFocus = useReturnFocusFallback(onCloseAutoFocus);
   const l = useLabels({ close: closeLabel });
   const zero = usePreset() === 'zero';
@@ -159,6 +162,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
     <DialogOverlay onMouseDown={role === 'alertdialog' ? (event) => event.preventDefault() : undefined} />
     <DialogPrimitive.Content
       data-slot="dialog-content"
+      data-dialog-scrollable={scrollable ? '' : undefined}
       ref={setRefs}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
@@ -182,6 +186,17 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
         returnFocus.onCloseAutoFocus(event);
         afterClose.run();
       }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        // Radix FocusScope wraps Tab from the last to the first control with preventScroll, so a first field that scrolled out of the panel or its body stays out of view (KETTE-94 UX note). A normal Tab already scrolls the browser, so this is a no-op there. scroll-padding keeps the field clear of a sticky header or footer.
+        if (event.key === 'Tab' && !event.defaultPrevented) {
+          const panel = event.currentTarget;
+          requestAnimationFrame(() => {
+            const focused = document.activeElement;
+            if (focused instanceof HTMLElement && panel.contains(focused) && typeof focused.scrollIntoView === 'function') focused.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          });
+        }
+      }}
       onEscapeKeyDown={(event) => {
         onEscapeKeyDown?.(event);
         // Escape inside a select list, menu or popover closes that layer only.
@@ -191,7 +206,8 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
       className={cn(
         'max-h-screen',
         scrollInsetClasses,
-        scrollable ? 'overflow-hidden' : 'overflow-y-auto',
+        // Short windows (up to 480px high): the panel scrolls as a whole, the body keeps its content height instead of shrinking to a few pixels between header and footer
+        scrollable ? 'overflow-hidden short:overflow-y-auto' : 'overflow-y-auto',
         'fixed',
         'left-[50%]',
         'top-[50%]',
@@ -232,9 +248,12 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
       <OpenerCapture onCapture={returnFocus.remember} />
       <AutosaveScopeReset>{children}</AutosaveScopeReset>
       {hideClose ? null : (
-        <DialogPrimitive.Close data-slot="dialog-close" className={cn('absolute right-3 top-3 inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary',
+        <DialogPrimitive.Close data-slot="dialog-close" className={cn('absolute right-3 top-3 z-sticky inline-flex items-center justify-center rounded-control text-icon-subtle transition-colors hover:bg-muted hover:text-icon-default active:bg-muted-strong focus:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default disabled:pointer-events-none data-[state=open]:bg-secondary',
+          // z-sticky is above the z-raised of a sticky header, so the cross stays visible and clickable under it
           // Same fixed 40px square as the Sheet close, independent of theme and preset.
           'h-10 w-10',
+          // Short windows scroll a `scrollable` panel as a whole, so an absolute cross would scroll away while the sticky header stays (KETTE-94 QA-KB-04). There it sticks like the header: it is moved to the first flex row with `order` (the DOM and tab order stay unchanged), pulled over the panel padding to the same corner (-mt-3, -mr-3) and keeps 40x40 (shrink-0, a flex item would shrink and its negative margins would pull the body under the header) and takes no room in the flow (sticky offset -top-3 because the sticky view starts at the content edge, like the header's -top-6; negative bottom margin of its height minus the row gap).
+          scrollable && cn('short:sticky short:-top-3 short:shrink-0 short:right-auto short:order-first short:self-end short:-mt-3 short:-mr-3', zero ? 'short:-mb-10' : 'short:-mb-11'),
           closeClassName,
         )}>
           <X className="h-icon-md w-icon-md" aria-hidden="true" />
@@ -253,12 +272,18 @@ interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   orientation?: 'vertical' | 'horizontal';
 }
 
+// Short windows (up to 480px high) scroll a `scrollable` panel as a whole: header and footer stay in view on the surface fill, so the title and the actions are visible on open
+// The bars pull out over the 24px panel padding (negative margin and offset) and pad themselves with it again: they sit flush with the panel edges, no content shows past them, and the measured height is the exact scroll padding
+const shortStickyBar = 'short:[[data-dialog-scrollable]_&]:sticky short:[[data-dialog-scrollable]_&]:z-raised short:[[data-dialog-scrollable]_&]:bg-background';
+
 const DialogHeader = React.forwardRef<HTMLDivElement, DialogHeaderProps>(({ className, orientation = 'vertical', ...props }, ref) => (
   <div
     data-slot="dialog-header"
     ref={useStickyInset<HTMLDivElement>('top', ref)}
     className={cn(
       'flex text-left',
+      shortStickyBar,
+      'short:[[data-dialog-scrollable]_&]:-top-6 short:[[data-dialog-scrollable]_&]:-mt-6 short:[[data-dialog-scrollable]_&]:pt-6',
       // Theme header band (kette-tokens 5.26.0 image-dialog-header, bevel-dialog-header), none by default
       'bg-[image:var(--image-dialog-header)] shadow-[shadow:var(--bevel-dialog-header)]',
       orientation === 'horizontal' ? 'flex-row items-start gap-4 pr-8' : 'flex-col space-y-[6px]',
@@ -271,7 +296,7 @@ DialogHeader.displayName = 'DialogHeader';
 
 // Footer of a dialog: the destructive or confirming action on the right, Cancel as `outline` to its left. In a sheet footer Cancel is `ghost` (see SheetFooter).
 const DialogFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={useStickyInset<HTMLDivElement>('bottom', ref)} className={cn('flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
+  <div ref={useStickyInset<HTMLDivElement>('bottom', ref)} className={cn('flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end', shortStickyBar, 'short:[[data-dialog-scrollable]_&]:-bottom-6 short:[[data-dialog-scrollable]_&]:-mb-6 short:[[data-dialog-scrollable]_&]:pb-6', className)} {...props} />
 ));
 DialogFooter.displayName = 'DialogFooter';
 
@@ -304,7 +329,7 @@ const DialogBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={hasFocusableChild ? undefined : 0}
       data-slot="dialog-body"
-      className={cn('-m-1 min-h-0 flex-1 overflow-y-auto p-1', scrollInsetClasses, 'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default', className)}
+      className={cn('-m-1 min-h-0 flex-1 overflow-y-auto p-1 short:flex-none short:overflow-visible', scrollInsetClasses, 'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default', className)}
       {...props}
     />
   );

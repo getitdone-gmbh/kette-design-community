@@ -15,6 +15,7 @@ import {
   type KanbanMove,
 } from './kanban';
 import { KanbanMoveToMenu } from './kanban-move-to-menu';
+import { DesignSystemProvider } from './design-system-provider';
 
 const Board = ({ onMove }: { onMove?: (m: KanbanMove) => void }) => (
   <Kanban aria-label="Pipeline" onMove={onMove}>
@@ -919,5 +920,292 @@ describe('Kanban stale refocus after a rejected move (0.21)', () => {
       focus.mockRestore();
       vi.useRealTimers();
     }
+  });
+});
+
+describe('KanbanColumn dropDisabled (ZERO-784)', () => {
+  // Lead takes cards, Won is switched off and already holds card C.
+  const Off = ({ onMove, dropDisabledText }: { onMove?: (m: KanbanMove) => void; dropDisabledText?: string | ((title: string | undefined, origin: string) => string) }) => (
+    <Kanban aria-label="Pipeline" onMove={onMove}>
+      <KanbanColumn id="lead" title="Lead" count={2}>
+        <KanbanCard id="a" title="Card A" />
+        <KanbanCard id="b" title="Card B" />
+      </KanbanColumn>
+      <KanbanColumn id="won" title="Won" count={2} dropDisabled dropDisabledText={dropDisabledText} badge={<span>Off</span>} meta="EUR 10k">
+        <KanbanCard id="c" title="Card C" />
+        <KanbanCard id="d" title="Card D" />
+      </KanbanColumn>
+    </Kanban>
+  );
+  const layout = (container: HTMLElement) => {
+    mockLayout(container);
+    (container.querySelector('[data-card-id="c"]') as HTMLElement).getBoundingClientRect = () => rect(308, 40, 244, 40);
+    (container.querySelector('[data-card-id="d"]') as HTMLElement).getBoundingClientRect = () => rect(308, 90, 244, 40);
+  };
+  const live = () => screen.getByRole('status');
+
+  it('marks the column and shows the badge right after the count, before the right aligned meta', () => {
+    render(<Off />);
+    const won = screen.getByRole('region', { name: 'Won' });
+    expect(won).toHaveAttribute('data-drop-disabled', 'true');
+    const badge = screen.getByText('Off');
+    const slot = badge.closest('[data-kanban-badge]') as HTMLElement;
+    expect(slot).not.toBeNull();
+    expect(slot.className).not.toMatch(/ml-auto/);
+    expect(slot.previousElementSibling).toHaveTextContent('2');
+    expect(slot.nextElementSibling).toHaveTextContent('EUR 10k');
+    expect(screen.getByRole('region', { name: 'Lead' })).not.toHaveAttribute('data-drop-disabled');
+  });
+
+  it('refuses a keyboard drop from another column: outline instead of drop area, no marker, no onMove, own announcement', async () => {
+    const onMove = vi.fn();
+    render(<Off onMove={onMove} />);
+    const card = screen.getByRole('button', { name: /Card A/ });
+    card.focus();
+    await userEvent.keyboard(' {ArrowRight}');
+    const won = screen.getByRole('region', { name: 'Won' });
+    expect(won).toHaveAttribute('data-drop-refused', 'true');
+    expect(won).not.toHaveAttribute('data-drop-target');
+    expect(won.querySelector('[data-kanban-drop-marker]')).toBeNull();
+    expect(won).toHaveClass('data-[drop-refused=true]:outline-dashed', 'data-[drop-refused=true]:outline-2', 'data-[drop-refused=true]:-outline-offset-2', 'data-[drop-refused=true]:outline-border-control', 'data-[drop-refused=true]:cursor-not-allowed');
+    expect(live()).toHaveTextContent('Won, does not accept cards');
+    await userEvent.keyboard(' ');
+    expect(onMove).not.toHaveBeenCalled();
+    expect(live()).toHaveTextContent('Won does not accept cards. Card A stays in Lead.');
+    expect(live()).not.toHaveTextContent(/Dropped/);
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+    expect(won).not.toHaveAttribute('data-drop-refused');
+    await vi.waitFor(() => expect(card).toHaveFocus());
+  });
+
+  it('refuses a mouse drop from another column and never calls onMove', async () => {
+    const onMove = vi.fn();
+    const { container } = render(<Off onMove={onMove} />);
+    layout(container);
+    const card = screen.getByRole('button', { name: /Card B/ });
+    firePointer(card, 'pointerdown', { x: 100, y: 110 });
+    firePointer(document, 'pointermove', { x: 300, y: 110 });
+    firePointer(document, 'pointermove', { x: 400, y: 110 });
+    const won = screen.getByRole('region', { name: 'Won' });
+    expect(won).toHaveAttribute('data-drop-refused', 'true');
+    expect(won.querySelector('[data-kanban-drop-marker]')).toBeNull();
+    firePointer(document, 'pointerup', { x: 400, y: 110 });
+    expect(onMove).not.toHaveBeenCalled();
+    expect(live()).toHaveTextContent('Won does not accept cards. Card B stays in Lead.');
+    await flush();
+  });
+
+  it('still reorders inside the disabled column', async () => {
+    const onMove = vi.fn();
+    render(<Off onMove={onMove} />);
+    screen.getByRole('button', { name: /Card C/ }).focus();
+    await userEvent.keyboard(' {ArrowDown}');
+    const won = screen.getByRole('region', { name: 'Won' });
+    expect(won).toHaveAttribute('data-drop-target', 'true');
+    expect(won).not.toHaveAttribute('data-drop-refused');
+    expect(won.querySelector('[data-kanban-drop-marker]')).not.toBeNull();
+    await userEvent.keyboard(' ');
+    expect(onMove).toHaveBeenCalledWith({ cardId: 'c', fromColumnId: 'won', toColumnId: 'won', index: 1 });
+  });
+
+  it('still lets cards leave the disabled column', async () => {
+    const onMove = vi.fn();
+    render(<Off onMove={onMove} />);
+    screen.getByRole('button', { name: /Card C/ }).focus();
+    await userEvent.keyboard(' {ArrowLeft} ');
+    expect(onMove).toHaveBeenCalledWith({ cardId: 'c', fromColumnId: 'won', toColumnId: 'lead', index: 0 });
+    expect(live()).toHaveTextContent(/Dropped Card C/);
+  });
+
+  it('takes the column text over the provider text, as a string or a function', async () => {
+    const { unmount } = render(<Off onMove={() => {}} dropDisabledText={(title, origin) => `Won is off. ${title} stays in ${origin}.`} />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowRight} ');
+    expect(live()).toHaveTextContent('Won is off. Card A stays in Lead.');
+    unmount();
+    render(<Off onMove={() => {}} dropDisabledText="Stage is off" />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowRight} ');
+    expect(live()).toHaveTextContent('Stage is off');
+  });
+
+  it('translates the announcements with the provider locale', async () => {
+    render(
+      <DesignSystemProvider locale="de">
+        <Off onMove={() => {}} />
+      </DesignSystemProvider>,
+    );
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowRight}');
+    expect(live()).toHaveTextContent('Won, nimmt keine Karten an');
+    await userEvent.keyboard(' ');
+    expect(live()).toHaveTextContent('Won nimmt keine Karten an. Card A bleibt in Lead.');
+  });
+
+  it('shows not-allowed on the dragged copy while it is over a refusing column', async () => {
+    const { container } = render(<Off onMove={() => {}} />);
+    layout(container);
+    firePointer(screen.getByRole('button', { name: /Card B/ }), 'pointerdown', { x: 100, y: 110 });
+    firePointer(document, 'pointermove', { x: 300, y: 110 });
+    firePointer(document, 'pointermove', { x: 400, y: 110 });
+    const overlay = document.querySelector('[data-kanban-overlay]') as HTMLElement;
+    expect(overlay).not.toBeNull();
+    expect(overlay.closest('[data-drop-refused="true"]')).toHaveClass('cursor-not-allowed');
+    firePointer(document, 'pointerup', { x: 400, y: 110 });
+    await flush();
+  });
+});
+
+describe('Kanban announcements name the column by its title (ZERO-811)', () => {
+  // Both columns carry a longer accessible name, as a board does that puts the stage state into the label.
+  const Labelled = ({ onMove }: { onMove?: (m: KanbanMove) => void }) => (
+    <Kanban aria-label="Pipeline" onMove={onMove}>
+      <KanbanColumn id="lead" title="Lead" label="Lead, 2 cards" count={2}>
+        <KanbanCard id="a" title="Card A" />
+        <KanbanCard id="b" title="Card B" />
+      </KanbanColumn>
+      <KanbanColumn id="case" title="Case study" label="Case study, stage is off, does not accept cards" count={1} dropDisabled>
+        <KanbanCard id="c" title="Card C" />
+      </KanbanColumn>
+      <KanbanColumn id="won" title="Won" label="Won, 0 cards" count={0} />
+    </Kanban>
+  );
+  const live = () => screen.getByRole('status');
+
+  it('keeps the label as the accessible name of the column', () => {
+    render(<Labelled />);
+    expect(screen.getByRole('region', { name: 'Case study, stage is off, does not accept cards' })).toBeInTheDocument();
+  });
+
+  it('says the title of a refusing target column, on entering and on release', async () => {
+    render(<Labelled onMove={() => {}} />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowRight}');
+    expect(live()).toHaveTextContent(/^Case study, does not accept cards$/);
+    await userEvent.keyboard(' ');
+    expect(live()).toHaveTextContent(/^Case study does not accept cards\. Card A stays in Lead\.$/);
+  });
+
+  it('says the title in the position of pick up, move and drop', async () => {
+    render(<Labelled onMove={() => {}} />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' ');
+    expect(live()).toHaveTextContent('Lead, position 1');
+    expect(live()).not.toHaveTextContent('2 cards');
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}');
+    expect(live()).toHaveTextContent(/^Won, position 1$/);
+    await userEvent.keyboard(' ');
+    expect(live()).toHaveTextContent('Won, position 1');
+    expect(live()).not.toHaveTextContent('0 cards');
+  });
+
+  it('falls back to the label when the title is not a string', async () => {
+    render(
+      <Kanban aria-label="Pipeline" onMove={() => {}}>
+        <KanbanColumn id="lead" title={<span>Lead</span>} label="Lead stage">
+          <KanbanCard id="a" title="Card A" />
+        </KanbanColumn>
+      </Kanban>,
+    );
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' ');
+    expect(live()).toHaveTextContent('Lead stage, position 1');
+  });
+});
+
+describe('KanbanColumn headerAction (ZERO-796)', () => {
+  const Head = ({ action = true, meta = 'Limit 2' }: { action?: boolean; meta?: string | null }) => (
+    <Kanban aria-label="Board">
+      <KanbanColumn id="todo" title="A very long column title that does not fit" count={3} meta={meta ?? undefined} headerAction={action ? <input type="checkbox" aria-label="Select all in To do" /> : undefined}>
+        <KanbanCard id="a" title="Card A" />
+      </KanbanColumn>
+    </Kanban>
+  );
+
+  it('puts the action at the end of the title row, after the meta, in a slot of the row height', () => {
+    render(<Head />);
+    const action = screen.getByRole('checkbox', { name: 'Select all in To do' });
+    const slot = action.closest('[data-kanban-header-action]') as HTMLElement;
+    expect(slot).not.toBeNull();
+    const row = slot.parentElement as HTMLElement;
+    expect(row.lastElementChild).toBe(slot);
+    expect(slot.previousElementSibling).toHaveTextContent('Limit 2');
+    expect(slot.className).toMatch(/\bh-5\b/);
+    expect(slot.className).toMatch(/\bshrink-0\b/);
+    expect(row.className).toMatch(/\bh-5\b/);
+    // The meta does not wrap next to the action
+    expect(slot.previousElementSibling!.className).toMatch(/whitespace-nowrap/);
+  });
+
+  it('shortens the title with an ellipsis instead of wrapping, only with an action', () => {
+    const { unmount } = render(<Head />);
+    const title = screen.getByRole('heading', { name: /A very long column title/ });
+    expect(title).toHaveClass('min-w-0', 'truncate');
+    // The shortened title stays readable as a tooltip (QA-L-01)
+    expect(title).toHaveAttribute('title', 'A very long column title that does not fit');
+    unmount();
+    render(<Head action={false} />);
+    expect(screen.getByRole('heading', { name: /A very long column title/ })).not.toHaveClass('truncate');
+    expect(document.querySelector('[data-kanban-header-action]')).toBeNull();
+  });
+
+  it('treats false like no action, so `mode && <Checkbox />` keeps the plain header (CR-B-15)', () => {
+    render(
+      <Kanban aria-label="Board">
+        <KanbanColumn id="todo" title="A very long column title" count={1} headerAction={false}>
+          <KanbanCard id="a" title="Card A" />
+        </KanbanColumn>
+      </Kanban>,
+    );
+    expect(document.querySelector('[data-kanban-header-action]')).toBeNull();
+    expect(screen.getByRole('heading', { name: /A very long column title/ })).not.toHaveClass('truncate');
+  });
+
+  it('pushes the action to the right on its own when there is no meta', () => {
+    render(<Head meta={null} />);
+    const slot = screen.getByRole('checkbox', { name: 'Select all in To do' }).closest('[data-kanban-header-action]') as HTMLElement;
+    expect(slot.className).toMatch(/\bml-auto\b/);
+  });
+});
+
+describe('KanbanColumn dropLabel (ZERO-756 L-36)', () => {
+  const LabelBoard = () => (
+    <Kanban aria-label="Pipeline" onMove={() => {}}>
+      <KanbanColumn id="lead" title="Lead" dropLabel="Drop here · Lead 10%">
+        <KanbanCard id="a" title="Card A" />
+        <KanbanCard id="b" title="Card B" />
+      </KanbanColumn>
+      <KanbanColumn id="proposal" title="Proposal" dropLabel="Drop here · Proposal 50%">
+        <KanbanCard id="c" title="Card C" />
+      </KanbanColumn>
+    </Kanban>
+  );
+  const marker = (column: string) => screen.getByRole('region', { name: column }).querySelector('[data-kanban-drop-marker]');
+
+  it('shows the label in the drop marker of a column a card from another column is over, and announces it', async () => {
+    render(<LabelBoard />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowRight}');
+    const box = marker('Proposal');
+    expect(box).toHaveTextContent('Drop here · Proposal 50%');
+    expect(box).toHaveAttribute('data-drop-label', '');
+    expect(box).toHaveClass('border-dashed', 'border-border-focus', 'text-text-brand-on-subtle');
+    // Arrow above the text at the top of the box, so the dragged card does not cover the text (DRG12-04).
+    expect(box).toHaveClass('flex-col', 'justify-start');
+    expect(box?.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    expect(box).toHaveAttribute('aria-hidden', 'true');
+    // The label stands in for the column name: no column said twice (UXG-06).
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent(/^Drop here · Proposal 50%, position 1$/);
+  });
+
+  it('keeps the plain line while a card moves inside its own column', async () => {
+    render(<LabelBoard />);
+    screen.getByRole('button', { name: /Card A/ }).focus();
+    await userEvent.keyboard(' {ArrowDown}');
+    const line = marker('Lead');
+    expect(line).not.toBeNull();
+    expect(line).not.toHaveAttribute('data-drop-label');
+    expect(line).toHaveTextContent('');
+    expect(screen.getByRole('status', { name: '' })).not.toHaveTextContent(/Drop here/);
   });
 });

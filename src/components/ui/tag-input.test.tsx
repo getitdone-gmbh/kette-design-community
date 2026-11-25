@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from './sheet';
 import { TagInput } from './tag-input';
 
 describe('TagInput', () => {
@@ -178,5 +179,34 @@ describe('TagInput categorised suggestions', () => {
     await userEvent.type(screen.getByRole('combobox'), 'type');
     expect(screen.queryByRole('group', { name: 'Frameworks' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('group', { name: 'Languages' })).getByRole('option', { name: 'TypeScript' })).toBeInTheDocument();
+  });
+});
+
+// R-LIB-15 (L-33): Escape on an open suggestion list closes the list only, the sheet around it stays open.
+describe('TagInput Escape inside a sheet (R-LIB-15)', () => {
+  const InSheet = ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
+    <Sheet open onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetTitle>Skills</SheetTitle>
+        <SheetDescription>Tags</SheetDescription>
+        <TagInput aria-label="Skills" suggestions={['React', 'Redux', 'Remix']} />
+      </SheetContent>
+    </Sheet>
+  );
+
+  it('first Escape closes the list, the second closes the sheet', async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(<InSheet onOpenChange={onOpenChange} />);
+    const input = screen.getByRole('combobox');
+    await user.click(input);
+    await user.keyboard('Re');
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(input).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

@@ -35,6 +35,55 @@ const tones = {
   destructive: ['error', 5.3, 6.17],
 } as const;
 
+// Add-on and brand tones read a fill role and its on role: [fill token, on token]
+const addonTones = {
+  teal: ['colors-product-backoffice-default', 'colors-product-backoffice-on'],
+  strong: ['semantic-surface-inverse-static', 'semantic-text-on-inverse-static'],
+  muted: ['colors-product-record-default', 'colors-product-record-on'],
+} as const;
+
+// The glyph is a graphic (WCAG 1.4.11, 3:1). Teal measures 3.95:1 (the prototype teal #0d9488 with a white glyph is 3.74:1), the other two keep the 4.5:1 text bar.
+const addonMin = { teal: 3, strong: 4.5, muted: 4.5 } as const;
+
+describe('ObjectIcon add-on tone contrast', () => {
+  for (const [tone, [fill, on]] of Object.entries(addonTones)) {
+    for (const mode of ['light', 'dark'] as const) {
+      it(`${tone} glyph on tile keeps ${addonMin[tone as keyof typeof addonMin]}:1 in ${mode} for every theme`, () => {
+        let min = Infinity;
+        for (const file of themeFiles) {
+          const css = readFileSync(join(dist, file), 'utf8');
+          min = Math.min(min, ratio(readToken(css, mode, on), readToken(css, mode, fill)));
+        }
+        expect(min).toBeGreaterThanOrEqual(addonMin[tone as keyof typeof addonMin]);
+      });
+    }
+  }
+});
+
+const hue = (c: Rgb) => {
+  const [r, g, b] = c.map((v) => v / 255);
+  const d = Math.max(r, g, b) - Math.min(r, g, b);
+  if (!d) return 0;
+  const h = Math.max(r, g, b) === r ? ((g - b) / d) % 6 : Math.max(r, g, b) === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+};
+
+describe('ObjectIcon add-on tone identity', () => {
+  it('teal stays teal and strong stays dark in every theme and mode', () => {
+    const off: string[] = [];
+    for (const file of themeFiles) {
+      const css = readFileSync(join(dist, file), 'utf8');
+      for (const mode of ['light', 'dark'] as const) {
+        const teal = readToken(css, mode, 'colors-product-backoffice-default');
+        if (hue(teal) < 160 || hue(teal) > 190) off.push(`${file} ${mode} teal hue ${Math.round(hue(teal))}`);
+        const strong = readToken(css, mode, 'semantic-surface-inverse-static');
+        if ((strong[0] + strong[1] + strong[2]) / 3 > 80) off.push(`${file} ${mode} strong ${strong.join(',')}`);
+      }
+    }
+    expect(off).toEqual([]);
+  });
+});
+
 describe('ObjectIcon tone contrast', () => {
   for (const [tone, [family, light, dark]] of Object.entries(tones)) {
     for (const mode of ['light', 'dark'] as const) {

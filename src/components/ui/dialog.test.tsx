@@ -88,6 +88,195 @@ describe('Dialog footer and scrolling body', () => {
     expect(dialog).toHaveClass('grid', 'overflow-y-auto');
   });
 
+  // KETTE-60: in a window up to 480px high the header and footer leave the body 8px, so the whole panel scrolls and the body keeps its height.
+  it('scrollable: short windows scroll the whole panel and keep the body at its content height', () => {
+    render(
+      <Dialog open>
+        <DialogContent scrollable>
+          <DialogHeader>
+            <DialogTitle>Apply</DialogTitle>
+          </DialogHeader>
+          <DialogBody data-testid="body">
+            <p>content</p>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole('dialog')).toHaveClass('short:overflow-y-auto');
+    expect(screen.getByTestId('body')).toHaveClass('short:flex-none', 'short:overflow-visible');
+  });
+
+  // UX-KB-02: the panel opens at the top with the focus on a footer button; header and footer stay in view while it scrolls.
+  it('scrollable: in short windows the header and the footer stick to the panel edges on the surface fill', () => {
+    render(
+      <Dialog open>
+        <DialogContent scrollable>
+          <DialogHeader data-testid="header">
+            <DialogTitle>Apply</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p>content</p>
+          </DialogBody>
+          <DialogFooter data-testid="footer">
+            <button type="button">Send</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-dialog-scrollable');
+    expect(screen.getByTestId('header').className).toContain('short:[[data-dialog-scrollable]_&]:sticky');
+    expect(screen.getByTestId('header').className).toContain('short:[[data-dialog-scrollable]_&]:-top-6');
+    expect(screen.getByTestId('footer').className).toContain('short:[[data-dialog-scrollable]_&]:sticky');
+    expect(screen.getByTestId('footer').className).toContain('short:[[data-dialog-scrollable]_&]:bg-background');
+    // flush with the panel edges: pulled over the panel padding and padded again
+    expect(screen.getByTestId('footer').className).toContain('short:[[data-dialog-scrollable]_&]:-bottom-6');
+    expect(screen.getByTestId('footer').className).toContain('short:[[data-dialog-scrollable]_&]:pb-6');
+    expect(screen.getByTestId('header').className).toContain('short:[[data-dialog-scrollable]_&]:pt-6');
+  });
+
+  // A11Y-KB-05: a sticky header (z-raised) must not cover the absolute close button
+  it('puts the close button above a sticky header', () => {
+    render(
+      <Dialog open>
+        <DialogContent scrollable>
+          <DialogHeader>
+            <DialogTitle>Apply</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('z-sticky');
+  });
+
+  // KETTE-94 QA-KB-04: in short windows the panel scrolls as a whole; the cross sticks like the header instead of scrolling away
+  it('scrollable: the close button sticks in short windows without taking room, the DOM order stays', () => {
+    render(
+      <Dialog open>
+        <DialogContent scrollable>
+          <DialogHeader>
+            <DialogTitle>Apply</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p>content</p>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>,
+    );
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close).toHaveClass('short:sticky', 'short:-top-3', 'short:shrink-0', 'short:order-first', 'short:self-end', 'short:-mt-3', 'short:-mr-3', 'short:-mb-11', 'short:right-auto', 'z-sticky');
+    // Tab order: the cross is still the last element of the panel.
+    expect(close.previousElementSibling).not.toBeNull();
+    expect(screen.getByRole('dialog').lastElementChild).toBe(close);
+  });
+
+  it('a dialog that is not scrollable keeps the absolute close button', () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Apply</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close).toHaveClass('absolute');
+    expect(close).not.toHaveClass('short:sticky');
+  });
+
+  it('brings the focused control into view after Tab, also when the focus wraps (FocusScope focuses without scrolling)', async () => {
+    const user = userEvent.setup();
+    const original = HTMLElement.prototype.scrollIntoView;
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(
+        <Dialog open>
+          <DialogContent scrollable>
+            <DialogTitle>Apply</DialogTitle>
+            <DialogBody>
+              <input aria-label="Field 1" />
+            </DialogBody>
+            <DialogFooter>
+              <button type="button">Send</button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>,
+      );
+      screen.getByRole('button', { name: 'Send' }).focus();
+      await user.tab();
+      await user.tab();
+      const field = screen.getByRole('textbox', { name: 'Field 1' });
+      expect(field).toHaveFocus();
+      await waitFor(() => expect(scrolled).toContain(field));
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('initial focus on a form control brings it into view, on a footer button it does not (A11Y-K2-02)', async () => {
+    const original = HTMLElement.prototype.scrollIntoView;
+    const scrolled: Element[] = [];
+    HTMLElement.prototype.scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    try {
+      const { unmount } = render(
+        <Dialog open>
+          <DialogContent scrollable>
+            <DialogTitle>Apply</DialogTitle>
+            <DialogBody>
+              <input aria-label="Field 1" />
+            </DialogBody>
+            <DialogFooter>
+              <button type="button">Send</button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>,
+      );
+      const field = screen.getByRole('textbox', { name: 'Field 1' });
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(scrolled).toContain(field);
+      unmount();
+      scrolled.length = 0;
+      render(
+        <Dialog open>
+          <DialogContent scrollable>
+            <DialogTitle>Apply</DialogTitle>
+            <DialogFooter>
+              <button type="button">Send</button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>,
+      );
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toHaveFocus());
+      expect(scrolled).not.toContain(screen.getByRole('button', { name: 'Send' }));
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('scrollable: the initial focus does not scroll the panel', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    render(
+      <Dialog open>
+        <DialogContent scrollable>
+          <DialogTitle>Apply</DialogTitle>
+          <DialogBody>
+            <p>content</p>
+          </DialogBody>
+          <DialogFooter>
+            <button type="button">Send</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    focus.mockRestore();
+  });
+
   it('scrollable: panel is a clipped flex column, DialogBody scrolls and is keyboard reachable, footer stays outside it', () => {
     render(
       <Dialog open>

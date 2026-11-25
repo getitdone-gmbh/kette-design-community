@@ -1,5 +1,8 @@
 import type { Labels } from './labels';
 
+// Counts in pagination texts use the grouping of the dictionary locale (2,404 or 2.404).
+const grouped = new Intl.NumberFormat('en-US');
+
 // English default. The sidebar texts stay German here because they were German before the i18n layer.
 export const labelsEn: Labels = {
   add: 'Add',
@@ -39,6 +42,8 @@ export const labelsEn: Labels = {
   previous: 'Previous',
   required: 'Required',
   reset: 'Reset',
+  customizeView: 'Customize view',
+  resetToDefault: 'Reset to default',
   search: 'Search',
   searchEllipsis: 'Search...',
   searchIn: (label) => `Search ${label}`,
@@ -88,13 +93,13 @@ export const labelsEn: Labels = {
   pagination: 'Pagination',
   pages: 'Pages',
   page: (page) => `Page ${page}`,
-  pageOf: (page, pageCount) => `Page ${page} of ${pageCount}`,
+  pageOf: (page, pageCount) => `Page ${grouped.format(page)} of ${grouped.format(pageCount)}`,
   previousPage: 'Previous page',
   nextPage: 'Next page',
   rowsPerPage: 'Rows per page',
-  perPage: (count) => `${count} per page`,
-  range: (first, last, total) => `${first} to ${last}${total !== undefined ? ` of ${total}` : ''}`,
-  showing: (count, total) => `Showing ${count} of ${total}`,
+  perPage: (n) => `${grouped.format(n)} per page`,
+  range: (first, last, total) => `${grouped.format(first)} to ${grouped.format(last)}${total !== undefined ? ` of ${grouped.format(total)}` : ''}`,
+  showing: (shown, total) => `Showing ${grouped.format(shown)} of ${grouped.format(total)}`,
   goToPage: (page, count) => `Go to page ${page} of ${count}`,
   goToSlide: (slide, count) => `Go to slide ${slide} of ${count}`,
   previousSlide: 'Previous slide',
@@ -163,6 +168,8 @@ export const labelsEn: Labels = {
   kanbanPickedUp: (title, position) =>
     `Picked up ${title ?? 'card'}. Use arrow keys to move, space to drop, escape to cancel. ${position}`,
   kanbanDropped: (title, position) => `Dropped ${title ?? 'card'}. ${position}`,
+  kanbanDropDisabledTarget: (column) => `${column}, does not accept cards`,
+  kanbanDropDisabled: (column, title, origin) => `${column} does not accept cards. ${title ?? 'The card'} stays in ${origin}.`,
   kanbanMoveTo: 'Move to',
   kanbanCardActions: (title) => `Actions for ${title}`,
   kanbanCurrentColumn: (column) => `${column} (current)`,
@@ -206,6 +213,7 @@ export const labelsEn: Labels = {
   bulkActions: 'Bulk actions',
   deselectAll: 'Deselect all',
   selectedCount: (count) => `${count} selected`,
+  formErrorSummaryTitle: (count) => `Fix ${count} fields to continue.`,
   moreActions: 'More actions',
   noFiltersApplied: 'No filters applied',
   filtersApplied: (count) => `${count} ${count === 1 ? 'filter' : 'filters'} applied`,
@@ -411,4 +419,10 @@ export const labelsEn: Labels = {
   annotationYes: 'Yes',
   annotationNo: 'No',
   annotationNotDeclared: 'Not declared',
+  back: 'Back',
+  backTo: (title) => `Back to ${title}`,
+  sheetDiscardTitle: 'Discard changes?',
+  sheetDiscardDescription: 'Your changes are not saved yet.',
+  sheetDiscard: 'Discard',
+  sheetKeepEditing: 'Keep editing',
 };

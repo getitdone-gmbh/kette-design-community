@@ -73,6 +73,9 @@ const MultiSelectProvider: FC<MultiSelectProviderProps> = ({ children }) => {
   return <MultiSelectContext.Provider value={{ openId, setOpenId }}>{children}</MultiSelectContext.Provider>;
 };
 
+// Chip looks of the chosen values. `info` (blue, the default) stays blue in every theme. `neutral` and `muted` are the quiet chips, `primary` follows the brand colour of the theme (violet in runzero). `default` is the card fill, which is invisible on a card in dark mode.
+export type MultiSelectChipVariant = 'default' | 'secondary' | 'neutral' | 'muted' | 'primary' | 'info' | 'success' | 'destructive';
+
 export interface MultiSelectProps {
   // `sm` puts the field on the Button sm height (control-sm token: 32, zero 28): one row, compact search input and toggle. Chips inside wrap with a tighter gap and padding. `default` keeps the control-md field.
   size?: 'default' | 'sm';
@@ -109,7 +112,7 @@ export interface MultiSelectProps {
   onlyCheckOnCheckbox?: boolean;
   orderCheckedOnTop?: boolean;
   selectedOptionsAsListItems?: boolean;
-  chipVariant?: 'default' | 'secondary' | 'info' | 'success' | 'destructive';
+  chipVariant?: MultiSelectChipVariant;
   customAction?: React.ReactNode;
   customAddAction?: React.ReactNode;
   description?: string;
@@ -149,12 +152,43 @@ export interface MultiSelectProps {
   isValueInvalid?: (id: MultiSelectOptionId) => boolean;
   // Accessible name of the field when there is no visible `label`. Falls back to the placeholder.
   ariaLabel?: string;
+  // Id of the search input for a `<Label htmlFor>` outside the field: that label names the input (aria-labelledby) and a click on it focuses the input.
+  inputId?: string;
   // Shows the chosen values as plain chips on the muted read-only surface. Stays focusable (`aria-readonly`), cannot be opened or changed.
   readOnly?: boolean;
 }
 
 const multiSelectLabelId = (id?: string) => (id ? `${id}-label` : undefined);
 const limitHintId = (id: string) => `${id}-limit-hint`;
+
+// cmdk gives its input a generated id and focuses the input through it, so the id cannot be changed. A label outside the field with `htmlFor` = `inputId` names the input through aria-labelledby instead, and a click on it focuses the input like a native label. The label may render later or be replaced (CR-LIB-03): the click is delegated from the document and the label is looked up again whenever the DOM changes and the known one is gone.
+const useOutsideLabel = (inputId: string | undefined, inputRef: React.RefObject<HTMLInputElement>) => {
+  const [labelId, setLabelId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!inputId || typeof document === 'undefined') return undefined;
+    let label: HTMLLabelElement | null = null;
+    const find = () => {
+      if (label?.isConnected && label.htmlFor === inputId) return;
+      label = document.querySelector<HTMLLabelElement>(`label[for="${inputId.replace(/["\\]/g, '\\$&')}"]`);
+      // aria-labelledby needs an id; a label without one gets `<inputId>-label`.
+      if (label && !label.id) label.id = `${inputId}-label`;
+      setLabelId(label?.id);
+    };
+    find();
+    const observer = new MutationObserver(find);
+    observer.observe(document.body, { childList: true, subtree: true });
+    const focusInput = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest('label') : null;
+      if (target && target.htmlFor === inputId) inputRef.current?.focus();
+    };
+    document.addEventListener('click', focusInput);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('click', focusInput);
+    };
+  }, [inputId, inputRef]);
+  return labelId;
+};
 
 const MultiSelectLabel: FC<{ label?: string; disabled?: boolean; htmlFor?: string; controlId?: string }> = ({
   label,
@@ -234,10 +268,12 @@ const MultiSelectInput: FC<
   isValueInvalid,
   loading,
   size = 'default',
+  inputId,
 }) => {
   const l = useLabels();
   const zero = usePreset() === 'zero';
   const sm = size === 'sm';
+  const outsideLabelId = useOutsideLabel(inputId, inputRef);
   const invalidProps = { invalidValues, isValueInvalid, loading };
   const anyValueInvalid = (selected ?? []).some((id) => isSelectedValueInvalid(options, id, invalidProps));
   // The search input is the one combobox (ARIA 1.2). Only a field without it (sheet trigger, search disabled) puts the role on the surface.
@@ -344,6 +380,7 @@ const MultiSelectInput: FC<
       {!useSheet && !disableSearch && (
         <CommandInput
           icon={icon}
+          aria-labelledby={outsideLabelId}
           expanded={open}
           borderless
           aria-invalid={invalid || anyValueInvalid || undefined}
@@ -439,7 +476,7 @@ const DraggableChip: FC<{
   onUpdateOrder: (updatedOptions: MultiSelectOption[]) => void;
   options: MultiSelectOption[];
   selectedOptionsAsListItems?: boolean;
-  chipVariant?: 'default' | 'secondary' | 'info' | 'success' | 'destructive';
+  chipVariant?: MultiSelectChipVariant;
   truncateChips?: boolean;
   invalid?: boolean;
 }> = ({
@@ -517,6 +554,10 @@ const DraggableChip: FC<{
       <div
         ref={ref}
         data-slot="multiselect-chip"
+        // cmdk selects the highlighted option on Enter from anywhere in the field and swallows the key: Enter on the remove button of a chip must run that button
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.target as HTMLElement).closest('button')) event.stopPropagation();
+        }}
         className={cn(
           'flex items-center',
           { 'list-item list-disc ml-4': selectedOptionsAsListItems },
@@ -1171,6 +1212,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
   invalidValues,
   isValueInvalid,
   size = 'default',
+  inputId,
 }) => {
   const l = useLabels();
   const placeholder = placeholderProp ?? l.searchEllipsis;
@@ -1519,6 +1561,7 @@ const MultiSelectField: FC<MultiSelectProps> = ({
     isValueInvalid,
     loading,
     size,
+    inputId,
   };
 
   const multiSelectChipsProps = {

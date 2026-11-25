@@ -6,6 +6,7 @@ import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
 import { useEdge } from './edge';
+import { stateClasses } from './empty-state';
 import { useLabels } from './labels-context';
 
 // Skeleton bar for loading layouts of data components (semantic/overlay/skeleton/default).
@@ -31,35 +32,31 @@ export interface DataStatePanelProps extends Omit<HTMLAttributes<HTMLDivElement>
   // Deprecated: use retryText.
   retryLabel?: string;
   retryText?: string;
-  // Dashed outline (empty) or destructive outline (error) around the panel.
+  // Dashed outline (empty, default on) or destructive outline (error, default off) around the panel. Set false for an empty state inside a table row, grid cell or an already framed box.
   outlined?: boolean;
 }
 
-// Shared empty and error body for data components (calendar grids, boards, lists, cards).
+// Shared empty and error body for data components (calendar grids, boards, lists, cards). The empty kind is the same body as EmptyState (stateClasses, ADR-0001).
 const DataStatePanel = forwardRef<HTMLDivElement, DataStatePanelProps>(
-  ({ className, kind, title, description, icon, action, onRetry, retryLabel: retryLabelProp, retryText, outlined = false, ...props }, ref) => {
+  ({ className, kind, title, description, icon, action, onRetry, retryLabel: retryLabelProp, retryText, outlined, ...props }, ref) => {
     const l = useLabels();
     const retryLabel = retryText ?? retryLabelProp ?? l.tryAgain;
     const isError = kind === 'error';
+    const framed = outlined ?? !isError;
     const edge = useEdge();
     return (
       <div
         ref={ref}
         role={isError ? 'alert' : 'status'}
         data-state={kind}
-        className={cn(
-          'flex flex-col items-center justify-center gap-2 px-6 py-8 text-center',
-          outlined && 'rounded-card border border-solid',
-          outlined && (isError ? 'border-border-destructive' : cn('border-dashed', edge)),
-          className,
-        )}
+        className={cn(stateClasses.root, framed && (isError ? 'rounded-card border border-solid border-border-destructive' : cn(stateClasses.frame, edge)), className)}
         {...props}
       >
-        <span aria-hidden="true" className={cn('flex h-icon-md w-icon-md items-center justify-center', isError ? 'text-icon-destructive' : 'text-icon-subtle')}>
+        <span aria-hidden="true" className={cn(stateClasses.icon, isError && 'text-icon-destructive')}>
           {icon ?? (isError ? <AlertCircle className="h-icon-md w-icon-md" /> : null)}
         </span>
-        <p className={cn('typography-ui-medium', isError ? 'text-text-destructive' : 'text-foreground')}>{title}</p>
-        {description ? <p className="typography-text-extra-small max-w-reading text-muted-foreground">{description}</p> : null}
+        <p className={cn(stateClasses.title, isError && 'text-text-destructive')}>{title}</p>
+        {description ? <p className={stateClasses.text}>{description}</p> : null}
         {isError && onRetry ? (
           <Button type="button" variant="outline" size="control-sm" onClick={onRetry}>
             <RefreshCw aria-hidden="true" className="h-icon-sm w-icon-sm" />

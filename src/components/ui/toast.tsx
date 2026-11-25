@@ -132,30 +132,19 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 // upstream shadcn/ui uses), letting those nested, genuinely-interactive controls re-theme themselves
 // off the parent's variant without threading a prop through three components.
 //
-// TOAST-TOK-03 (component-scoped border-contrast gap, `default` variant only): the base border was
-// `border-form-border-default` (slate.200 light / slate.700 dark), which computes to ~1.23:1 (light)
-// and ~1.95:1 (dark) against the generic `background-default` surface it sits on — both fail the
-// 3:1 floor for SC 1.4.11. Switched to `border-general-border-default` — an already-shipped,
-// dark-mode-aware semantic token Alert already uses for the identical "generic default surface needs
-// a boundary" problem (see alert.tsx's `default` variant) — which clears the floor in light mode
-// (slate.900 vs white, >15:1). In dark mode `general-border-default` and `form-border-default`
-// resolve to the SAME slate.700 value, so this does not regress dark mode but also does not clear
-// 3:1 there (~1.95:1 unchanged) — no shipped border or shadow token in the token repo currently
-// reaches 3:1 against the dark `background-default` surface (`shadow-lg`'s black/10% is equally
-// negligible on a near-black background, and there is no dark-mode-aware elevation/shadow token to
-// substitute). Flagged for design-tokens-maintainer: a dedicated `toast-border-default` (or a shared
-// elevated-surface border role) needs a lighter dark-mode value that clears 3:1 against
-// `background-default` dark. Not fabricated here per the "never hardcode a missing token" rule.
+// TOAST-TOK-03: the default toast takes the card hairline (border-default) and raised elevation; general-border-default is slate.900 in light themes and read as a black frame (zero, 24.11.2026).
 // The root is a tab stop (Radix sets tabindex 0 for the swipe and hotkey model), so it shows the shared focus ring, drawn inset because the toast clips its overflow.
 const toastVariants = cva(
   [
     ...focusRing,
-    'focus-visible:ring-inset focus-visible:ring-offset-0 group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-default border border-solid border-general-border-default p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 max-sm:data-[state=closed]:slide-out-to-bottom-full sm:data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
+    'focus-visible:ring-inset focus-visible:ring-offset-0 group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-surface border border-solid p-4 pr-6 shadow-elevation-raised transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 max-sm:data-[state=closed]:slide-out-to-bottom-full sm:data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full motion-reduce:animate-none motion-reduce:transition-none motion-reduce:data-[state=closed]:animate-none',
   ],
   {
     variants: {
       variant: {
-        default: 'bg-surface-canvas text-text-default',
+        // Light snackbar (Alex 24.11.2026): hairline like the cards, raised elevation, text action and close inline on one line.
+        // In dark the card equals the page, so the snackbar takes the light inverse surface there to stay visible.
+        default: 'snack space-x-0 gap-3 border-border-default bg-card py-2 pl-4 pr-2 text-text-default typography-ui [.dark_&]:border-transparent [.dark_&]:bg-foreground [.dark_&]:text-background',
         destructive:
           'destructive border-transparent bg-general-error-default text-general-error-on focus-visible:ring-general-error-on',
         // Compact undo toast (Figma Toast): inverse surface, single line, text action and close inline.
@@ -186,15 +175,17 @@ const toastVariants = cva(
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & Omit<VariantProps<typeof toastVariants>, 'preset'> & { clamp?: boolean }
->(({ className, variant, clamp = false, style, ...props }, ref) => {
+>(({ className, variant, clamp = false, style, type, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   return (
     <ToastPrimitives.Root
       ref={ref}
+      // Plain toasts are announced politely; only destructive ones interrupt (Radix defaults every toast to assertive).
+      type={type ?? (variant === 'destructive' ? 'foreground' : 'background')}
       // A toast that was already open when a modal layer opened would get pointer-events none from Radix (it sits below the modal in the layer stack).
       style={{ pointerEvents: 'auto', ...style }}
       className={cn(
-        toastVariants({ variant: variant ?? (zero ? 'inverse' : 'default'), preset: zero ? 'zero' : 'default' }),
+        toastVariants({ variant: variant ?? 'default', preset: zero ? 'zero' : 'default' }),
         { '!p-6': clamp },
         { '[&_div]:text-clamp-small [&_button]:text-clamp-small': clamp },
         { '[&_div]:leading-clamp-small [&_button]:leading-clamp-small': clamp },
@@ -222,6 +213,9 @@ const ToastAction = React.forwardRef<
     className={cn(
       'inline-flex h-8 shrink-0 items-center justify-center rounded-default border border-solid border-general-border-default bg-transparent px-3 text-sm font-medium transition-colors',
       'hover:bg-background-neutral-default',
+      // The action sits at the right end next to the close button, whatever the length of the text
+      'group-[.snack]:ml-auto group-[.snack]:h-10 group-[.snack]:rounded-item group-[.snack]:border-transparent group-[.snack]:font-semibold group-[.snack]:text-text-brand group-[.snack]:hover:bg-muted group-[.snack]:active:bg-muted-strong group-[.snack]:active:brightness-100 group-[.snack]:focus-visible:ring-offset-background',
+      '[.dark_.group.snack_&]:text-background [.dark_.group.snack_&]:underline [.dark_.group.snack_&]:hover:bg-transparent [.dark_.group.snack_&]:active:bg-transparent [.dark_.group.snack_&]:focus-visible:ring-background [.dark_.group.snack_&]:focus-visible:ring-offset-0',
       'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-ring-default focus-visible:ring-offset-focus',
       'active:bg-background-neutral-default active:brightness-95',
       'disabled:pointer-events-none disabled:opacity-disabled',
@@ -257,6 +251,8 @@ const ToastClose = React.forwardRef<
       'absolute right-1 top-1 rounded-default p-1 text-text-subtle transition-colors',
       'hover:text-text-default',
       'focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-ring-default focus-visible:ring-offset-focus',
+      'group-[.snack]:static group-[.snack]:flex group-[.snack]:h-10 group-[.snack]:w-10 group-[.snack]:shrink-0 group-[.snack]:items-center group-[.snack]:justify-center group-[.snack]:rounded-item group-[.snack]:hover:bg-muted group-[.snack]:focus-visible:ring-offset-background',
+      '[.dark_.group.snack_&]:text-background [.dark_.group.snack_&]:hover:bg-transparent [.dark_.group.snack_&]:hover:text-background [.dark_.group.snack_&]:focus-visible:ring-background [.dark_.group.snack_&]:focus-visible:ring-offset-0',
       'group-[.inverse]:static group-[.inverse]:text-background group-[.inverse]:hover:text-background group-[.inverse]:focus-visible:ring-background group-[.inverse]:focus-visible:ring-offset-0',
       'group-[.destructive]:text-general-error-on',
       'group-[.destructive]:hover:text-general-error-on',

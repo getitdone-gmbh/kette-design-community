@@ -76,10 +76,10 @@ describe('FileIcon folder kind (0.15)', () => {
 });
 
 describe('FileIcon document variant tag (0.26.10)', () => {
-  it('uses the file-tag typography role (uppercase comes from the role) at the left edge of the sheet', () => {
+  it('uses the file-tag typography role (uppercase comes from the role)', () => {
     render(<FileIcon ext="pdf" variant="document" />);
     const tag = screen.getByText('pdf');
-    expect(tag).toHaveClass('typography-file-tag', '-left-1', 'bottom-1');
+    expect(tag).toHaveClass('typography-file-tag');
     expect(tag).not.toHaveClass('uppercase');
   });
 
@@ -117,5 +117,62 @@ describe('FileIcon kinds as used by FileUploadItem and MessageAttachment', () =>
   ])('derives the kind of %s', (name, kind) => {
     const { container } = render(<FileIcon name={name} />);
     expect(container.firstElementChild).toHaveAttribute('data-kind', kind);
+  });
+});
+
+describe('FileIcon centering (0.45.1, ZERO-812)', () => {
+  it('stacks glyph and tag of the document sheet as one centred group with a 2px gap', () => {
+    const { container } = render(<FileIcon ext="pdf" variant="document" />);
+    const sheet = container.firstElementChild as HTMLElement;
+    expect(sheet).toHaveClass('flex-col', 'items-center', 'justify-center', 'gap-micro');
+    expect(sheet).not.toHaveClass('items-start');
+    expect(sheet).not.toHaveClass('pt-1');
+  });
+
+  it('keeps the document tag in the flow under the glyph, inside the sheet, without overlap or ring', () => {
+    render(<FileIcon ext="pdf" variant="document" />);
+    const tag = screen.getByText('pdf');
+    expect(tag).toHaveClass('max-w-[theme(spacing.7)]', '-mx-px', 'overflow-hidden', 'whitespace-nowrap', 'px-micro');
+    expect(tag).not.toHaveClass('max-w-7');
+    expect(tag).not.toHaveClass('absolute');
+    expect(tag).not.toHaveClass('-left-1');
+    expect(tag).not.toHaveClass('ring-1');
+  });
+
+  it('gives four character tags the smaller inner padding so they stay readable', () => {
+    render(<FileIcon ext="docx" variant="document" />);
+    const tag = screen.getByText('docx');
+    expect(tag).toHaveClass('px-px');
+    expect(tag).not.toHaveClass('px-micro');
+  });
+
+  it('keeps the same tag placement in the error state', () => {
+    const { container } = render(<FileIcon ext="pdf" variant="document" error />);
+    expect(container.firstElementChild).toHaveClass('flex-col', 'gap-micro');
+    expect(screen.getByText('pdf')).toHaveClass('max-w-[theme(spacing.7)]', '-mx-px');
+  });
+
+  it.each(['md', 'lg'] as const)('stacks glyph and label of the %s tile as one centred group with a 2px gap', (size) => {
+    const { container } = render(<FileIcon ext="docx" size={size} />);
+    const tile = container.firstElementChild as HTMLElement;
+    expect(tile).toHaveClass('flex-col', 'items-center', 'justify-center', 'gap-micro');
+    const label = screen.getByText('docx');
+    expect(label).toHaveClass('max-w-full', 'truncate');
+    expect(label).not.toHaveClass('absolute');
+  });
+
+  it.each(['md', 'lg'] as const)('gives four character tile labels at %s the smaller padding so WEBM fits the 40px zero tile', (size) => {
+    const { rerender } = render(<FileIcon ext="webm" size={size} />);
+    expect(screen.getByText('webm')).toHaveClass('px-px');
+    expect(screen.getByText('webm')).not.toHaveClass('px-1');
+    rerender(<FileIcon ext="pdf" size={size} />);
+    expect(screen.getByText('pdf')).toHaveClass('px-1');
+  });
+
+  it('centres a folder without a label on its own', () => {
+    const { container } = render(<FileIcon kind="folder" variant="document" />);
+    const sheet = container.firstElementChild as HTMLElement;
+    expect(sheet).toHaveClass('items-center', 'justify-center');
+    expect(sheet.querySelector('b')).toBeNull();
   });
 });

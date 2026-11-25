@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "form-error-summary",
+  "title": "Form Error Summary",
+  "description": "Form Error Summary from the Get IT Done design system.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://zero-design.itdone.de/r/labels.json",
+    "https://zero-design.itdone.de/r/labels-context.json",
+    "https://zero-design.itdone.de/r/link.json",
+    "https://zero-design.itdone.de/r/utils.json",
+    "https://zero-design.itdone.de/r/theme.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/form-error-summary.tsx",
+      "content": "'use client';\n\nimport * as React from 'react';\n\nimport { cn } from '@/lib/utils';\nimport type { LabelProp } from '@/components/ui/labels';\nimport { useLabels } from '@/components/ui/labels-context';\nimport { Link } from '@/components/ui/link';\n\nexport interface FormErrorSummaryItem {\n  // Id of the faulty control; the entry focuses it.\n  fieldId: string;\n  message: string;\n}\n\nexport interface FormErrorSummaryProps {\n  errors: FormErrorSummaryItem[];\n  // `title` replaces \"Fix {n} fields to continue.\"; a string may use `{n}` for the count.\n  labels?: { title?: LabelProp<[number]> };\n  // Called instead of focusing `document.getElementById(fieldId)`.\n  onFocusField?: (fieldId: string) => void;\n  className?: string;\n}\n\n// Names how many fields need a fix and links each error to its field. Renders only for two or more errors; a single error stays at its field.\nfunction FormErrorSummary({ errors, labels, onFocusField, className }: FormErrorSummaryProps) {\n  const l = useLabels();\n  if (errors.length < 2) return null;\n  const custom = labels?.title;\n  const title = custom === undefined ? l.formErrorSummaryTitle(errors.length) : typeof custom === 'function' ? custom(errors.length) : custom.replace('{n}', String(errors.length));\n  const focusField = (fieldId: string) => {\n    if (onFocusField) onFocusField(fieldId);\n    else document.getElementById(fieldId)?.focus();\n  };\n  return (\n    <div role=\"alert\" data-slot=\"form-error-summary\" className={cn('flex flex-col gap-1', className)}>\n      {/* The title takes the type role of its entries (link-sm), semibold, so it is never smaller than them. */}\n      <p className=\"m-0 typography-link-sm font-semibold text-text-destructive\">{title}</p>\n      {/* 8px between the entries keeps the 24px target spacing of WCAG 2.5.8 for the 20px links. */}\n      <ul className=\"m-0 flex list-none flex-col gap-2 p-0\">\n        {errors.map((error) => (\n          <li key={error.fieldId}>\n            <Link\n              href={`#${error.fieldId}`}\n              color=\"destructive\"\n              underline=\"always\"\n              onClick={(event) => {\n                event.preventDefault();\n                focusField(error.fieldId);\n              }}\n            >\n              {error.message}\n            </Link>\n          </li>\n        ))}\n      </ul>\n    </div>\n  );\n}\nFormErrorSummary.displayName = 'FormErrorSummary';\n\nexport { FormErrorSummary };\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

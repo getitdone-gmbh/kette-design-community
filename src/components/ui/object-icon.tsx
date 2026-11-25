@@ -21,13 +21,19 @@ const objectIconVariants = cva('grid shrink-0 place-items-center rounded-tight',
       // Follows the page product context (data-product on the root element).
       contextual: 'bg-product-accent-default text-product-accent-on',
     },
-    // Semantic tones for status and kind tiles that are not a product. Overrides `app` when set.
+    // Tones for status and kind tiles that are not a product (semantic: neutral, info, success, warning, destructive; add-on and brand: teal, strong, muted). Overrides `app` when set.
     tone: {
       neutral: 'bg-background-neutral-default text-text-default',
       info: 'bg-general-info-container text-general-info-on-container',
       success: 'bg-general-success-container text-general-success-on-container',
       warning: 'bg-general-warning-container text-general-warning-on-container',
       destructive: 'bg-general-error-container text-general-error-on-container',
+      // Add-on and brand tiles. `teal` is the Die Kette tile, `strong` the dark tile (run.zero), `muted` the quiet neutral fill (bundles). All three keep their hue in every theme and mode (pinned in object-icon-contrast.test.ts).
+      // TOKEN GAP OBJICON-TOK-01: there is no semantic teal fill role, so `teal` reads the Backoffice product pair, which is teal (hue 172) and mode independent in every theme. A `general-accent-teal` pair would replace it.
+      teal: 'bg-product-backoffice-default text-product-backoffice-on',
+      // The static inverse surface is dark in every theme and mode (the plain inverse role turns light in dark mode, steam and discord).
+      strong: 'bg-surface-inverse-static text-text-on-inverse-static',
+      muted: 'bg-product-record-default text-product-record-on',
     },
     // Product preset (DesignSystemProvider `preset`): the small tile follows the object icon token (18 in zero).
     preset: { default: '', zero: '' },

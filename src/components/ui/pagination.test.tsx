@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 
+import { DesignSystemProvider } from './design-system-provider';
 import { getPaginationItems, Pagination } from './pagination';
 
 describe('getPaginationItems', () => {
@@ -261,5 +262,78 @@ describe('Pagination link mode (getPageHref)', () => {
   it('lazy ignores link mode', () => {
     render(<Pagination variant="lazy" total={100} pageSize={20} onLoadMore={() => undefined} getPageHref={href} />);
     expect(screen.getByRole('button', { name: /Load more/ })).toBeInTheDocument();
+  });
+});
+
+describe('Pagination busy controls (KETTE-84)', () => {
+  it.each(['page', 'card', 'compact', 'card-button-group'] as const)('%s keeps Previous and Next focusable and gated while loading', async (variant) => {
+    const onPageChange = vi.fn();
+    render(<Pagination variant={variant} pageCount={10} page={5} onPageChange={onPageChange} loading />);
+    const next = screen.getByRole('button', { name: /Next/ });
+    next.focus();
+    expect(next).toHaveFocus();
+    expect(next).toHaveAttribute('aria-disabled', 'true');
+    expect(next).not.toBeDisabled();
+    await userEvent.click(next);
+    await userEvent.click(screen.getByRole('button', { name: 'Page 4' }));
+    expect(onPageChange).not.toHaveBeenCalled();
+  });
+
+  it('still disables every control with disabled', () => {
+    render(<Pagination variant="compact" pageCount={10} page={5} disabled />);
+    screen.getAllByRole('button').forEach((b) => expect(b).toBeDisabled());
+  });
+});
+
+describe('Pagination compact on a phone (KETTE-82)', () => {
+  it('shows Page x of y between the arrows and hides the page numbers below sm', () => {
+    render(<Pagination variant="compact" total={2404} pageSize={20} page={3} />);
+    const nav = screen.getByRole('navigation');
+    expect(within(nav).getByText('Page 3 of 121')).toHaveClass('sm:hidden');
+    expect(nav.querySelector('ol')).toHaveClass('max-sm:hidden');
+  });
+
+  it('keeps arrows and the Page x of y text in one group that does not break across lines', () => {
+    render(<Pagination variant="compact" total={2404} pageSize={20} page={3} />);
+    const group = screen.getByText('Page 3 of 121').parentElement as HTMLElement;
+    expect(group).toHaveClass('shrink-0', 'sm:contents');
+    expect(within(group).getByRole('button', { name: 'Previous page' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Next page' })).toBeInTheDocument();
+  });
+});
+
+describe('Pagination compact page size trigger (DR-KB-03)', () => {
+  it('uses the small control type, not the 16px field floor below sm', () => {
+    render(<Pagination variant="compact" total={2404} pageSize={20} pageSizeOptions={[20, 50]} onPageSizeChange={vi.fn()} />);
+    const trigger = screen.getByRole('combobox', { name: 'Rows per page' });
+    expect(trigger.className).not.toContain('max-sm:text-[max(16px');
+    expect(trigger).toHaveClass('!typography-caption-regular');
+  });
+});
+
+describe('Pagination number formatting (KETTE-82)', () => {
+  it('formats the record range with the locale grouping (en)', () => {
+    render(<Pagination variant="compact" total={2404} pageSize={20} page={121} />);
+    expect(screen.getByText('2,401 to 2,404 of 2,404')).toBeInTheDocument();
+    expect(screen.getByText('Page 121 of 121')).toBeInTheDocument();
+  });
+
+  it('formats the record range with the locale grouping (de)', () => {
+    render(
+      <DesignSystemProvider locale="de">
+        <Pagination variant="compact" total={2404} pageSize={20} page={2} />
+      </DesignSystemProvider>,
+    );
+    expect(screen.getByText('21 bis 40 von 2.404')).toBeInTheDocument();
+  });
+
+  it('formats the lazy summary', () => {
+    render(<Pagination variant="lazy" pageSize={1200} total={2404} />);
+    expect(screen.getByText('Showing 1,200 of 2,404')).toBeInTheDocument();
+  });
+
+  it('hands plain numbers to a custom rangeText', () => {
+    render(<Pagination variant="compact" total={2404} pageSize={20} rangeText={(a, b, t) => `${typeof a}${typeof b}${typeof t}`} />);
+    expect(screen.getByText('numbernumbernumber')).toBeInTheDocument();
   });
 });

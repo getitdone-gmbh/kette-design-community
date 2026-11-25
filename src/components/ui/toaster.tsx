@@ -3,10 +3,7 @@
 import * as React from 'react';
 
 import { Toast, ToastAction, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from './toast';
-import { type ToastActionSpec, useToast } from './use-toast';
-
-// A toast that carries an action stays open at least this long (ms) unless it sets its own `duration`, so keyboard and screen reader users can reach the action (WCAG 2.2.1).
-const ACTION_TOAST_DURATION = 10000;
+import { ACTION_TOAST_DURATION, type ToastActionSpec, useToast } from './use-toast';
 
 export function Toaster() {
   const { toasts } = useToast();

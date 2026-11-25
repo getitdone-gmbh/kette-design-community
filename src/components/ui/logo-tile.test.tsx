@@ -71,3 +71,27 @@ describe('LogoTile neutral tone', () => {
     expect(screen.getByTestId('logo')).toBeInTheDocument();
   });
 });
+
+describe('LogoTile src in every tone (ZERO-830 P4)', () => {
+  it('tone color shows the image over the project colour instead of the initials, filling and clipping to the tile', () => {
+    render(<LogoTile tone="color" color={3} src="/workspace.png" initials="NW" label="Nordwind" size="sm" />);
+    const tile = screen.getByRole('img', { name: 'Nordwind' });
+    const img = tile.querySelector('img');
+    expect(img).toHaveAttribute('src', '/workspace.png');
+    expect(img).toHaveAttribute('alt', '');
+    expect(tile).not.toHaveTextContent('NW');
+    expect(tile).toHaveClass('bg-data-project-3', 'overflow-hidden', '[&>img]:h-full', '[&>img]:w-full', '[&>img]:object-cover');
+  });
+
+  it('tone color without src keeps the initials', () => {
+    render(<LogoTile initials="NW" data-testid="tile" />);
+    const tile = screen.getByTestId('tile');
+    expect(tile).toHaveTextContent('NW');
+    expect(tile.querySelector('img')).toBeNull();
+  });
+
+  it.each(['neutral', 'outline'] as const)('tone %s keeps the inset logo', (tone) => {
+    render(<LogoTile tone={tone} src="/logo.svg" label="Acme" />);
+    expect(screen.getByRole('img', { name: 'Acme' }).querySelector('img')).toHaveAttribute('src', '/logo.svg');
+  });
+});

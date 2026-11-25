@@ -70,3 +70,22 @@ export const Terminal: Story = {
 
 export const TerminalWide: Story = { args: { ...Terminal.args, terminalWide: true } };
 export const TerminalAnimated: Story = { args: { ...Terminal.args, terminalAnimate: true }, parameters: { a11y: { disable: true } } };
+
+const longCommand = 'curl -fsSL https://kette.itdone.de/install | sh && kette login KETTE-0000-0000-0000-0000-EXAMPLE-LICENCE-KEY-THAT-IS-LONG --device "Studio laptop"';
+
+// Wrapping: long lines break instead of scrolling. Nothing scrolls, so the code area is not a tab stop.
+export const Wrap: Story = {
+  args: { code: longCommand, lineNumbers: false, wrap: true, language: 'Install command' },
+  decorators: [
+    (Story) => (
+      <div className="w-72 max-w-full">
+        <Story />
+      </div>
+    ),
+  ],
+};
+export const WrapInverse: Story = { ...Wrap, args: { ...Wrap.args, tone: 'inverse' } };
+export const WrapInline: Story = { ...Wrap, args: { ...Wrap.args, variant: 'inline' } };
+export const WrapWithHeader: Story = { ...Wrap, args: { ...Wrap.args, label: 'Terminal' } };
+// Without wrap the long line scrolls and the code area is a keyboard stop.
+export const NoWrapScrolls: Story = { ...Wrap, args: { ...Wrap.args, wrap: false } };

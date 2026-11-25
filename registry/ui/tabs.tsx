@@ -11,7 +11,7 @@ import { usePreset } from '@/components/ui/labels-context';
 /**
  * `segmented` (default): pill-in-track look, the active trigger is a raised `bg-background` chip.
  * `line`: transparent track with a hairline baseline; the active trigger gets a 2px bottom bar. Full width by default (`w-full`; use `w-auto` in `className` for an inline list). One row that scrolls sideways when the tabs do not fit (no wrapping), the active tab is kept in view.
- * `segment`: segmented control with control-height triggers, the `tab` type role and an `elevation-surface` active chip.
+ * `segment`: segmented control with control-height triggers (minimum height), the `tab` type role and an `elevation-surface` active chip.
  */
 // Theme expression (kette-tokens 5.26.0): list image and bevel (the line variant keeps its own hairline shadow), none by default
 const tabsListVariants = cva('inline-flex h-10 items-center justify-center text-muted-foreground bg-[image:var(--image-tabs-list)] shadow-[shadow:var(--bevel-tabs-list)]', {
@@ -34,6 +34,9 @@ const tabsListVariants = cva('inline-flex h-10 items-center justify-center text-
 // The trigger has 4px side padding in zero too (see the line trigger), so the gap is 12px + 2 x 4px = the former 20px between labels.
 const LINE_LIST_ZERO = 'gap-x-3 shadow-[inset_0_-1px_0_0_rgb(var(--semantic-border-default))]';
 
+// Forced colors (Windows high contrast) drop fills and shadows, so the selected tab would look like the others (KETTE-96). The filled variants give it the system selection pair; the others keep the page colours. `forced-color-adjust: none` is needed: without it Chromium paints a Canvas backplate behind the text and HighlightText is unreadable on Highlight. It is inherited, so the count follows.
+const FORCED_COLORS_FILL = 'forced-colors:data-[state=active]:[forced-color-adjust:none] forced-colors:data-[state=active]:[background-color:Highlight] forced-colors:data-[state=active]:[color:HighlightText] forced-colors:data-[state=active]:[background-image:none]';
+
 const tabsTriggerVariants = cva(
   'inline-flex items-center justify-center whitespace-nowrap text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-focus focus-visible:ring-offset-focus focus-visible:ring-offset-background focus-visible:ring-ring-default focus-visible:[--tw-ring-shadow:var(--tw-ring-inset)_0_0_0_calc(var(--size-focus-ring-width)+var(--tw-ring-offset-width))_var(--tw-ring-color),var(--glow-focus)] disabled:pointer-events-none disabled:opacity-disabled data-[state=active]:text-foreground ' +
     // Theme expression (kette-tokens 5.26.0): tab voice, active image, indicator line (offset > 0 top, < 0 bottom), bevel and text shadow over the variant's own active shadow (--tab-elevation); the defaults change nothing
@@ -42,14 +45,14 @@ const tabsTriggerVariants = cva(
     variants: {
       variant: {
         segmented:
-          'px-3 py-[6px] text-sm leading-normal font-medium rounded-item data-[state=active]:bg-background [--tab-bevel:var(--bevel-tab-active)] data-[state=active]:[--tab-elevation:theme(boxShadow.xs)]',
+          'px-3 py-[6px] text-sm leading-normal font-medium rounded-item data-[state=active]:bg-background [--tab-bevel:var(--bevel-tab-active)] data-[state=active]:[--tab-elevation:theme(boxShadow.xs)] ' + FORCED_COLORS_FILL,
         segment:
-          'h-control-sm shrink-0 gap-gap-control rounded-item px-control-px-sm typography-tab data-[state=active]:bg-background [--tab-bevel:var(--bevel-tab-active)] data-[state=active]:[--tab-elevation:var(--elevation-surface,0_0_transparent)]',
+          'h-control-sm shrink-0 gap-gap-control rounded-item px-control-px-sm typography-tab data-[state=active]:bg-background [--tab-bevel:var(--bevel-tab-active)] data-[state=active]:[--tab-elevation:var(--elevation-surface,0_0_transparent)] ' + FORCED_COLORS_FILL,
         // Vertical tab: left aligned, 32px high, `tab` type role, brand-subtle fill when active.
         vertical:
-          'h-8 w-full justify-start gap-2 rounded-item px-3 typography-tab [--tab-bevel:var(--bevel-tab-active)] [&>svg]:h-icon-nav [&>svg]:w-icon-nav [&>svg]:shrink-0 data-[state=active]:bg-background-brand-subtle data-[state=active]:text-general-brand-on-container',
+          'h-8 w-full justify-start gap-2 rounded-item px-3 typography-tab [--tab-bevel:var(--bevel-tab-active)] [&>svg]:h-icon-nav [&>svg]:w-icon-nav [&>svg]:shrink-0 data-[state=active]:bg-background-brand-subtle data-[state=active]:text-general-brand-on-container ' + FORCED_COLORS_FILL,
         // The scroll container of the list clips a ring outside the trigger, so the focus ring is drawn inside (inset, no offset). `shrink-0` keeps every tab whole in the scrolling row.
-        line: 'shrink-0 rounded-none border-b-2 border-solid border-transparent px-1 py-[6px] pb-2 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-foreground data-[state=active]:[border-image-source:var(--image-accent-stripe)] data-[state=active]:[border-image-slice:1]',
+        line: 'shrink-0 rounded-none border-b-2 border-solid border-transparent px-1 py-[6px] pb-2 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-foreground data-[state=active]:[border-image-source:var(--image-accent-stripe)] data-[state=active]:[border-image-slice:1] forced-colors:[border-bottom-color:Canvas] forced-colors:data-[state=active]:[border-bottom-color:Highlight] forced-colors:data-[state=active]:[border-image:none]',
       },
       // Product preset (DesignSystemProvider `preset`). `zero` gives the line tab a 40px row with the tab role and the vertical tab the muted active row.
       preset: { default: '', zero: '' },
@@ -77,6 +80,8 @@ type TabsVariantContextValue = NonNullable<VariantProps<typeof tabsListVariants>
 const TabsVariantContext = React.createContext<TabsVariantContextValue>('segmented');
 // Size of the segment list, read by the triggers.
 const TabsSizeContext = React.createContext<'sm' | 'md' | undefined>(undefined);
+// True in a list with the `wrap` prop: its segmented and segment triggers wrap long labels.
+const TabsWrapContext = React.createContext(false);
 
 const Tabs = TabsPrimitive.Root;
 
@@ -169,11 +174,15 @@ const TabsList = React.forwardRef<
       // Zero: `sm` is a 28px list (24px tabs inside 2px padding), `md` the control-sm tab, default `sm`.
       // Outside zero, segmented and segment lists: `sm` is as tall as a Button sm (32px) and `md` as a default Button (40px), with 3px track padding. Without `size` the list keeps its legacy height (segmented 38px, segment 36px).
       size?: 'sm' | 'md';
+      // Wrapping list for long labels (segmented and segment): the tabs flow onto several rows and a long label wraps start-aligned inside its tab (min height instead of the fixed one, an unbroken word breaks). Without it the row stays one line like before. Ignored by lists with `size` outside zero (fixed-height track).
+      wrap?: boolean;
     }
->(({ className, variant, size, ...props }, ref) => {
+>(({ className, variant, size, wrap = false, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   // Zero: the plain list is the segmented control.
   const resolved = variant ?? (zero ? 'segment' : 'segmented');
+  // Outside zero a sized list is a fixed-height track, so it ignores `wrap` and keeps one line per tab. Zero has no fixed track.
+  const wraps = wrap && (resolved === 'segmented' || resolved === 'segment') && (zero || size === undefined);
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -188,9 +197,12 @@ const TabsList = React.forwardRef<
   return (
     <TabsVariantContext.Provider value={resolved}>
       <TabsSizeContext.Provider value={size ?? (zero ? 'sm' : undefined)}>
+      <TabsWrapContext.Provider value={wraps}>
       <TabsPrimitive.List data-slot="tabs-list" data-variant={resolved} ref={setRefs} className={cn(tabsListVariants({ variant: resolved }), zero && resolved === 'segmented' && 'p-micro', !zero && resolved === 'segmented' && 'h-auto',
+          wraps && 'h-auto max-w-full flex-wrap justify-start',
           // Sized track outside zero: total height is the Button control token, the triggers fill it (see TabsTrigger).
           !zero && size && (resolved === 'segmented' || resolved === 'segment') && cn('p-[3px]', size === 'sm' ? 'h-control-sm' : 'h-control-md'), zero && resolved === 'line' && LINE_LIST_ZERO, className)} {...props} />
+      </TabsWrapContext.Provider>
       </TabsSizeContext.Provider>
     </TabsVariantContext.Provider>
   );
@@ -220,6 +232,7 @@ const TabsCount = React.forwardRef<
   return (
     <span
       ref={ref}
+      data-slot="tabs-count"
       className={cn(
         zero && resolved !== 'vertical'
           ? cn('typography-kpi-label-strong tabular-nums', subtleCount)
@@ -230,6 +243,8 @@ const TabsCount = React.forwardRef<
           ? // Plain-text count: the trigger gap spaces it, and it stays subtle on the active tab too.
             cn('typography-kpi-label-strong tabular-nums', subtleCount)
           : cn('ml-[6px] text-micro font-normal leading-none tabular-nums group-data-[state=active]:text-muted-foreground', subtleCount),
+        // The count sits on the Highlight fill of the selected tab in forced colors, so it takes the pair's text colour (the line bar has no fill).
+        resolved !== 'line' && 'forced-colors:group-data-[state=active]:[color:HighlightText]',
         tone === 'destructive' && (onMuted ? 'text-text-destructive-on-subtle group-data-[state=active]:text-text-destructive-on-subtle' : 'text-text-destructive group-data-[state=active]:text-text-destructive'),
         className,
       )}
@@ -270,6 +285,7 @@ const TabsTrigger = React.forwardRef<
   );
   const fromList = React.useContext(TabsVariantContext);
   const listSize = React.useContext(TabsSizeContext);
+  const listWraps = React.useContext(TabsWrapContext);
   const zero = usePreset() === 'zero';
   const resolvedVariant = variant ?? fromList;
   // Sized list outside zero: the trigger fills the track height (control token minus the 3px padding).
@@ -282,7 +298,16 @@ const TabsTrigger = React.forwardRef<
       className={cn(
         'group',
         tabsTriggerVariants({ variant: resolvedVariant, preset: zero ? 'zero' : 'default', size: zero ? listSize : undefined }),
-        fillsTrack && 'h-full py-0',
+        // Wrapping list: min height instead of the fixed one (same value as the fixed height of the variant), start-aligned, an unbroken word breaks inside the tab.
+        listWraps && (resolvedVariant === 'segmented' || resolvedVariant === 'segment') && cn(
+          'h-auto max-w-full justify-start whitespace-normal text-start [overflow-wrap:anywhere]',
+          // Only the label text breaks: the count keeps its natural width on one line and an icon keeps its size.
+          '[&>[data-slot=tabs-count]]:shrink-0 [&>[data-slot=tabs-count]]:whitespace-nowrap [&>[data-slot=tabs-count]]:[overflow-wrap:normal] [&>svg]:shrink-0',
+          resolvedVariant === 'segment' ? (zero && (listSize ?? 'sm') === 'sm' ? 'min-h-[var(--size-control-xs)]' : 'min-h-[var(--size-control-sm)]') : !zero && 'min-h-[theme(height.8)]',
+          (resolvedVariant === 'segment' || !zero) && 'py-1',
+        ),
+        // A sized list has a fixed track: the label stays on one line inside the chip.
+        fillsTrack && 'h-full min-h-0 py-0 whitespace-nowrap',
         className,
       )}
       {...props}

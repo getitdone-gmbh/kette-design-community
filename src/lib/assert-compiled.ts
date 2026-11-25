@@ -3,7 +3,8 @@ import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
 
 const NON_UTILITY = new Set<string>(['group', 'peer', 'dark', 'card']);
-const NON_UTILITY_PATTERN = /^lucide(-|$)/;
+// Lucide icon classes and named group or peer markers (group/checkbox) generate no CSS of their own.
+const NON_UTILITY_PATTERN = /^(lucide(-|$)|(group|peer)\/)/;
 
 const unescapeSelector = (selector: string) =>
   selector

@@ -118,3 +118,46 @@ describe('CodeSnippet block type role and header', () => {
     expect(screen.getByText('Illustration').tagName).toBe('FIGCAPTION');
   });
 });
+
+describe('CodeSnippet wrap', () => {
+  const long = 'curl -fsSL https://example.test/install | sh && example login VERY-LONG-LICENCE-KEY-WITHOUT-ANY-SPACES-1234567890';
+
+  it('block breaks long lines and is no keyboard stop', () => {
+    render(<CodeSnippet code={long} wrap language="Install" />);
+    const area = screen.getByLabelText('Install');
+    expect(area).toHaveClass('whitespace-pre-wrap', '[overflow-wrap:anywhere]');
+    expect(area).not.toHaveClass('overflow-x-auto');
+    expect(area).not.toHaveAttribute('tabindex');
+    expect(area).toHaveAttribute('role', 'group');
+  });
+
+  it('keeps the scroll area and its tab stop without wrap', () => {
+    render(<CodeSnippet code={long} language="Install" />);
+    const area = screen.getByLabelText('Install');
+    expect(area).toHaveClass('overflow-x-auto');
+    expect(area).toHaveAttribute('tabindex', '0');
+    expect(area).not.toHaveAttribute('role');
+  });
+
+  it('leaves the line numbers out of a wrapping block', () => {
+    const { container } = render(<CodeSnippet code={'a\nb'} wrap />);
+    expect(container.querySelector('[data-gutter]')).toBeNull();
+  });
+
+  it('inline wraps too and drops the tab stop and the ring', () => {
+    render(<CodeSnippet variant="inline" code={long} wrap language="Install" />);
+    const line = screen.getByLabelText('Install');
+    expect(line).toHaveClass('whitespace-pre-wrap');
+    expect(line).not.toHaveClass('whitespace-nowrap');
+    expect(line).not.toHaveAttribute('tabindex');
+  });
+
+  it('wraps with a header and keeps the copy button as the only tab stop', async () => {
+    const user = userEvent.setup();
+    render(<CodeSnippet code={long} wrap label="Terminal" />);
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Copy code' })).toHaveFocus();
+    await user.tab();
+    expect(document.body).toHaveFocus();
+  });
+});

@@ -83,11 +83,13 @@ export interface LinkProps
   disabled?: boolean;
   // Called instead of `onClick` while the link is disabled or has `aria-disabled`. Explain why here. Nothing else happens. A link with only `aria-disabled` stays in the tab order, so the explanation is reachable by keyboard.
   onGatedClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  // A link inside running text: display inline so it wraps over lines, font, line height and letter spacing from the surrounding text, always underlined. Explicit typography, leading, tracking and underline still win.
+  inline?: boolean;
 }
 
 const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(
   (
-    { className, color, size, typography, underline, weight, tracking, leading, asChild = false, icon, iconTrailing, dotLeading = false, disabled = false, children, onClick, onGatedClick, href, ...props },
+    { className, color, size, typography, underline, weight, tracking, leading, inline = false, asChild = false, icon, iconTrailing, dotLeading = false, disabled = false, children, onClick, onGatedClick, href, ...props },
     ref,
   ) => {
     const iconClass = cn('inline-flex shrink-0 items-center justify-center', size === '2xl' ? 'h-icon-lg w-icon-lg' : 'h-icon-md w-icon-md');
@@ -131,7 +133,15 @@ const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(
               }
             : onClick
         }
-        className={cn(linkVariants({ color, size, typography, underline, weight, tracking, leading }), className)}
+        className={cn(
+          linkVariants(
+            inline
+              ? { color, size, weight, typography: typography ?? 'inherit', underline: underline ?? 'always', tracking: tracking ?? 'inherit', leading: leading ?? 'inherit' }
+              : { color, size, typography, underline, weight, tracking, leading },
+          ),
+          inline && 'inline',
+          className,
+        )}
         {...props}
       >
         {child ? React.cloneElement(child, undefined, withSlots(child.props.children)) : withSlots(children)}

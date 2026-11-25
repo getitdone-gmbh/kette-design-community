@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@getitdone-gmbh/kette-design-community?label=npm&color=cb3837)](https://www.npmjs.com/package/@getitdone-gmbh/kette-design-community) [![license](https://img.shields.io/npm/l/@getitdone-gmbh/kette-design-community)](LICENSE)
 
-Version 0.6.0 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
+Version 0.7.0 on npm. Free React components from the Get IT Done design system: the primitives plus the general components we build business software with. They are built on shadcn/ui and Radix UI, styled with Tailwind CSS, written in TypeScript, and they include a light and a dark theme.
 
 We build business software with many screens, tables, forms and states. These components are the base layer of that system. We are sharing them in case they are useful to others working on similar products.
 
@@ -12,7 +12,7 @@ This package is the component layer of the Community edition of [Die Kette](http
 
 | | Community | Enterprise (Die Kette) |
 | --- | --- | --- |
-| React components | `@getitdone-gmbh/kette-design-community`: 127 components, the zero theme and a Tailwind preset | `@getitdone-gmbh/kette-design-enterprise`: the full library this package is copied from |
+| React components | `@getitdone-gmbh/kette-design-community`: 129 components, the zero theme and a Tailwind preset | `@getitdone-gmbh/kette-design-enterprise`: the full library this package is copied from |
 | Design tokens | Theme CSS variables and Tailwind preset inside this package | `@getitdone-gmbh/kette-tokens`: the token source with all themes and the Figma variables |
 | Domain components and page templates | | Included |
 | Figma files, agents and rule set | | Included |
@@ -29,11 +29,11 @@ The CLI itself is free. Without a licence key it sets up the Community rule set 
 
 ## What is included
 
-127 components: 40 primitives and 87 general components, plus the `useToast` hook, the toast inset helpers `useToastInset` and `reportToastInset`, German and English labels and their helpers.
+129 components: 40 primitives and 89 general components, plus the `useToast` hook, the toast inset helpers `useToastInset` and `reportToastInset`, German and English labels and their helpers.
 
 **Primitives (40):** Accordion, Alert, Avatar, Badge, Breadcrumb, Button, Calendar, Card, Carousel, Checkbox, Collapsible, Command, Dialog, Drawer, Dropdown Menu, Form, Hover Card, Input, Kbd, Label, Navigation Menu, Pagination, Popover, Progress, Radio Group, Scroll Area, Select, Separator, Sheet, Skeleton, Slider, Switch, Table, Tabs, Textarea, Toast, Toaster, Toggle, Toggle Group, Tooltip.
 
-**General components (87):** Action Bar, Activity Feed (Timeline, Notification List), Autosave Status, Blockquote, Bottom Navigation, Button Close, Button Group, Calendar Grid (Week Grid, Month Grid), Card Default, Cell Grid, Charts (line and bar, pie, radar, histogram, treemap, sparkline, bar list, gauge), Chat Window, Checkbox Group, Chip, Code Snippet, Color Picker, Confirm Dialog, Content Divider, Cookie Consent, Countdown, Data Grid, Data State Panel, Date Picker, Description List (Attributes, Summary List), Design System Provider, Document Surface, Empty State, Facet Filter, Featured Icon, Feed Item, File Icon, File Upload, Filter Chip Bar, Form Section, Grid, Heatmap, Help Icon, Hero Section, Illustration, Inline CTA, Inline Edit, Input Digit, Kanban (with Move To Menu), Layout (Stack, Cluster, Tile Grid, Split View), Link, Link Card, List, List Item, Loading Overlay, Loading Spinner, Logo Tile, Message, Metric (KPI Strip), Metric Panel, Multiselect, Notification, Notification Matrix, Object Icon, Page Header, Pagination Dot Group, Phone Input, Progress Circle, Radio Cards, Rating Input, Rich Text Editor, Rich Text Toolbar, Secondary Nav, Secret Field, Section, Section Footer, Section Header, Section Label, Sidebar, Sidebar Nav, Signature Box, Signature Pad, Single Select, Spacing (Spacing, Spacer), Status Dot, Step Marker, Stepper, Table Cells, Table of Contents, Tag Input, Top Bar, Verified Tick, Versions.
+**General components (89):** Action Bar, Activity Feed (Timeline, Notification List), Autosave Status, Blockquote, Bottom Navigation, Button Close, Button Group, Calendar Grid (Week Grid, Month Grid), Card Default, Cell Grid, Charts (line and bar, pie, radar, histogram, treemap, sparkline, bar list, gauge), Chat Window, Checkbox Group, Chip, Code Snippet, Color Picker, Confirm Dialog, Content Divider, Cookie Consent, Countdown, Data Grid, Data State Panel, Date Picker, Description List (Attributes, Summary List), Design System Provider, Document Surface, Empty State, Facet Filter, Featured Icon, Feed Item, Field, File Icon, File Upload, Filter Chip Bar, Form Error Summary, Form Section, Grid, Heatmap, Help Icon, Hero Section, Illustration, Inline CTA, Inline Edit, Input Digit, Kanban (with Move To Menu), Layout (Stack, Cluster, Tile Grid, Split View), Link, Link Card, List, List Item, Loading Overlay, Loading Spinner, Logo Tile, Message, Metric (KPI Strip), Metric Panel, Multiselect, Notification, Notification Matrix, Object Icon, Page Header, Pagination Dot Group, Phone Input, Progress Circle, Radio Cards, Rating Input, Rich Text Editor, Rich Text Toolbar, Secondary Nav, Secret Field, Section, Section Footer, Section Header, Section Label, Sidebar, Sidebar Nav, Signature Box, Signature Pad, Single Select, Spacing (Spacing, Spacer), Status Dot, Step Marker, Stepper, Table Cells, Table of Contents, Tag Input, Top Bar, Verified Tick, Versions.
 
 Plus the zero theme as CSS variables (typography, colours, radii, elevation, light and dark) and a Tailwind CSS 3 preset.
 
@@ -51,7 +51,7 @@ import { DesignSystemProvider } from '@getitdone-gmbh/kette-design-community';
 
 Nested providers inherit the closest preset, so `preset="default"` on a subtree also works inside a zero app.
 
-Every component with a story in the library comes with it: 131 story files with 1192 stories, see [Storybook](#storybook).
+Every component with a story in the library comes with it: 133 story files with 1250 stories, see [Storybook](#storybook).
 
 The library and token versions each release is synced from are listed in one place, the [sync history](docs/MAINTAINING.md#sync-history). What changed per release is in [CHANGELOG.md](CHANGELOG.md).
 

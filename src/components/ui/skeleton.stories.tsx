@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
+import { Chip } from './chip';
 import { Skeleton, SkeletonProps } from './skeleton';
 
 const meta = {
@@ -7,7 +8,16 @@ const meta = {
   title: 'Primitives · Display/Skeleton',
   component: Skeleton,
   tags: ['autodocs'],
-  argTypes: {},
+  argTypes: {
+    radius: {
+      control: { type: 'select' },
+      options: ['default', 'tight', 'item', 'control', 'surface', 'card', 'full'],
+      description: 'Radius of the block tile: a token tier or `full` for a pill in the shape of a chip. Default `default` (`tight` in the zero preset). A `rounded-*` class in `className` wins over it.',
+    },
+    variant: { description: '`block` (default) is the single tile; `row-single`, `row`, `text` and `avatar` are the composed Figma Skeleton variants.' },
+    rows: { description: 'Row count for `variant="row"`.' },
+    label: { description: 'Accessible loading text of the composed variants.' },
+  },
   parameters: {
     docs: {
       description: {
@@ -47,6 +57,23 @@ export const ComposedWithStatusAnnouncement: Story = {
         <Skeleton className="h-4 w-[200px]" />
       </div>
       <span className="sr-only">Loading…</span>
+    </div>
+  ),
+};
+
+// ZERO-806: a placeholder in the shape of a chip. The pill comes from `radius="full"` (or `className="rounded-full"`, which wins the same way); the invisible chip gives the tile the chip's size, so the row keeps its height when the chips arrive.
+export const Pill: Story = {
+  render: () => (
+    <div role="group" aria-busy="true" aria-label="Often searched, loading" className="flex items-center gap-2">
+      <span aria-hidden className="typography-ui-sm text-text-subtle">
+        Often searched
+      </span>
+      {['Senior React developer, 2 years e-commerce', 'QA engineer with Playwright'].map((text) => (
+        <Skeleton key={text} radius="full" aria-hidden className="flex">
+          <Chip size="small" variant="muted" label={text} className="invisible" />
+        </Skeleton>
+      ))}
+      <Skeleton aria-hidden className="h-6 w-24 rounded-full" />
     </div>
   ),
 };

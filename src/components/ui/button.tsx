@@ -2,7 +2,7 @@
 
 import { Slot, Slottable } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cloneElement, forwardRef, isValidElement } from 'react';
+import { cloneElement, forwardRef, isValidElement, useId, type MouseEvent } from 'react';
 
 import { Loader2 } from 'lucide-react';
 
@@ -253,6 +253,10 @@ const WRAP_MIN_HEIGHT: Record<string, string> = {
   '2xl': '[min-height:var(--size-control-2xl)]',
 };
 
+// A gated button looks disabled in every state: hover, pressed and open (menu trigger) state layers are removed from the class list, the focus ring stays.
+const STATE_LAYER = /^(hover|active|data-\[state=open\]):/;
+const withoutStateLayers = (classes: string, gated: boolean) => (gated ? classes.split(/\s+/).filter((name) => !STATE_LAYER.test(name)).join(' ') : classes);
+
 const iconSlotClass = (size: ButtonProps['size']) => (size === '2xl' ? ['h-6', 'w-6'] : size === 'icon-xs' ? ['h-icon-xs', 'w-icon-xs'] : ['h-icon-md', 'w-icon-md']);
 
 export interface ButtonProps
@@ -283,10 +287,15 @@ export interface ButtonProps
   status?: StatusDotTone;
   // Text for assistive tech. It is appended to `aria-label` when set, otherwise added as hidden text.
   statusLabel?: string;
+  // Gated button: set `aria-disabled` (not `disabled`). The button stays in the tab order and hoverable, looks disabled, and a click, Enter or Space does not call `onClick` or submit a form. `onGatedClick` runs instead, so the app can explain why. Hover, pressed and open state layers are off while gated and the dim stays on keyboard focus (the focus ring stays and keeps 3:1, the dim eases only from 0.5 to 0.55 for that). Compose with a Tooltip (`TooltipTrigger asChild`) for the visible reason.
+  onGatedClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  // Reason for the gate as text for assistive tech. It is added as the accessible description (`aria-describedby`) while the button is gated, so a keyboard user hears it on focus. Use it when there is no tooltip. Inside a Tooltip leave it out: the open tooltip is already the description (`aria-describedby` of the trigger) and the reason would be read twice.
+  gatedReason?: string;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, icon, dotLeading = false, underline = false, wrap = false, padded = false, loading = false, loadingLabel, count, countPlacement = 'end', status, statusLabel, children, disabled, onClick, 'aria-label': ariaLabel, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, icon, dotLeading = false, underline = false, wrap = false, padded = false, loading = false, loadingLabel, count, countPlacement = 'end', status, statusLabel, children, disabled, onClick, onGatedClick, gatedReason, 'aria-label': ariaLabel, 'aria-describedby': describedBy, ...props }, ref) => {
+    const reasonId = useId();
     const l = useLabels({ loading: loadingLabel });
     const zero = usePreset() === 'zero';
     // Without an explicit variant the zero preset renders the secondary (outline) button, filled brand stays opt-in.
@@ -322,36 +331,49 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           : icon
         : null;
 
-    return (
+    // aria-disabled without disabled (and not loading) gates the button: focusable, dimmed, clicks go to onGatedClick.
+    const gated = !disabled && !loading && (props['aria-disabled'] === true || props['aria-disabled'] === 'true');
+    const reason = gated && gatedReason ? gatedReason : undefined;
+
+    const button = (
       <Comp
-        className={cn(
-          'inline-flex',
-          // A label never wraps inside a button. A group of buttons wraps (or collapses) instead. The link variant is running text (an author name in a teaser) and may wrap.
-          { 'whitespace-nowrap': resolvedVariant !== 'link' && !wrap },
-          wrap && ['!h-auto', 'py-1', 'text-center', '[text-wrap:balance]', WRAP_MIN_HEIGHT[size ?? 'default'] ?? WRAP_MIN_HEIGHT.default],
-          { relative: Boolean(status) },
-          'items-center',
-          'justify-center',
-          'rounded-control',
-          'border',
-          'border-solid',
-          transitionBase,
-          focusRing,
-          // Count before a trailing icon: icons that are not the leading one move behind the DOM-last count.
-          countPlacement === 'before-icon' && '[&>svg:not(.order-first)]:order-last',
-          // A disabled button that still holds focus (clicked, then disabled) must not keep the focus ring: it reads as an enabled, focused control.
-          'disabled:focus-visible:ring-0',
-          'disabled:focus-visible:ring-offset-0',
-          'disabled:pointer-events-none',
-          'disabled:opacity-disabled',
-          'disabled:data-[loading=true]:opacity-100',
-          // Loading is aria-disabled, not natively disabled, so the button keeps the keyboard focus; it ignores pointer input
-          'data-[loading=true]:pointer-events-none',
-          { 'underline-offset-4': underline },
-          { 'hover:underline': underline },
-          { 'hover:decoration-2': underline },
-          { underline: underline && resolvedVariant === 'link' },
-          buttonVariants({ variant: resolvedVariant, size, preset: zero ? 'zero' : 'default', className: [resolvedVariant === 'link' && !padded && 'p-0', className] }),
+        className={withoutStateLayers(
+          cn(
+            'inline-flex',
+            // A label never wraps inside a button. A group of buttons wraps (or collapses) instead. The link variant is running text (an author name in a teaser) and may wrap.
+            { 'whitespace-nowrap': resolvedVariant !== 'link' && !wrap },
+            wrap && ['!h-auto', 'py-1', 'text-center', '[text-wrap:balance]', WRAP_MIN_HEIGHT[size ?? 'default'] ?? WRAP_MIN_HEIGHT.default],
+            { relative: Boolean(status) },
+            'items-center',
+            'justify-center',
+            'rounded-control',
+            'border',
+            'border-solid',
+            transitionBase,
+            focusRing,
+            // Count before a trailing icon: icons that are not the leading one move behind the DOM-last count.
+            countPlacement === 'before-icon' && '[&>svg:not(.order-first)]:order-last',
+            // A disabled button that still holds focus (clicked, then disabled) must not keep the focus ring: it reads as an enabled, focused control.
+            'disabled:focus-visible:ring-0',
+            'disabled:focus-visible:ring-offset-0',
+            'disabled:pointer-events-none',
+            'disabled:opacity-disabled',
+            'disabled:data-[loading=true]:opacity-100',
+            // Loading is aria-disabled, not natively disabled, so the button keeps the keyboard focus; it ignores pointer input
+            'data-[loading=true]:pointer-events-none',
+            // Gated: dimmed like disabled in every state (also on keyboard focus), but it keeps pointer events (tooltip, click explanation) and focus. The ring is dimmed with it and keeps 3:1 (see button-gated-ring-contrast.test.ts).
+            'data-[gated=true]:cursor-not-allowed',
+            'data-[gated=true]:opacity-disabled',
+          // On keyboard focus the dim eases from 0.5 to the done opacity token (0.55) and the ring takes the strongest ink, so the dimmed ring keeps 3:1 in every theme.
+          'data-[gated=true]:focus-visible:ring-text-default',
+          'data-[gated=true]:focus-visible:[opacity:var(--opacity-done)]',
+            { 'underline-offset-4': underline },
+            { 'hover:underline': underline },
+            { 'hover:decoration-2': underline },
+            { underline: underline && resolvedVariant === 'link' },
+            buttonVariants({ variant: resolvedVariant, size, preset: zero ? 'zero' : 'default', className: [resolvedVariant === 'link' && !padded && 'p-0', className] }),
+          ),
+          gated,
         )}
         ref={ref}
         data-slot="button"
@@ -359,13 +381,25 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-size={size ?? undefined}
         data-wrap={wrap || undefined}
         disabled={disabled}
-        aria-disabled={loading || undefined}
+        aria-disabled={loading || gated || undefined}
+        aria-describedby={[describedBy, reason ? reasonId : undefined].filter(Boolean).join(' ') || undefined}
+        data-gated={gated || undefined}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}
         data-status={status}
         aria-label={ariaLabel && status && statusLabel ? `${ariaLabel}, ${statusLabel}` : ariaLabel}
         // A loading submit button must not submit again while it stays focusable
-        onClick={loading ? (event) => event.preventDefault() : onClick}
+        onClick={
+          loading
+            ? (event) => event.preventDefault()
+            : gated
+              ? (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onGatedClick?.(event);
+                }
+              : onClick
+        }
         {...props}
       >
         {loading ? null : dot}
@@ -392,6 +426,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {status ? <StatusDot tone={status} size="md" className="absolute bottom-0 right-0 ring-2 ring-background" /> : null}
         {status && statusLabel && !ariaLabel ? <span className="sr-only">{statusLabel}</span> : null}
       </Comp>
+    );
+    return reason ? (
+      <>
+        {button}
+        <span id={reasonId} hidden>
+          {reason}
+        </span>
+      </>
+    ) : (
+      button
     );
   },
 );

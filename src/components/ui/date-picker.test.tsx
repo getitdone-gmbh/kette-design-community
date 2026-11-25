@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 
 import { DatePicker, DatePickerModal, DatePickerPanel, formatDatePickerValue } from './date-picker';
+import { DesignSystemProvider } from './design-system-provider';
 
 beforeAll(() => {
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver ??= class {
@@ -157,5 +158,40 @@ describe('DatePickerModal', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onApply).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+// R-LIB-14 (L-11): the week start of the user's format settings reaches the month grid.
+describe('DatePicker weekStartsOn (R-LIB-14)', () => {
+  const firstWeekday = () => (screen.getAllByRole('columnheader')[0] as HTMLElement).getAttribute('aria-label');
+
+  it('starts the panel week on Sunday with weekStartsOn 0, also in German', () => {
+    render(
+      <DesignSystemProvider locale="de">
+        <DatePickerPanel weekStartsOn={0} defaultMonth={new Date(2026, 10, 1)} />
+      </DesignSystemProvider>,
+    );
+    expect(firstWeekday()).toBe('Sonntag');
+  });
+
+  it('starts the panel week on Wednesday with weekStartsOn 3', () => {
+    render(<DatePickerPanel weekStartsOn={3} defaultMonth={new Date(2026, 10, 1)} />);
+    expect(firstWeekday()).toBe('Wednesday');
+  });
+
+  it('keeps the locale rule without the prop (German weeks start on Monday)', () => {
+    render(
+      <DesignSystemProvider locale="de">
+        <DatePickerPanel defaultMonth={new Date(2026, 10, 1)} />
+      </DesignSystemProvider>,
+    );
+    expect(firstWeekday()).toBe('Montag');
+  });
+
+  it('passes weekStartsOn from DatePicker to its panel', async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Start" weekStartsOn={3} defaultMonth={new Date(2026, 10, 1)} />);
+    await user.click(screen.getByRole('button', { name: /Start/ }));
+    expect(firstWeekday()).toBe('Wednesday');
   });
 });

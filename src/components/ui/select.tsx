@@ -35,6 +35,8 @@ export const selectTriggerClasses = ({ zero, effectiveSize, smallType, clamp = f
     'w-full',
     'items-center',
     'justify-between',
+    // A button centres its text by default; the value reads from the left like in an Input
+    'text-left',
     'gap-2',
     'rounded-control',
     'border',
@@ -180,6 +182,8 @@ const SelectContent = React.forwardRef<
           'relative',
           'z-dropdown',
           'min-w-[8rem]',
+          // Popper list: as wide as its content up to the trigger width or 16rem, whichever is larger, and never wider than the viewport (a hard cap by the available width would squeeze a list of a trigger at the right edge; Radix shifts the list left instead). Short options of a narrow trigger (pager, toolbar) stay on one line; long labels wrap in the options instead of widening the list.
+          position === 'popper' && 'max-w-[min(max(var(--radix-select-trigger-width),16rem),calc(100vw-1rem))]',
           'overflow-hidden',
           overlaySurface,
           zero && overlaySurfaceZero,
@@ -258,6 +262,8 @@ const SelectItem = React.forwardRef<
         zero ? menuItemZero : menuItem,
         'w-full',
         'pr-2',
+        // Long labels wrap inside the list (the list is capped at the trigger width); Radix drops a className on ItemText, so the item carries it
+        '[overflow-wrap:anywhere]',
         density === 'touch' && 'max-sm:min-h-[var(--size-touch-target-lg)]',
         { 'text-clamp': clamp },
         { 'leading-clamp': clamp },

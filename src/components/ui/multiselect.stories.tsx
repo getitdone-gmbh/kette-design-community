@@ -7,6 +7,7 @@ import { ListFilter } from 'lucide-react';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
+import { Label } from './label';
 import { MultiSelect, MultiSelectContext, MultiSelectOption, MultiSelectProps, MultiSelectProvider } from './multiselect';
 import { Spacing } from './spacing';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
@@ -26,6 +27,10 @@ const meta: Meta<MultiSelectProps> = {
   tags: ['autodocs'],
   argTypes: {
     emptyText: { control: { type: 'text' }, description: 'Text of the empty search result. Wins over the provider text.' },
+    chipVariant: { control: { type: 'select' }, options: ['info', 'default', 'secondary', 'neutral', 'muted', 'primary', 'success', 'destructive'], description: 'Chip look of the chosen values. `info` (default) is blue in every theme, `primary` follows the brand colour of the theme (violet in runzero), `neutral` and `muted` are quiet. `default` is the card fill and disappears on a card in dark mode.' },
+    inputId: { control: { type: 'text' }, description: 'Id an outside Label points to with htmlFor; that label then names the search input.' },
+    hideAutosaveHint: { control: { type: 'boolean' }, description: 'Hides "(autosave)" next to Close, for a list that a form button saves.' },
+    maxSelected: { control: { type: 'number' }, description: 'Most values that can be chosen; the other options are disabled until one is removed.' },
     addHintText: { control: { type: 'text' }, description: 'Hint under the empty result when adding is allowed.' },
     loadingText: { control: { type: 'text' }, description: 'Visible text of the loading add button.' },
     addNewText: { control: { type: 'text' }, description: 'Visible text of the add button.' },
@@ -371,6 +376,36 @@ export const ChipVariant: Story = {
         onUpdateOrder={handleUpdateOrder}
       />
     );
+  },
+};
+
+const chipVariantNames = ['info', 'primary', 'neutral', 'muted', 'secondary', 'default', 'success', 'destructive'] as const;
+
+const ChipVariantsDemo = () => {
+  const [selected, setSelected] = useState<string[]>(['design', 'development']);
+  const opts = [
+    { id: 'design', label: 'Design' },
+    { id: 'development', label: 'Development' },
+    { id: 'other', label: 'Other' },
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      {chipVariantNames.map((variant) => (
+        <MultiSelectProvider key={variant}>
+          <MultiSelect id={`chip-${variant}`} label={`chipVariant="${variant}"`} chipsInside options={opts} selected={selected} onChange={setSelected} onUpdateOrder={() => {}} chipVariant={variant} disableAddNew hideAutosaveHint />
+        </MultiSelectProvider>
+      ))}
+    </div>
+  );
+};
+
+// Every chip look of the chosen values on the page surface. `info` stays the default (blue in every theme); `primary` is the brand colour (violet in runzero); `neutral` and `muted` stay readable in dark mode where `default` (card fill) vanishes.
+export const ChipVariants: Story = {
+  args: {} as any,
+  render: () => <ChipVariantsDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getAllByTitle('Design').length).toBe(chipVariantNames.length));
   },
 };
 
@@ -1579,4 +1614,40 @@ const ClearSearchOnSelectDemo = () => {
 export const ClearSearchOnSelect: Story = {
   args: {} as any,
   render: () => <ClearSearchOnSelectDemo />,
+};
+
+const OutsideLabelDemo = () => {
+  const [selected, setSelected] = useState<string[]>(['anna', 'ben']);
+  const people = [
+    { id: 'anna', label: 'Anna Becker' },
+    { id: 'ben', label: 'Tobias Lindner' },
+    { id: 'carla', label: 'Sarah Tran' },
+    { id: 'david', label: 'Jonas Weber' },
+    { id: 'eva', label: 'Mia Hofmann' },
+  ];
+  return (
+    <div className="flex w-full max-w-[480px] flex-col gap-1">
+      <Label htmlFor="max-share-input">Share with (optional)</Label>
+      <MultiSelect
+        id="max-share"
+        inputId="max-share-input"
+        size="sm"
+        placeholder="Colleagues"
+        options={people}
+        selected={selected}
+        onChange={setSelected}
+        onUpdateOrder={() => {}}
+        disableAddNew
+        hideAutosaveHint
+        maxSelected={3}
+      />
+      <span className="typography-ui-sm text-text-subtle">{selected.length} selected, up to 3 colleagues</span>
+    </div>
+  );
+};
+
+// A form field: the outside Label names the search input (inputId), the form saves (no "(autosave)"), nothing can be added and at most 3 values can be chosen.
+export const OutsideLabel: Story = {
+  args: {} as any,
+  render: () => <OutsideLabelDemo />,
 };

@@ -1,9 +1,10 @@
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 
 import {
+  Children,
   createContext,
   type CSSProperties,
   forwardRef,
@@ -29,12 +30,77 @@ import { LoadingSpinner } from './loading-spinner';
 import { Skeleton } from './skeleton';
 import { edgeClass, useEdge } from './edge';
 import { useLabels, usePreset } from './labels-context';
+import { useMediaQuery } from './stepper/use-media-query';
 
 // `zero` and `zero-compact` follow the Figma DataGrid: head 34px (`table-head`), rows 44px (`row`) or 36px (`row-compact`), 12px cell padding.
 type TableDensity = 'compact' | 'default' | 'comfortable' | 'zero' | 'zero-compact';
 type SortDirection = 'asc' | 'desc' | false;
 // Where a sticky header sticks. `container` (default) clamps the table height and scrolls inside it; `parent` fills a parent that has a height; `page` sticks under the app top bar while the page scrolls.
 type TableStickyMode = 'container' | 'parent' | 'page';
+
+// Phone mode of the table. `scroll` (default) keeps the table and scrolls it sideways at every width. `list` turns the table into a full-width row list while its container is narrower than 768px.
+type TablePhone = 'scroll' | 'list';
+// What the phone list measures. `container` (default): the table's own width, so a table in a narrow desktop column turns into the list too. `viewport`: the viewport width, so the list shows on phones only and a table next to a card or under an open push sheet stays a table.
+type TablePhoneQuery = 'container' | 'viewport';
+// Place of a cell in a phone list row: `select` (the row checkbox at the very start, set by the table for select cells), `lead` (dot, icon or avatar at the start), `title` (name, one line), `subtitle` (one line under the name), `value` (right side), `meta` (second line on the right under the value), `full` (spans the whole row and wraps, used by the state rows) or `hidden`.
+type TableCellPhone = 'select' | 'lead' | 'title' | 'subtitle' | 'value' | 'meta' | 'full' | 'hidden';
+
+// Width below which `phone="list"` shows the list (the md breakpoint, measured on the table container, not the viewport).
+const PHONE_BREAKPOINT = 768;
+
+// Phone list styles. Every class runs inside `@container kette-table (max-width: 767.98px)`, and only a `phone="list"` table names its scroll area `kette-table`, so these classes do nothing anywhere else. Class strings stay literal for the Tailwind content scan of the apps.
+const phoneList = {
+  container: '[container-type:inline-size] [container-name:kette-table]',
+  // `phoneQuery="viewport"`: the scroll area is the container only below the md viewport width. Above it no `kette-table` container exists, so no list class applies at any table width; below it the container is never wider than the viewport, so the list shows.
+  containerViewport: 'max-md:[container-type:inline-size] max-md:[container-name:kette-table]',
+  table: '[@container_kette-table_(max-width:767.98px)]:flex [@container_kette-table_(max-width:767.98px)]:flex-col',
+  // Visually hidden, not display:none, so screen readers keep the column headers.
+  header: '[@container_kette-table_(max-width:767.98px)]:sr-only',
+  // A selectable list keeps a header bar with the select-all checkbox and its visible name, the other heads stay for screen readers only.
+  selectHeader: '[@container_kette-table_(max-width:767.98px)]:[&:has([data-select])]:not-sr-only [@container_kette-table_(max-width:767.98px)]:[&:has([data-select])]:block [@container_kette-table_(max-width:767.98px)]:[&:has([data-select])_tr]:py-0',
+  headHidden: '[@container_kette-table_(max-width:767.98px)]:sr-only',
+  // Pulled over the row padding like the select cell of the rows (-ml-3), and over the end padding (-mr-4); the bar row drops its vertical padding and the head takes the row height, so the band fills the bar edge to edge; the checkbox sits centred in the 44px target, right above the row checkboxes (DSG2-02).
+  selectHead: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/1/3/-1] [@container_kette-table_(max-width:767.98px)]:flex [@container_kette-table_(max-width:767.98px)]:h-auto [@container_kette-table_(max-width:767.98px)]:w-auto [@container_kette-table_(max-width:767.98px)]:min-h-[calc(var(--size-row)+theme(spacing.2))] [@container_kette-table_(max-width:767.98px)]:items-center [@container_kette-table_(max-width:767.98px)]:gap-3 [@container_kette-table_(max-width:767.98px)]:-ml-3 [@container_kette-table_(max-width:767.98px)]:-mr-4 [@container_kette-table_(max-width:767.98px)]:p-0 [@container_kette-table_(max-width:767.98px)]:pl-[calc((var(--size-touch-target-lg,44px)-theme(spacing.4))/2)]',
+  // The 16px checkbox gets a 44px hit area in the list.
+  checkboxTarget: "[@container_kette-table_(max-width:767.98px)]:[&_[data-slot=checkbox]]:relative [@container_kette-table_(max-width:767.98px)]:[&_[data-slot=checkbox]]:before:absolute [@container_kette-table_(max-width:767.98px)]:[&_[data-slot=checkbox]]:before:-inset-[14px] [@container_kette-table_(max-width:767.98px)]:[&_[data-slot=checkbox]]:before:content-['']",
+  section: '[@container_kette-table_(max-width:767.98px)]:block',
+  caption: '[@container_kette-table_(max-width:767.98px)]:order-last',
+  // Columns: select, lead, title and subtitle, value and meta, chevron (empty columns take no width). Two lines; the second is empty without a subtitle or meta. Height is the row token plus space/2 (52px), the concept minimum.
+  row: [
+    '[@container_kette-table_(max-width:767.98px)]:grid [@container_kette-table_(max-width:767.98px)]:[grid-template-columns:auto_auto_minmax(0,1fr)_auto_auto]',
+    '[@container_kette-table_(max-width:767.98px)]:min-h-[calc(var(--size-row)+theme(spacing.2))] [@container_kette-table_(max-width:767.98px)]:content-center [@container_kette-table_(max-width:767.98px)]:items-center',
+    '[@container_kette-table_(max-width:767.98px)]:py-1 [@container_kette-table_(max-width:767.98px)]:pl-3 [@container_kette-table_(max-width:767.98px)]:pr-4',
+    // With a meta line the value moves to the first line.
+    '[@container_kette-table_(max-width:767.98px)]:[&:has(>[data-phone=meta])>[data-phone=value]]:[grid-row:1/2]',
+  ],
+  // Drops the table sizing (density height and padding, column widths) so the cell sits in its grid area.
+  cell: '[@container_kette-table_(max-width:767.98px)]:block [@container_kette-table_(max-width:767.98px)]:h-auto [@container_kette-table_(max-width:767.98px)]:w-auto [@container_kette-table_(max-width:767.98px)]:min-w-0 [@container_kette-table_(max-width:767.98px)]:max-w-none [@container_kette-table_(max-width:767.98px)]:p-0 [@container_kette-table_(max-width:767.98px)]:text-left',
+  // Supporting text colour of ListItem: a darker subtle on hover and selected surfaces keeps 4.5:1.
+  subtle: '[@container_kette-table_(max-width:767.98px)]:typography-ui [@container_kette-table_(max-width:767.98px)]:text-text-subtle [@container_kette-table_(max-width:767.98px)]:[tr:hover>&]:text-text-subtle-on-muted [@container_kette-table_(max-width:767.98px)]:[[data-state=selected]>&]:text-text-subtle-on-muted',
+  roles: {
+    lead: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/2/3/3] [@container_kette-table_(max-width:767.98px)]:mr-3 [@container_kette-table_(max-width:767.98px)]:flex [@container_kette-table_(max-width:767.98px)]:items-center [@container_kette-table_(max-width:767.98px)]:text-icon-default',
+    title: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/3/2/4] [@container_kette-table_(max-width:767.98px)]:truncate [@container_kette-table_(max-width:767.98px)]:typography-ui-medium [@container_kette-table_(max-width:767.98px)]:text-text-default',
+    subtitle: '[@container_kette-table_(max-width:767.98px)]:[grid-area:2/3/3/4] [@container_kette-table_(max-width:767.98px)]:truncate',
+    value: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/4/3/5] [@container_kette-table_(max-width:767.98px)]:ml-3 [@container_kette-table_(max-width:767.98px)]:max-w-[40cqi] [@container_kette-table_(max-width:767.98px)]:truncate [@container_kette-table_(max-width:767.98px)]:text-right',
+    meta: '[@container_kette-table_(max-width:767.98px)]:[grid-area:2/4/3/5] [@container_kette-table_(max-width:767.98px)]:ml-3 [@container_kette-table_(max-width:767.98px)]:max-w-[40cqi] [@container_kette-table_(max-width:767.98px)]:truncate [@container_kette-table_(max-width:767.98px)]:text-right',
+    // The whole cell toggles the row in DataGrid, so it spans both lines and is at least 44px wide.
+    select: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/1/3/2] [@container_kette-table_(max-width:767.98px)]:-my-1 [@container_kette-table_(max-width:767.98px)]:-ml-3 [@container_kette-table_(max-width:767.98px)]:mr-1 [@container_kette-table_(max-width:767.98px)]:flex [@container_kette-table_(max-width:767.98px)]:min-w-target-lg [@container_kette-table_(max-width:767.98px)]:items-center [@container_kette-table_(max-width:767.98px)]:justify-center [@container_kette-table_(max-width:767.98px)]:self-stretch',
+    full: '[@container_kette-table_(max-width:767.98px)]:[grid-column:1/-1]',
+    hidden: '[@container_kette-table_(max-width:767.98px)]:hidden',
+  } satisfies Record<TableCellPhone, string>,
+  // A TableLeadCell as title takes the lead, title and subtitle areas: its own logo, name and supporting line form the start of the row.
+  leadTitle: '[@container_kette-table_(max-width:767.98px)]:[grid-area:1/2/3/4]',
+  leadSupporting: '[@container_kette-table_(max-width:767.98px)]:typography-ui',
+  chevron: 'hidden p-0 [@container_kette-table_(max-width:767.98px)]:ml-2 [@container_kette-table_(max-width:767.98px)]:flex [@container_kette-table_(max-width:767.98px)]:[grid-area:1/5/3/6] [@container_kette-table_(max-width:767.98px)]:items-center',
+};
+
+// Classes of a cell with a phone role. `full` keeps the cell padding and height (state rows), every other role drops them.
+const phoneCellClass = (role: TableCellPhone) =>
+  role === 'hidden'
+    ? phoneList.roles.hidden
+    : role === 'full'
+    ? ['[@container_kette-table_(max-width:767.98px)]:block [@container_kette-table_(max-width:767.98px)]:w-auto [@container_kette-table_(max-width:767.98px)]:min-w-0 [@container_kette-table_(max-width:767.98px)]:max-w-none', phoneList.roles.full]
+    : [phoneList.cell, phoneList.roles[role], (role === 'subtitle' || role === 'value' || role === 'meta') && phoneList.subtle, role === 'select' && phoneList.checkboxTarget];
 
 // Width of the right edge fade in px (w-8). The fade shows only while at least this much of the table is hidden to the right, so it never covers cell text of a table that overflows by a few pixels.
 const FADE_WIDTH = 32;
@@ -54,7 +120,26 @@ interface TableContextValue {
   // `scrollRegion="always"`: id that the caption takes and the scroll region is named by, and the callback with which a mounted caption reports itself.
   captionId?: string;
   registerCaption?: (id: string | undefined) => void;
+  phone?: TablePhone;
+  phoneQuery?: TablePhoneQuery;
+  // `phone="list"` and the measured width is below the breakpoint, so the list shows. Unset on the first render and in environments without layout; the CSS switches on its own, this only takes the hidden header controls out of the tab order.
+  phoneActive?: boolean;
 }
+
+// Role and column of one cell in a phone list row, handed down by TableRow to each of its direct children.
+const PhoneCellContext = createContext<{ role?: TableCellPhone; colIndex?: number }>({});
+
+// Resolves the phone role of a cell: its own `phone` prop, else a spanning cell is `full`, else the role TableRow chose for its position, else hidden.
+function usePhoneCell(phoneProp: TableCellPhone | undefined, colSpan: number | undefined) {
+  const { phone } = useContext(TableContext);
+  const slot = useContext(PhoneCellContext);
+  if (phone !== 'list') return { list: false as const };
+  const role: TableCellPhone = phoneProp ?? (colSpan !== undefined && colSpan > 1 ? 'full' : slot.role ?? 'hidden');
+  return { list: true as const, role, colIndex: slot.colIndex };
+}
+
+// True inside TableHeader: headerTone fills only head cells there, never a row head (scope="row") in the body.
+const TableSectionContext = createContext<'head' | 'body'>('body');
 
 // `muted` paints the header band with the muted surface; `table` hovers rows with the dedicated table hover token.
 type TableHeaderTone = 'default' | 'muted';
@@ -98,8 +183,17 @@ interface TableProps extends HTMLAttributes<HTMLTableElement>, VariantProps<type
   elevated?: boolean;
   /** Accessible name of the scroll container. While the table overflows, the container is a tab stop; with a name it is exposed as a region, so a screen reader announces what the tab stop is. */
   scrollLabel?: string;
-  // `auto` (default): the container is a tab stop only while the table overflows. `always`: the container is a named, focusable region at every width (`role="region"`, `tabindex="0"`), named by `scrollLabel` or, without it, by the `TableCaption` (`aria-labelledby`). The table keeps its native table semantics: nothing here changes the display of table parts, there is no stacked mode.
+  // `auto` (default): the container is a tab stop only while the table overflows. `always`: the container is a named, focusable region at every width (`role="region"`, `tabindex="0"`), named by `scrollLabel` or, without it, by the `TableCaption` (`aria-labelledby`). The table keeps its native table semantics: nothing here changes the display of table parts. Only `phone="list"` restyles the parts below 768px, and it keeps them exposed as table, rows and cells.
   scrollRegion?: 'auto' | 'always';
+  // `phone="list"` only: `container` (default) shows the list below 768px of the table's own width, `viewport` only below 768px of the viewport (phones), so a table in a narrow desktop column stays a table.
+  // Use `viewport` only where the table still fits its column on a desktop: few columns, fixed widths on the short ones, the status before anything that may cut. A wider table scrolls sideways there (the edge fade shows it); then keep `container`, which turns it into the list.
+  phoneQuery?: TablePhoneQuery;
+  // Set to false when the surrounding surface (a card) already draws the edge: the table drops its own outer frame. Row dividers stay.
+  bordered?: boolean;
+  // `list`: below 768px of its own width (a container query on the scroll area, not the viewport) the table shows as a row list: lead, title, subtitle and value per row, a chevron on rows with onClick, no header band, no sideways scroll. Place cells with the `phone` prop of the cells; without it the first cell is the title, the second the subtitle, the last the value, the rest hide. The table keeps its table semantics (explicit roles, header cells visually hidden). The table must get its width from its parent (it measures itself). Default `scroll`.
+  phone?: TablePhone;
+  // Text of a permanently mounted polite live region next to the scroll area, inside the table's root element (visually hidden). Change it to announce something, for example a load; an empty string keeps it silent. Not rendered while undefined.
+  announcement?: string;
 }
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
@@ -117,6 +211,10 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       scrollLabel,
       scrollRegion = 'auto',
       maxHeight,
+      bordered = true,
+      phoneQuery = 'container',
+      phone = 'scroll',
+      announcement,
       ...props
     },
     ref,
@@ -151,8 +249,12 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       if (node.firstElementChild) observer.observe(node.firstElementChild);
       return () => observer.disconnect();
     }, []);
+    const list = phone === 'list';
+    const viewportQuery = list && phoneQuery === 'viewport';
+    const phoneViewport = useMediaQuery('(max-width: 767.98px)');
+    const phoneActive = list && visibleWidth !== undefined && visibleWidth < PHONE_BREAKPOINT && (!viewportQuery || phoneViewport);
     return (
-    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover, visibleWidth, captionSticky: overflowing || regionAlways, captionId: generatedCaptionId, registerCaption: setCaptionId }}>
+    <TableContext.Provider value={{ density, striped, stickyHeader, stickyMode, stickyOffset, headerTone, rowHover, visibleWidth, captionSticky: overflowing || regionAlways, captionId: generatedCaptionId, registerCaption: setCaptionId, phone, phoneQuery, phoneActive }}>
       {/* `overflow-x-auto` is unconditional so a wide table always scrolls within its own bounded
           container (WCAG 1.4.10 Reflow) regardless of `stickyHeader`, instead of overflowing the
           page. Only the vertical clamp (`max-h`/`overflow-y-auto`) is gated on `stickyHeader`,
@@ -171,6 +273,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         aria-labelledby={regionAlways && !scrollLabel ? (captionId ?? generatedCaptionId) : undefined}
         data-scroll-region={regionAlways || undefined}
         data-scrolled-x={scrolledX || undefined}
+        data-phone={list ? 'list' : undefined}
+        data-phone-query={viewportQuery ? 'viewport' : undefined}
         style={maxHeight && stickyHeader && stickyMode === 'container' ? { maxHeight } : undefined}
         onScroll={(event) => {
           const next = event.currentTarget.scrollLeft > 0;
@@ -179,19 +283,27 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           if (more !== moreRight) setMoreRight(more);
         }}
         className={cn(
-          'peer relative w-full rounded-surface border border-solid focus-visible:outline-none',
-          edgeClass(zeroPreset),
+          'peer relative w-full rounded-surface focus-visible:outline-none',
+          bordered ? ['border border-solid', edgeClass(zeroPreset)] : 'border-0',
           // Page mode must not clip: an overflow container would become the sticky scroll parent.
           stickyHeader && stickyMode === 'page' ? 'overflow-visible' : 'overflow-x-auto',
           stickyHeader && stickyMode === 'container' && maxHeight && 'overflow-y-auto',
           stickyHeader && stickyMode === 'parent' && 'h-full min-h-0 overflow-y-auto',
           elevated && 'shadow-elevation-table',
+          // The scroll area is the size container the phone list queries.
+          list && (viewportQuery ? phoneList.containerViewport : phoneList.container),
         )}
       >
-        <table ref={ref} className={cn(tableVariants({ className }))} {...props} />
+        {/* Changing the display of table parts drops their table roles in some browsers (WebKit), so list mode states every role explicitly. */}
+        <table ref={ref} role={list ? 'table' : undefined} className={cn(tableVariants({ className }), list && phoneList.table)} {...props} />
       </div>
       <div aria-hidden="true" className={cn('pointer-events-none absolute inset-0 z-sticky hidden rounded-surface peer-focus-visible:block', ...scrollRegionRing)} />
       {/* Edge fade: tells that the table continues to the right while it overflows. It fades out at the end of the scroll. */}
+      {announcement !== undefined ? (
+        <div role="status" aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
+      ) : null}
       {overflowing && moreRight ? <div aria-hidden="true" data-slot="table-scroll-fade" className="pointer-events-none absolute inset-y-px right-px z-sticky w-8 rounded-r-surface bg-gradient-to-l from-background to-transparent" /> : null}
       </div>
     </TableContext.Provider>
@@ -202,12 +314,15 @@ Table.displayName = 'Table';
 
 const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, style, ...props }, ref) => {
-    const { stickyHeader, stickyMode, stickyOffset, headerTone } = useContext(TableContext);
+    const { stickyHeader, stickyMode, stickyOffset, headerTone, phone } = useContext(TableContext);
     const edge = useEdge();
+    const list = phone === 'list';
     return (
+      <TableSectionContext.Provider value="head">
       <thead
         data-slot="table-header"
         ref={ref}
+        role={list ? 'rowgroup' : undefined}
         style={stickyOffset && stickyMode === 'page' ? ({ '--table-sticky-offset': stickyOffset, ...style } as CSSProperties) : style}
         className={cn(
           '[&_tr]:border-b border-solid',
@@ -223,10 +338,12 @@ const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTable
             `sticky ${stickyMode === 'page' ? 'top-[var(--table-sticky-offset,var(--size-topbar))]' : 'top-0'} z-sticky ${
               headerTone === 'muted' ? 'bg-muted' : 'bg-background'
             } shadow-[0_1px_0_0] shadow-border-muted`,
+          list && [phoneList.header, phoneList.selectHeader],
           className,
         )}
         {...props}
       />
+      </TableSectionContext.Provider>
     );
   },
 );
@@ -234,10 +351,12 @@ TableHeader.displayName = 'TableHeader';
 
 const TableBody = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => {
-    const { striped } = useContext(TableContext);
+    const { striped, phone } = useContext(TableContext);
+    const list = phone === 'list';
     return (
       <tbody
         ref={ref}
+        role={list ? 'rowgroup' : undefined}
         className={cn(
           '[&_tr:last-child]:border-b-0',
           // Static zebra-stripe surface — `background-subtle` (a permanent-surface token), not the
@@ -248,6 +367,7 @@ const TableBody = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSe
           // overridden by the zebra tint on even rows — the state cue stays visible for sighted
           // users, not just `aria-selected`/`aria-invalid` for assistive tech.
           striped && '[&_tr:nth-child(even):not([data-state="selected"]):not([aria-invalid="true"])]:bg-background-neutral-subtle [&_tr:nth-child(even):not([data-state="selected"]):not([aria-invalid="true"])]:[--table-pin-tint:theme(colors.background-neutral-subtle)]',
+          list && phoneList.section,
           className,
         )}
         {...props}
@@ -260,15 +380,19 @@ TableBody.displayName = 'TableBody';
 const TableFooter = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => {
     const edge = useEdge();
+    const { phone } = useContext(TableContext);
+    const list = phone === 'list';
     return (
     <tfoot
       ref={ref}
+      role={list ? 'rowgroup' : undefined}
       className={cn(
         // `border-border-subtle` replaces a previously colorless `border-t` (no color utility was
         // set, so the browser's UA-default border color rendered instead — visually undefined and
         // very likely wrong in dark mode). `bg-background-neutral-subtle` replaces raw `bg-slate-50`.
         'border-t border-solid bg-muted/50 font-medium [&>tr]:last:border-b-0',
         edge,
+        list && phoneList.section,
         className,
       )}
       {...props}
@@ -286,6 +410,7 @@ export interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
    * native semantics — pass a descriptive `aria-label` (e.g. `aria-label="Open Laptop Pro"`) so
    * the row's accessible name communicates what activating it does (WCAG 4.1.2).
    */
+  // In a `phone="list"` table the row also shows a trailing chevron while the list layout is on.
   onClick?: HTMLAttributes<HTMLTableRowElement>['onClick'];
   /**
    * Marks this row as the current selection (e.g. a checked/active record). Sets
@@ -354,7 +479,8 @@ const tableRowVariants = cva(
       {
         selected: true,
         className:
-          'bg-accent hover:bg-accent active:bg-accent [--table-pin-tint:theme(colors.accent)]',
+          // A subtle badge has the fill of the selected wash; on the selected row it moves to the page surface so its shape stays visible (A11YG2F-01).
+          'bg-accent hover:bg-accent active:bg-accent [--table-pin-tint:theme(colors.accent)] [&_[data-slot=badge][data-variant=subtle]]:bg-background',
       },
       {
         selected: false,
@@ -367,13 +493,57 @@ const tableRowVariants = cva(
   },
 );
 
+// Phone default of a cell type set with `markTableCell`: `hidden` for per-row controls (actions, buttons, toggles), `lead` for TableLeadCell (logo, name and supporting line in one cell).
+const TABLE_CELL_PHONE_MARK = '__tableCellPhone';
+type TableCellPhoneDefault = 'hidden' | 'lead';
+
+type PhoneChildProps = { phone?: TableCellPhone; select?: boolean; colSpan?: number };
+
+const phoneDefaultOf = (element: ReactElement<PhoneChildProps>): TableCellPhoneDefault | undefined => {
+  if (element.props.select) return 'hidden';
+  const type = element.type as unknown as Record<string, unknown> | null;
+  const mark = type && (typeof type === 'object' || typeof type === 'function') ? type[TABLE_CELL_PHONE_MARK] : undefined;
+  return mark === 'hidden' || mark === 'lead' ? mark : undefined;
+};
+
+// Default phone roles by position: the first shown cell is the title, the second the subtitle, the last the value, the rest hide. Select and action cells hide. A TableLeadCell as title already brings its supporting line, so no subtitle is taken then.
+const defaultPhoneRoles = (elements: ReactElement<PhoneChildProps>[]): TableCellPhone[] => {
+  // The row checkbox keeps its place at the start of the row, so selection works in the list too.
+  const roles: TableCellPhone[] = elements.map((element) => (element.props.select ? 'select' : 'hidden'));
+  const shown = elements.map((element, index) => (phoneDefaultOf(element) === 'hidden' ? -1 : index)).filter((index) => index >= 0);
+  if (shown.length === 0) return roles;
+  const [first, ...rest] = shown;
+  roles[first] = 'title';
+  if (rest.length > 0) roles[rest[rest.length - 1]] = 'value';
+  if (rest.length > 1 && phoneDefaultOf(elements[first]) !== 'lead') roles[rest[0]] = 'subtitle';
+  return roles;
+};
+
+// Hands each direct child its phone role and column index. Once any direct child sets `phone`, the row is explicit: children without it hide.
+const withPhoneSlots = (children: ReactNode) => {
+  const elements = Children.toArray(children).filter(isValidElement) as ReactElement<PhoneChildProps>[];
+  const explicit = elements.some((element) => element.props.phone !== undefined);
+  const roles = explicit ? elements.map((element): TableCellPhone | undefined => (element.props.select ? 'select' : undefined)) : defaultPhoneRoles(elements);
+  let position = 0;
+  let column = 1;
+  return Children.map(children, (child) => {
+    if (!isValidElement<PhoneChildProps>(child)) return child;
+    const role = roles[position];
+    const colIndex = column;
+    position += 1;
+    column += Number(child.props.colSpan) > 1 ? Number(child.props.colSpan) : 1;
+    return <PhoneCellContext.Provider value={{ role, colIndex }}>{child}</PhoneCellContext.Provider>;
+  });
+};
+
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ className, selected, disabled, invalid, active, onClick, onKeyDown, tabIndex, ...props }, ref) => {
+  ({ className, selected, disabled, invalid, active, onClick, onKeyDown, tabIndex, children, ...props }, ref) => {
     // Only an actionable row (one a consumer wired `onClick` on) becomes a real tab stop — a
     // purely presentational row never gets an unreachable focus ring (same rule as Chip/Avatar).
     const interactive = Boolean(onClick) && !disabled;
-    const { rowHover } = useContext(TableContext);
+    const { rowHover, phone } = useContext(TableContext);
     const edge = useEdge();
+    const list = phone === 'list';
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
       onKeyDown?.(event);
@@ -410,10 +580,20 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           active && !selected && !invalid && 'border-l-border-brand bg-background-brand-subtle [--table-pin-tint:theme(colors.background-brand-subtle)] [--table-pin-accent:theme(colors.border-brand)]',
           rowHover === 'table' &&
             '[&:not([data-state=selected]):not([aria-invalid=true])]:hover:bg-table-background-hover [&:not([data-state=selected]):not([aria-invalid=true])]:hover:[--table-pin-tint:theme(colors.table-background-hover)]',
+          list && phoneList.row,
           className,
         )}
+        role={list ? 'row' : undefined}
         {...props}
-      />
+      >
+        {list ? withPhoneSlots(children) : children}
+        {/* A navigating row ends in a chevron in the phone list (decorative, the row is the target). Hidden in the table layout. */}
+        {list && interactive ? (
+          <td aria-hidden="true" data-slot="table-row-chevron" className={phoneList.chevron}>
+            <ChevronRight className="h-icon-sm w-icon-sm shrink-0 text-icon-subtle" />
+          </td>
+        ) : null}
+      </tr>
     );
   },
 );
@@ -468,11 +648,26 @@ interface TableHeadProps extends Omit<ThHTMLAttributes<HTMLTableCellElement>, 'a
   sortable?: boolean;
   sortDirection?: SortDirection;
   onSort?: () => void;
+  // Phone list place of the column (see TableCell `phone`). In the header only `hidden` and `select` matter: the header is visually hidden in the list and those heads drop out with their column. A row head (scope="row") in the body is placed like a cell.
+  phone?: TableCellPhone;
 }
 
 const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
-  ({ className, children, select = false, pinned = false, align, sortable = false, sortDirection = false, onSort, ...props }, ref) => {
-    const { density, headerTone } = useContext(TableContext);
+  ({ className, children, select = false, pinned = false, align, sortable = false, sortDirection = false, onSort, phone, ...props }, ref) => {
+    const { density, headerTone: tableTone, phoneActive } = useContext(TableContext);
+    const section = useContext(TableSectionContext);
+    const headerTone = section === 'head' ? tableTone : 'default';
+    const phoneCell = usePhoneCell(phone, props.colSpan);
+    // Header cells stay for screen readers in the list and an explicitly hidden column drops out; the select head stays visible as the select-all bar of the list.
+    const phoneClass = !phoneCell.list
+      ? undefined
+      : section === 'head'
+      ? phone === 'hidden'
+        ? phoneList.roles.hidden
+        : select
+        ? [phoneList.selectHead, phoneList.checkboxTarget]
+        : phoneList.headHidden
+      : phoneCellClass(phoneCell.role);
     const zeroPreset = usePreset() === 'zero';
     const l = useLabels();
     // A select column head has no visible text, so its name becomes visually hidden text (an empty table header fails WCAG 1.3.1).
@@ -491,6 +686,10 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
         ref={ref}
         scope="col"
         aria-sort={ariaSort}
+        role={phoneCell.list ? (props.scope === 'row' ? 'rowheader' : 'columnheader') : undefined}
+        aria-colindex={phoneCell.list ? phoneCell.colIndex : undefined}
+        data-phone={phoneCell.list && section === 'body' ? phoneCell.role : undefined}
+        data-select={(select && phone !== 'hidden') || undefined}
         className={cn(
           tableHeadVariants({ density }),
           headerTone === 'muted' && 'bg-muted text-text-muted',
@@ -498,6 +697,7 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
           select && [tableSelectCell, selectCellPadding(density, zeroPreset)],
           align === 'right' && 'text-right',
           align === 'center' && 'text-center',
+          phoneClass,
           className,
         )}
         {...props}
@@ -509,6 +709,8 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
           <button
             type="button"
             onClick={onSort}
+            // The list hides the header visually; its sort buttons leave the tab order then (sorting moves to the toolbar on phones).
+            tabIndex={phoneActive ? -1 : undefined}
             className={cn(
               '-mx-1 flex min-h-target w-full cursor-pointer select-none items-center gap-1 rounded-item px-1 transition-colors',
               align === 'right' && 'justify-end',
@@ -526,6 +728,19 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
           </button>
         ) : emptySelectHead ? (
           <span className="sr-only">{props['aria-label'] ?? l.selectAllRows}</span>
+        ) : select && phoneCell.list ? (
+          <>
+            {children}
+            {/* Visible name of the select-all checkbox in the list bar; the checkbox keeps its own accessible name */}
+            {/* A click on the name toggles the checkbox like a label */}
+            <span
+              aria-hidden="true"
+              onClick={(event) => (event.currentTarget.parentElement?.querySelector('[data-slot="checkbox"]') as HTMLElement | null)?.click()}
+              className="hidden cursor-pointer select-none typography-ui text-text-subtle-on-muted [@container_kette-table_(max-width:767.98px)]:inline"
+            >
+              {l.selectAllRows}
+            </span>
+          </>
         ) : (
           <div className={cn('flex items-center gap-1', align === 'right' && 'justify-end', align === 'center' && 'justify-center')}>{children}</div>
         )}
@@ -573,20 +788,27 @@ interface TableCellProps extends Omit<TdHTMLAttributes<HTMLTableCellElement>, 'a
   disabled?: boolean;
   // Chip or badge rendered after the content (Figma Tag).
   tag?: ReactNode;
+  // Place in a `phone="list"` row: `lead`, `title`, `subtitle`, `value`, `meta`, `full` or `hidden`. Once one cell of a row sets it, cells without it hide. Without any, the row places its cells by position. No effect in a `scroll` table.
+  phone?: TableCellPhone;
 }
 
 const cellRowHeight = { default: 'h-row', 'two-line': 'h-row-two-line' } as const;
 
 const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
   (
-    { className, select = false, pinned = false, align, rowHeight, selected, active, focused, invalid, disabled, tag, children, ...props },
+    { className, select = false, pinned = false, align, rowHeight, selected, active, focused, invalid, disabled, tag, phone, children, ...props },
     ref,
   ) => {
     const { density } = useContext(TableContext);
     const zeroPreset = usePreset() === 'zero';
+    const phoneCell = usePhoneCell(phone, props.colSpan);
     return (
       <td
         ref={ref}
+        role={phoneCell.list ? 'cell' : undefined}
+        // Hidden cells leave the accessibility tree, so each cell states its column to keep the header association.
+        aria-colindex={phoneCell.list ? phoneCell.colIndex : undefined}
+        data-phone={phoneCell.list ? phoneCell.role : undefined}
         aria-invalid={invalid || undefined}
         aria-disabled={disabled || undefined}
         data-state={selected ? 'selected' : undefined}
@@ -602,6 +824,7 @@ const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
           focused && 'ring-2 ring-inset ring-border-focus',
           invalid && 'text-text-destructive ring-1 ring-inset ring-border-destructive',
           disabled && 'pointer-events-none opacity-disabled',
+          phoneCell.list && phoneCellClass(phoneCell.role),
           className,
         )}
         {...props}
@@ -623,8 +846,10 @@ TableCell.displayName = 'TableCell';
 // Marks a component as rendering a table cell (a `<td>`), so containers such as DataGrid can use it as the cell itself instead of wrapping it in another cell.
 const TABLE_CELL_MARK = '__tableCell';
 
-function markTableCell<C extends object>(component: C): C {
+// `phone` sets the phone list default of the cell type: `hidden` for per-row controls, `lead` for a cell that holds logo, name and supporting line.
+function markTableCell<C extends object>(component: C, phone?: TableCellPhoneDefault): C {
   (component as Record<string, unknown>)[TABLE_CELL_MARK] = true;
+  if (phone) (component as Record<string, unknown>)[TABLE_CELL_PHONE_MARK] = phone;
   return component;
 }
 
@@ -650,6 +875,8 @@ TableBadgeCell.displayName = 'TableBadgeCell';
 markTableCell(TableBadgeCell);
 
 interface TableLeadCellProps extends Omit<TableCellProps, 'children' | 'tag'> {
+  // Name and supporting line wrap over lines instead of being cut with an ellipsis.
+  wrap?: boolean;
   // Logo or avatar slot, e.g. a `LogoTile` or a square `Avatar size="xs"`. Decorative: the name carries the meaning.
   logo?: ReactNode;
   // Leading control slot (checkbox, radio, toggle), rendered before the logo and exposed to assistive tech.
@@ -664,8 +891,10 @@ interface TableLeadCellProps extends Omit<TableCellProps, 'children' | 'tag'> {
 
 // Lead cell: optional control and logo/avatar, strong name, optional supporting line. Same cell contract as TableCell.
 const TableLeadCell = forwardRef<HTMLTableCellElement, TableLeadCellProps>(
-  ({ className, logo, control, name, supportingText, tag, weight = 'medium', ...props }, ref) => (
-    <TableCell ref={ref} className={className} {...props}>
+  ({ className, logo, control, name, supportingText, tag, weight = 'medium', wrap = false, ...props }, ref) => {
+    const phoneCell = usePhoneCell(props.phone, props.colSpan);
+    return (
+    <TableCell ref={ref} className={cn(phoneCell.list && phoneCell.role === 'title' && phoneList.leadTitle, className)} {...props} phone={phoneCell.list ? phoneCell.role : props.phone}>
       <div className="flex items-center gap-2">
         {control && <span className="inline-flex shrink-0">{control}</span>}
         {logo && (
@@ -674,22 +903,23 @@ const TableLeadCell = forwardRef<HTMLTableCellElement, TableLeadCellProps>(
           </span>
         )}
         <div className="flex min-w-0 flex-col">
-          <span className={cn('truncate text-text-default', weight === 'regular' ? 'typography-ui' : 'typography-ui-medium')}>{name}</span>
+          <span className={cn(wrap ? 'break-words' : 'truncate', 'text-text-default', weight === 'regular' ? 'typography-ui' : 'typography-ui-medium')}>{name}</span>
           {supportingText && (
-            <span className="typography-text-extra-small truncate text-text-subtle [[data-state=selected]_&]:text-text-subtle-on-muted [[data-active=true]_&]:text-general-brand-on-container">{supportingText}</span>
+            <span className={cn('typography-text-extra-small text-text-subtle [[data-state=selected]_&]:text-text-subtle-on-muted [[data-active=true]_&]:text-general-brand-on-container', wrap ? 'break-words' : 'truncate', phoneCell.list && phoneList.leadSupporting)}>{supportingText}</span>
           )}
         </div>
         {tag}
       </div>
     </TableCell>
-  ),
+    );
+  },
 );
 TableLeadCell.displayName = 'TableLeadCell';
-markTableCell(TableLeadCell);
+markTableCell(TableLeadCell, 'lead');
 
 const TableCaption = forwardRef<HTMLTableCaptionElement, HTMLAttributes<HTMLTableCaptionElement>>(
   ({ className, id: idProp, ...props }, ref) => {
-    const { captionId, registerCaption, captionSticky, visibleWidth } = useContext(TableContext);
+    const { captionId, registerCaption, captionSticky, visibleWidth, phone } = useContext(TableContext);
     const id = idProp ?? captionId;
     // Reports the caption id to the Table, so `scrollRegion="always"` can name the region by it.
     useEffect(() => {
@@ -702,7 +932,7 @@ const TableCaption = forwardRef<HTMLTableCaptionElement, HTMLAttributes<HTMLTabl
       <caption
         ref={ref}
         id={id}
-        className={cn('typography-table-item mt-4 text-text-subtle', captionSticky && 'sticky left-0 px-control-px-sm text-left', className)}
+        className={cn('typography-table-item mt-4 text-text-subtle', captionSticky && 'sticky left-0 px-control-px-sm text-left', phone === 'list' && phoneList.caption, className)}
         style={captionSticky && visibleWidth ? { width: visibleWidth, ...style } : style}
         {...rest}
       />
@@ -795,11 +1025,11 @@ const TableEmpty = forwardRef<HTMLTableCellElement, TableEmptyProps>(
     return (
       <TableRow>
         {/* The cell spans every column, so it is as wide as the whole table. The content sits in a frame as wide as the visible scroll area, pinned to its left edge (`sticky`, `left` = the row gutter), so it is centred on screen at any scroll position and not in the full table width (RA-LIB-05). The cell has no side padding, so the frame starts at the edge of the scroll area. */}
-        <TableCell ref={ref} colSpan={columns} className={cn('px-0', rich ? 'py-12' : 'h-24 text-center', className)} {...props}>
+        <TableCell ref={ref} colSpan={columns} phone="full" className={cn('px-0', rich ? 'py-12' : 'h-24 text-center', className)} {...props}>
           <TableStateFrame>
             {rich ? (
               <div className="mx-auto w-full max-w-lg px-4">
-                <EmptyState variant={variant} title={title ?? message} description={description} icon={icon} actions={actions} />
+                <EmptyState variant={variant} outlined={false} title={title ?? message} description={description} icon={icon} actions={actions} />
               </div>
             ) : (
               <div className="typography-table-item flex flex-col items-center justify-center gap-1 px-4 text-text-subtle">
@@ -835,11 +1065,12 @@ const TableError = forwardRef<HTMLTableCellElement, TableErrorProps>(
     const retryLabel = retryLabelProp ?? l.tryAgain;
     return (
     <TableRow>
-      <TableCell ref={ref} colSpan={columns} className={cn('px-0 py-12', className)} {...props}>
+      <TableCell ref={ref} colSpan={columns} phone="full" className={cn('px-0 py-12', className)} {...props}>
         <TableStateFrame>
         <div className="mx-auto w-full max-w-lg px-4">
           <EmptyState
             variant="error"
+            outlined={false}
             title={title}
             description={description}
             actions={
@@ -877,7 +1108,7 @@ const TableLoadingMore = forwardRef<HTMLTableCellElement, TableLoadingMoreProps>
     const loadingLabel = loadingLabelProp ?? l.loadingMore;
     return (
     <TableRow>
-      <TableCell ref={ref} colSpan={columns} className={cn('px-0 text-center', className)} {...props}>
+      <TableCell ref={ref} colSpan={columns} phone="full" className={cn('px-0 text-center', className)} {...props}>
         <TableStateFrame>
         <div role="status" aria-live="polite" className="flex items-center justify-center gap-3 px-4 typography-table-item text-text-subtle">
           {loading ? (
@@ -887,7 +1118,7 @@ const TableLoadingMore = forwardRef<HTMLTableCellElement, TableLoadingMoreProps>
             </>
           ) : (
             onLoadMore && (
-              <Button type="button" variant="ghost" size="sm" onClick={onLoadMore}>
+              <Button type="button" variant="ghost" size="sm" onClick={onLoadMore} className="[@container_kette-table_(max-width:767.98px)]:min-h-target-lg">
                 {label}
               </Button>
             )
@@ -904,6 +1135,7 @@ TableLoadingMore.displayName = 'TableLoadingMore';
 export {
   isTableCellElement,
   markTableCell,
+  phoneDefaultOf,
   Table,
   TableBody,
   TableBadgeCell,
@@ -921,7 +1153,10 @@ export {
   type SortDirection,
   type TableBadgeCellProps,
   type TableCellProps,
+  type TableCellPhone,
   type TableDensity,
+  type TablePhone,
+  type TablePhoneQuery,
   type TableHeaderTone,
   type TableRowHover,
   type TableStickyMode,

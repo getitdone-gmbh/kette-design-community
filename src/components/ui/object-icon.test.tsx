@@ -44,3 +44,26 @@ describe('ObjectIcon semantic tones', () => {
     expect((container.firstChild as HTMLElement).className).toContain('bg-product-vacancy-default');
   });
 });
+
+describe('ObjectIcon add-on tones', () => {
+  it.each([
+    ['teal', 'bg-product-backoffice-default', 'text-product-backoffice-on'],
+    ['strong', 'bg-surface-inverse-static', 'text-text-on-inverse-static'],
+    ['muted', 'bg-product-record-default', 'text-product-record-on'],
+  ] as const)('%s uses token fill and glyph roles and drops the product fill', (tone, fill, on) => {
+    const { container } = render(<ObjectIcon tone={tone} label={tone} />);
+    const el = container.firstChild as HTMLElement;
+    expect(el).toHaveClass(fill, on);
+    expect(el.className).not.toMatch(/bg-product-(workstream|coldcall|vacancy|jobsearch|meeting|accent)/);
+    expect(el).toHaveAttribute('data-tone', tone);
+    expect(el).not.toHaveAttribute('data-app');
+    expect(el).toHaveAttribute('role', 'img');
+  });
+
+  it('uses no raw colour value', () => {
+    for (const tone of ['teal', 'strong', 'muted'] as const) {
+      const { container } = render(<ObjectIcon tone={tone} />);
+      expect((container.firstChild as HTMLElement).className).not.toMatch(/#[0-9a-f]{3,8}|\[(?:rgb|hsl)|\b(?:teal|zinc|slate)-\d/);
+    }
+  });
+});

@@ -1,11 +1,11 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
 import { render } from '../../lib/render-default-look';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
 import { Toast, ToastAction, ToastClose, ToastProvider, ToastTitle, ToastViewport } from './toast';
 import { Toaster } from './toaster';
-import { toast } from './use-toast';
+import { ACTION_TOAST_DURATION, toast, useToast } from './use-toast';
 
 // Radix Toast uses pointer capture, which jsdom lacks.
 window.HTMLElement.prototype.hasPointerCapture = vi.fn();
@@ -128,5 +128,35 @@ describe('Toast focus and duration', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// R-LIB-01 (L-26): the action duration lives in the store entry, so custom renderers inherit it.
+describe('Action toast duration in the store (R-LIB-01)', () => {
+  const lastEntry = () => {
+    const { result } = renderHook(() => useToast());
+    return result.current.toasts[0];
+  };
+
+  it('gives an action toast without duration the 10 s action duration', () => {
+    act(() => {
+      toast({ title: 'Removed', action: { label: 'Undo' } });
+    });
+    expect(ACTION_TOAST_DURATION).toBe(10000);
+    expect(lastEntry().duration).toBe(10000);
+  });
+
+  it('keeps an explicit duration on an action toast', () => {
+    act(() => {
+      toast({ title: 'Removed', action: { label: 'Undo' }, duration: 3000 });
+    });
+    expect(lastEntry().duration).toBe(3000);
+  });
+
+  it('leaves duration undefined without an action', () => {
+    act(() => {
+      toast({ title: 'Saved' });
+    });
+    expect(lastEntry().duration).toBeUndefined();
   });
 });

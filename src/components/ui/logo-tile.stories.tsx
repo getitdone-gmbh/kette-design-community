@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { LogoTile, type LogoTileColor } from './logo-tile';
 
+// Fictional uploaded workspace logo (square, own colours), as a data URI so the story needs no asset.
+const WORKSPACE_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#0f766e"/><path d="M14 46 L32 14 L50 46 Z" fill="#ccfbf1"/><circle cx="32" cy="38" r="6" fill="#0f766e"/></svg>')}`;
+
 const meta = {
   id: 'primitives-logotile',
   title: 'Primitives · Display/LogoTile',
@@ -65,6 +68,19 @@ export const OutlineWithLogo: Story = {
         </svg>
       </LogoTile>
       <LogoTile tone="outline" size="md" initials="AC" />
+    </div>
+  ),
+};
+
+// ZERO-830 P4: an uploaded logo fills the project colour tile; without `src` the initials show.
+export const ColorWithImage: Story = {
+  name: 'Color with image',
+  render: () => (
+    <div className="flex items-center gap-3">
+      {(['xs', 'sm', 'md'] as const).map((size) => (
+        <LogoTile key={size} tone="color" color={3} size={size} initials="NW" label={`Nordwind ${size}`} src={WORKSPACE_LOGO} />
+      ))}
+      <LogoTile tone="color" color={3} size="md" initials="NW" label="Nordwind without image" />
     </div>
   ),
 };

@@ -2058,6 +2058,14 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-border-disabled))`
                         : `rgb(var(--semantic-border-disabled) / ${opacityValue})`,
+                'border-field': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-border-field))`
+                        : `rgb(var(--semantic-border-field) / ${opacityValue})`,
+                'border-field-hover': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-border-field-hover))`
+                        : `rgb(var(--semantic-border-field-hover) / ${opacityValue})`,
                 'border-focus': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-border-focus))`
@@ -2502,6 +2510,18 @@ module.exports = {
                     opacityValue === undefined
                         ? `rgb(var(--semantic-interaction-hover) / var(--semantic-interaction-hover-alpha))`
                         : `rgb(var(--semantic-interaction-hover) / calc(var(--semantic-interaction-hover-alpha) * ${opacityValue}))`,
+                'interaction-state-layer-focus': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-interaction-state-layer-focus) / var(--semantic-interaction-state-layer-focus-alpha))`
+                        : `rgb(var(--semantic-interaction-state-layer-focus) / calc(var(--semantic-interaction-state-layer-focus-alpha) * ${opacityValue}))`,
+                'interaction-state-layer-hover': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-interaction-state-layer-hover) / var(--semantic-interaction-state-layer-hover-alpha))`
+                        : `rgb(var(--semantic-interaction-state-layer-hover) / calc(var(--semantic-interaction-state-layer-hover-alpha) * ${opacityValue}))`,
+                'interaction-state-layer-pressed': ({ opacityValue }) =>
+                    opacityValue === undefined
+                        ? `rgb(var(--semantic-interaction-state-layer-pressed) / var(--semantic-interaction-state-layer-pressed-alpha))`
+                        : `rgb(var(--semantic-interaction-state-layer-pressed) / calc(var(--semantic-interaction-state-layer-pressed-alpha) * ${opacityValue}))`,
                 'link-active': ({ opacityValue }) =>
                     opacityValue === undefined
                         ? `rgb(var(--semantic-link-active))`

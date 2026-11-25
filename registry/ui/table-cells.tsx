@@ -127,7 +127,7 @@ const TableActionsCell = React.forwardRef<HTMLTableCellElement, TableActionsCell
             aria-label={a.label}
             disabled={a.disabled || props.disabled}
             onClick={a.onClick}
-            className="h-control-md w-control-md shrink-0 rounded-button text-icon-subtle hover:text-icon-default [&>svg]:h-icon-md [&>svg]:w-icon-md"
+            className="h-control-md w-control-md shrink-0 text-icon-subtle hover:text-icon-default [&>svg]:h-icon-md [&>svg]:w-icon-md"
           >
             {a.icon}
           </Button>
@@ -138,7 +138,7 @@ const TableActionsCell = React.forwardRef<HTMLTableCellElement, TableActionsCell
   },
 );
 TableActionsCell.displayName = 'TableActionsCell';
-markTableCell(TableActionsCell);
+markTableCell(TableActionsCell, 'hidden');
 
 export interface TablePaymentCellProps extends Omit<TableCellProps, 'children' | 'tag'> {
   // Card or bank logo slot, e.g. an inline SVG. Decorative: the name identifies the method.
@@ -208,7 +208,7 @@ const TableToggleCell = React.forwardRef<HTMLTableCellElement, TableToggleCellPr
   ),
 );
 TableToggleCell.displayName = 'TableToggleCell';
-markTableCell(TableToggleCell);
+markTableCell(TableToggleCell, 'hidden');
 
 export interface TableButtonCellProps extends Omit<TableCellProps, 'children' | 'tag' | 'onClick'> {
   // Visible button text, e.g. `Open`.
@@ -231,7 +231,7 @@ const TableButtonCell = React.forwardRef<HTMLTableCellElement, TableButtonCellPr
   ),
 );
 TableButtonCell.displayName = 'TableButtonCell';
-markTableCell(TableButtonCell);
+markTableCell(TableButtonCell, 'hidden');
 
 export interface TableSelectCellOption {
   value: string;

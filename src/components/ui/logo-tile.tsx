@@ -27,7 +27,7 @@ export interface LogoTileProps
     VariantProps<typeof logoTileVariants> {
   // `color` (default) is the project-coloured initials tile. `neutral` is a bordered surface tile for third-party brand logos (integrations), so the logo keeps its own colours. `outline` is the same bordered surface tile: it shows `src` or the children when given, otherwise the initials in the default text colour.
   tone?: 'color' | 'neutral' | 'outline';
-  // Logo image for the neutral and outline tiles. Alternatively pass the logo (svg) as children. Decorative inside the tile; `label` names the tile.
+  // Logo image in every tone. Neutral and outline inset it (alternatively pass the logo as children); `color` fills the tile with it (an uploaded workspace or client logo) and the initials stay the fallback without `src`. Decorative inside the tile; `label` names the tile.
   src?: string;
   // Project colour 1..8 (`colors/data/project/N`).
   color?: LogoTileColor;
@@ -55,7 +55,7 @@ const LogoTile = React.forwardRef<HTMLSpanElement, LogoTileProps>(
             ? 'border border-solid border-border-default bg-background text-text-default [&>img]:h-3/5 [&>img]:w-3/5 [&>img]:object-contain [&>svg]:h-3/5 [&>svg]:w-3/5'
             : neutral
             ? 'border border-solid border-border bg-background text-text-default [&>img]:h-3/5 [&>img]:w-3/5 [&>img]:object-contain [&>svg]:h-3/5 [&>svg]:w-3/5'
-            : avatarFallbackColors[`project-${color}`],
+            : [avatarFallbackColors[`project-${color}`], src && 'overflow-hidden [&>img]:h-full [&>img]:w-full [&>img]:object-cover'],
           className,
         )}
         {...props}
@@ -66,6 +66,8 @@ const LogoTile = React.forwardRef<HTMLSpanElement, LogoTileProps>(
             {children}
             {src || children ? null : initials}
           </>
+        ) : src ? (
+          <img src={src} alt="" />
         ) : (
           initials
         )}

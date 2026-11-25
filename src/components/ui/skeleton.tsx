@@ -5,6 +5,8 @@ import { cn } from '../../lib/utils';
 import { useLabels, usePreset } from './labels-context';
 
 type SkeletonVariant = 'block' | 'row' | 'row-single' | 'text' | 'avatar';
+// Radius tiers of the token preset a block tile may take, plus `full` for a pill in the shape of a chip.
+type SkeletonRadius = 'default' | 'tight' | 'item' | 'control' | 'surface' | 'card' | 'full';
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -16,7 +18,19 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   rows?: number;
   // Accessible loading text for the composed variants.
   label?: string;
+  // Radius of the block tile: a token tier or `full` (pill, e.g. the placeholder of a chip). Default `default`, `tight` in the zero preset. A `rounded-*` in className wins over it.
+  radius?: SkeletonRadius;
 }
+
+const radiusClass: Record<SkeletonRadius, string> = {
+  default: 'rounded-default',
+  tight: 'rounded-tight',
+  item: 'rounded-item',
+  control: 'rounded-control',
+  surface: 'rounded-surface',
+  card: 'rounded-card',
+  full: 'rounded-full',
+};
 
 // Block tile: same fill as the composed Figma Skeleton bars, no border (a frame made it look heavy).
 // `motion-reduce:animate-none` stops the endless pulse for reduced-motion users.
@@ -40,13 +54,13 @@ const SkeletonRowBars = () => (
 );
 
 const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>((props, ref) => {
-  const { className, variant = 'block', rows = 2, label: labelProp, ...rest } = props;
+  const { className, variant = 'block', rows = 2, label: labelProp, radius, ...rest } = props;
   const l = useLabels();
   const zero = usePreset() === 'zero';
   const label = labelProp ?? l.loading;
 
   if (variant === 'block') {
-    return <div ref={ref} className={cn(skeletonVariants, zero && 'rounded-tight bg-muted', className)} {...rest} />;
+    return <div ref={ref} className={cn(skeletonVariants, zero && 'rounded-tight bg-muted', radius && radiusClass[radius], className)} {...rest} />;
   }
 
   const sr = <span className="sr-only">{label}</span>;
@@ -110,4 +124,4 @@ const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>((props, ref) => {
 
 Skeleton.displayName = 'Skeleton';
 
-export { Skeleton, type SkeletonProps, type SkeletonVariant };
+export { Skeleton, type SkeletonProps, type SkeletonRadius, type SkeletonVariant };

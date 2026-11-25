@@ -222,3 +222,23 @@ describe('Link gating (0.28.1)', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 });
+
+// R-LIB-10 (ZERO-563): an inline link inside running text wraps over lines and takes the text style around it.
+describe('Link inline (R-LIB-10)', () => {
+  it('renders inline instead of inline-flex and inherits type and colour, underlined', () => {
+    render(
+      <p>
+        Read the <Link href="/terms" inline>terms of service for freelancers</Link> first.
+      </p>,
+    );
+    const link = screen.getByRole('link', { name: 'terms of service for freelancers' });
+    expect(link).toHaveClass('inline', 'underline', '[font:inherit]', '[line-height:inherit]');
+    expect(link).not.toHaveClass('inline-flex');
+    expect(link).not.toHaveClass('typography-link-sm');
+  });
+
+  it('stays inline-flex by default', () => {
+    render(<Link href="/x">Link</Link>);
+    expect(screen.getByRole('link', { name: 'Link' })).toHaveClass('inline-flex');
+  });
+});

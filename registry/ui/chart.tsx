@@ -1202,12 +1202,16 @@ export interface HistogramProps extends FrameShared {
   highlight?: [number, number];
   // Axis labels under every n-th bin that has a label.
   axisLabels?: boolean;
-  width?: number;
+  // Chart width in px. 'auto' measures the container like LineBarChart and draws at its pixel width (320 until measured).
+  width?: number | 'auto';
   height?: number;
 }
 
-const Histogram = forwardRef<HTMLElement, HistogramProps>(({ bins, highlight, axisLabels = true, width = 320, height = 144, ...frame }, ref) => {
+const Histogram = forwardRef<HTMLElement, HistogramProps>(({ bins, highlight, axisLabels = true, width: widthProp = 320, height = 144, ...frame }, ref) => {
   const l = useLabels();
+  const fluid = widthProp === 'auto';
+  const [measureRef, measuredWidth] = useContainerWidth(fluid);
+  const width = fluid ? (measuredWidth ?? 320) : widthProp;
   const format = useNumberFormat();
   const bottom = axisLabels ? 20 : 0;
   const plotH = height - bottom;
@@ -1215,26 +1219,35 @@ const Histogram = forwardRef<HTMLElement, HistogramProps>(({ bins, highlight, ax
   const gap = 4;
   const bw = (width - gap * (bins.length - 1)) / Math.max(1, bins.length);
   const table: ChartTable = { columns: [l.chartBin, l.chartCount], rows: bins.map((b, i) => [b.label ?? String(i + 1), format(b.value)]) };
+  const plot = (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" focusable="false" className="h-auto max-w-full">
+      {bins.map((b, i) => {
+        const on = highlight ? i >= highlight[0] && i <= highlight[1] : false;
+        const h = (b.value / maxV) * plotH;
+        return <rect key={i} x={i * (bw + gap)} y={plotH - h} width={bw} height={h} rx={2} className={cn('fill-current', on ? toneText.brand : toneText.neutral)} />;
+      })}
+      {axisLabels ? (
+        <g className="typography-text-extra-small fill-current text-muted-foreground">
+          {bins.map((b, i) =>
+            b.label ? (
+              <text key={i} x={i * (bw + gap) + bw / 2} y={height - 4} textAnchor="middle">
+                {b.label}
+              </text>
+            ) : null,
+          )}
+        </g>
+      ) : null}
+    </svg>
+  );
   return (
     <ChartFrame ref={ref} table={table} {...frame}>
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" focusable="false" className="h-auto max-w-full">
-        {bins.map((b, i) => {
-          const on = highlight ? i >= highlight[0] && i <= highlight[1] : false;
-          const h = (b.value / maxV) * plotH;
-          return <rect key={i} x={i * (bw + gap)} y={plotH - h} width={bw} height={h} rx={2} className={cn('fill-current', on ? toneText.brand : toneText.neutral)} />;
-        })}
-        {axisLabels ? (
-          <g className="typography-text-extra-small fill-current text-muted-foreground">
-            {bins.map((b, i) =>
-              b.label ? (
-                <text key={i} x={i * (bw + gap) + bw / 2} y={height - 4} textAnchor="middle">
-                  {b.label}
-                </text>
-              ) : null,
-            )}
-          </g>
-        ) : null}
-      </svg>
+      {fluid ? (
+        <div ref={measureRef} data-chart-fluid="" className="w-full min-w-0 max-w-full overflow-hidden [&>svg]:block">
+          {plot}
+        </div>
+      ) : (
+        plot
+      )}
     </ChartFrame>
   );
 });

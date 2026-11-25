@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { ArrowLeftIcon, MoreHorizontalIcon, XIcon } from 'lucide-react';
+import * as React from 'react';
 import { Button, ButtonProps } from './button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 import { Input } from './input';
 
 const meta = {
@@ -451,3 +453,44 @@ export const LinkInlineTypeOverride: StoryObj<typeof Button> = {
     </p>
   ),
 };
+
+// Gated: `aria-disabled` keeps the button focusable and hoverable, dimmed in every state without hover or pressed colours. A click, Enter or Space runs `onGatedClick` and never `onClick`. With a tooltip the open tooltip is the description, so leave `gatedReason` out (it would be read twice). Without a tooltip use `gatedReason`.
+const GatedDemo = () => {
+  const [message, setMessage] = React.useState('');
+  return (
+      <TooltipProvider>
+        <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {(['default', 'outline', 'secondary', 'ghost', 'destructive'] as const).map((variant) => (
+              <Tooltip key={variant}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={variant}
+                    aria-disabled="true"
+                    onClick={() => setMessage('onClick ran (wrong)')}
+                    onGatedClick={() => setMessage('Only workspace owners can do this.')}
+                  >
+                    {variant}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Only workspace owners can do this.</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <Button aria-disabled="true" gatedReason="Only workspace owners can do this." onGatedClick={() => setMessage('Only workspace owners can do this.')}>
+              Without tooltip
+            </Button>
+            <Button aria-disabled="true" size="icon" aria-label="Delete" gatedReason="Only workspace owners can do this." onGatedClick={() => setMessage('Only workspace owners can do this.')}>
+              <XIcon />
+            </Button>
+          </div>
+          <p role="status" className="text-sm text-text-subtle">
+            {message || 'Click or press Enter on a gated button.'}
+          </p>
+        </div>
+      </TooltipProvider>
+  );
+};
+
+export const Gated: StoryObj<typeof Button> = { render: () => <GatedDemo /> };

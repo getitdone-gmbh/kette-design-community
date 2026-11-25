@@ -25,3 +25,23 @@ describe('DataStatePanel', () => {
     expect(container.firstChild).toHaveClass('motion-reduce:animate-none');
   });
 });
+
+describe('DataStatePanel shared body (ZERO-790)', () => {
+  it('empty is outlined by default and shares the empty state classes', () => {
+    render(<DataStatePanel kind="empty" title="Nothing" description="Add one" icon={<svg data-testid="ic" />} />);
+    const root = screen.getByRole('status');
+    expect(root).toHaveClass('border-dashed', 'rounded-card', 'justify-center', 'flex-1', 'w-full');
+    expect(screen.getByText('Nothing')).toHaveClass('typography-ui-medium');
+    expect(screen.getByText('Add one')).toHaveClass('typography-text-extra-small');
+    expect(screen.getByTestId('ic').parentElement).toHaveClass('h-icon-md', 'w-icon-md', 'text-icon-subtle');
+  });
+
+  it('empty outlined={false} has no frame, error stays unframed by default', () => {
+    const { rerender } = render(<DataStatePanel kind="empty" outlined={false} title="Nothing" />);
+    expect(screen.getByRole('status')).not.toHaveClass('border-dashed');
+    rerender(<DataStatePanel kind="error" title="Broken" />);
+    expect(screen.getByRole('alert')).not.toHaveClass('border-border-destructive');
+    rerender(<DataStatePanel kind="error" outlined title="Broken" />);
+    expect(screen.getByRole('alert')).toHaveClass('border-border-destructive');
+  });
+});

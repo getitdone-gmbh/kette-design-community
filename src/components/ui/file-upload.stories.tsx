@@ -1,3 +1,4 @@
+import { expect } from '@storybook/jest';
 import type { Meta, StoryObj } from '@storybook/react';
 import { DesignSystemProvider } from './design-system-provider';
 import { useState } from 'react';
@@ -37,8 +38,29 @@ export const ErrorState: Story = {
 };
 export const Loading: Story = { args: { loading: true, loadingTitle: 'Uploading 2 files...' } };
 
+// The font shorthand can be empty (for example with tabular-nums), so the font is built from its parts.
+const loadFontOf = (el: HTMLElement) => {
+  const c = getComputedStyle(el);
+  return document.fonts.load(`${c.fontStyle} ${c.fontWeight} ${c.fontSize} ${c.fontFamily}`, el.textContent || undefined);
+};
+
+// ZERO-812 G4: the file icon of every queued file is vertically centred on its name and meta (1px), with or without a progress bar below.
+const iconsCentredOnText = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  // fonts.ready can resolve before a font has started loading; load the measured fonts first.
+  await Promise.all([...canvasElement.querySelectorAll<HTMLElement>('span')].map(loadFontOf));
+  await document.fonts.ready;
+  const rows = [...canvasElement.querySelectorAll<HTMLElement>('li[data-status]')];
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    const icon = (row.querySelector('[data-kind]') as HTMLElement).getBoundingClientRect();
+    const text = ((row.querySelector('span.truncate') as HTMLElement).parentElement as HTMLElement).getBoundingClientRect();
+    expect(Math.abs(icon.top + icon.height / 2 - (text.top + text.height / 2))).toBeLessThanOrEqual(1);
+  }
+};
+
 export const WithQueueBar: Story = {
   args: { multiple: true },
+  play: iconsCentredOnText,
   render: (args) => (
     <FileUpload {...args}>
       <FileUploadItem name="Tech design requirements.pdf" size={204800} status="complete" onRemove={() => {}} />
@@ -63,6 +85,7 @@ export const WithQueueBar: Story = {
 
 export const WithQueueFill: Story = {
   args: { multiple: true, loading: true, loadingTitle: 'Uploading 3 files...' },
+  play: iconsCentredOnText,
   render: (args) => (
     <FileUpload {...args}>
       {[0, 1, 2].map((index) => (

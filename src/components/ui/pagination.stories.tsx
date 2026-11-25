@@ -123,10 +123,10 @@ export const AllVariants: Story = {
 
 export const Localized: Story = {
   args: {} as any,
-  parameters: { docs: { description: { story: 'Provider locale `de` translates ranges, page size and arrow names. `rowsPerPageLabel` overrides one text for this instance.' } } },
+  parameters: { docs: { description: { story: 'Provider locale `de` translates ranges, page size and arrow names, and groups counts the German way (2.404). `rowsPerPageLabel` overrides one text for this instance.' } } },
   render: () => (
     <DesignSystemProvider locale="de">
-      <Pagination variant="compact" total={214} pageSize={20} pageSizeOptions={[20, 50]} onPageSizeChange={() => {}} rowsPerPageLabel="Einträge je Seite" />
+      <Pagination variant="compact" total={2404} pageSize={20} pageSizeOptions={[20, 50]} onPageSizeChange={() => {}} rowsPerPageLabel="Einträge je Seite" />
     </DesignSystemProvider>
   ),
 };
@@ -163,4 +163,29 @@ export const LinkMode: Story = {
 
 export const LinkModeFirstPage: Story = {
   args: { pageCount: 24, page: 1, getPageHref: (page: number) => `?page=${page}` } as any,
+};
+
+// Compact on a phone (KETTE-82): below sm the page numbers give way to "Page x of y" between the arrows, which stay on one line. Counts use the locale grouping (2,404).
+export const CompactPhone: Story = {
+  name: 'Compact phone',
+  parameters: {
+    layout: 'padded',
+    layoutInvariants: {
+      widths: [390, 320],
+      noOverflow: ['nav[data-variant=compact]'],
+      sameRow: [{ selector: 'button:Previous page', as: 'button:Next page' }],
+    },
+  },
+  render: () => <Pagination variant="compact" total={2404} pageSize={20} defaultPage={3} pageSizeOptions={[20, 50]} onPageSizeChange={() => undefined} />,
+};
+
+// A page is loading (KETTE-84): the arrows are gated with aria-disabled and keep the keyboard focus, the pager does not jump.
+export const CompactLoadingFocus: Story = {
+  name: 'Compact loading keeps focus',
+  render: () => <Pagination variant="compact" total={2404} pageSize={20} page={3} loading />,
+  play: async ({ canvasElement }) => {
+    const next = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Next page"]');
+    next?.focus();
+    if (!next || next.disabled || next.getAttribute('aria-disabled') !== 'true' || document.activeElement !== next) throw new globalThis.Error('Next page lost focus or is natively disabled while loading');
+  },
 };

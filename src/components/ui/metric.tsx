@@ -75,6 +75,8 @@ export interface MetricItemProps
   label: React.ReactNode;
   // Room after the label for a HelpIcon or a similar small addon. It sits outside the truncated label text, so it is never cut off. Use it on static tiles: a button or link tile must not hold another control.
   labelAddon?: React.ReactNode;
+  // Wraps a long label over lines instead of cutting it with an ellipsis.
+  labelWrap?: boolean;
   value: React.ReactNode;
   // Change vs. a previous period, e.g. "+3 vs last week".
   delta?: React.ReactNode;
@@ -110,6 +112,7 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
       density = 'default',
       label,
       labelAddon,
+      labelWrap = false,
       value,
       delta,
       deltaTone = 'neutral',
@@ -136,7 +139,7 @@ const MetricItem = React.forwardRef<HTMLElement, MetricItemProps>(
     const interactive = (Boolean(onClick) || isLink) && !disabled && !loading;
     const classes = cn(metricItemVariants({ variant, density, interactive, selected, disabled, link: isLink }), className);
 
-    const labelClass = cn('block truncate', isStrip || variant === 'compact' ? 'typography-kpi-label' : 'typography-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle');
+    const labelClass = cn('block', labelWrap ? 'break-words' : 'truncate', isStrip || variant === 'compact' ? 'typography-kpi-label' : 'typography-label', selected ? 'text-text-brand-on-subtle' : 'text-text-subtle');
     // With an addon the label truncates on its own and the addon keeps its size next to it.
     const addon = labelAddon ? <span className="inline-flex shrink-0 items-center">{labelAddon}</span> : null;
     const labelRow = addon ? (

@@ -1,7 +1,7 @@
 'use client';
 
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/utils';
@@ -18,12 +18,15 @@ const Checkbox = forwardRef<
 >(({ className, size: sizeProp, comfortable = false, ...props }, ref) => {
   const zero = usePreset() === 'zero';
   const size = sizeProp ?? (zero ? 'sm' : 'default');
+  const glyph = cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', '[stroke-width:var(--size-icon-stroke-check,3)]');
   return (
   <CheckboxPrimitive.Root
     data-slot="checkbox"
     ref={ref}
     className={cn(
       'peer',
+      // The indicator glyphs follow the state of this root: minus for indeterminate, check otherwise.
+      'group/checkbox',
       size === 'sm' ? 'h-checkbox-sm w-checkbox-sm' : 'h-5 w-5',
       'shrink-0',
       'rounded-tight',
@@ -64,7 +67,8 @@ const Checkbox = forwardRef<
     <CheckboxPrimitive.Indicator
       className={cn('flex', 'items-center', 'justify-center', 'text-current')}
     >
-      <Check aria-hidden className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', '[stroke-width:var(--size-icon-stroke-check,3)]')} />
+      <Check aria-hidden className={cn(glyph, 'group-data-[state=indeterminate]/checkbox:hidden')} />
+      <Minus aria-hidden className={cn(glyph, 'hidden group-data-[state=indeterminate]/checkbox:block')} />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
   );

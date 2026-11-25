@@ -307,3 +307,161 @@ describe('Alert inline links', () => {
     expect(screen.getByRole('status')).not.toHaveClass(linkRule);
   });
 });
+
+describe('Alert icon', () => {
+  it('renders no symbol by default', () => {
+    const { container } = render(<Alert>Plain</Alert>);
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it.each(['default', 'decent', 'info', 'success', 'warning', 'destructive'] as const)('icon shows a decorative default symbol for %s as the first child', (variant) => {
+    const { container } = render(
+      <Alert variant={variant} icon>
+        <AlertTitle>Title</AlertTitle>
+      </Alert>,
+    );
+    const alert = container.querySelector('[data-slot=alert]') as HTMLElement;
+    const svg = alert.firstElementChild as Element;
+    expect(svg.tagName.toLowerCase()).toBe('svg');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(svg).toHaveAttribute('data-slot', 'alert-icon');
+  });
+
+  it('uses a different default symbol for success, warning and destructive', () => {
+    const shapes = (['info', 'success', 'warning', 'destructive'] as const).map((variant) => {
+      const { container, unmount } = render(<Alert variant={variant} icon>x</Alert>);
+      const html = container.querySelector('svg')?.innerHTML;
+      unmount();
+      return html;
+    });
+    expect(new Set(shapes).size).toBe(4);
+  });
+
+  it('takes a custom svg element and marks it decorative', () => {
+    const { container } = render(
+      <Alert icon={<svg data-testid="own" />}>
+        <AlertTitle>Title</AlertTitle>
+      </Alert>,
+    );
+    const svg = container.querySelector('[data-testid=own]') as Element;
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelectorAll('svg')).toHaveLength(1);
+  });
+
+  it('icon={false} renders no symbol', () => {
+    const { container } = render(<Alert icon={false}>Plain</Alert>);
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('keeps the role, the live region and the text column indent next to the symbol', () => {
+    render(
+      <Alert variant="warning" icon>
+        <AlertTitle>Careful</AlertTitle>
+      </Alert>,
+    );
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveAttribute('aria-live', 'assertive');
+    expect(alert.className).toContain('[&>svg~*:not([data-slot=alert-close])]:pl-7');
+    expect(screen.getByText('Careful')).toBeInTheDocument();
+  });
+});
+
+describe('icon on the middle of the first text line', () => {
+  it('places the icon from the alert line height instead of a fixed offset', () => {
+    render(
+      <Alert>
+        <svg />
+        <AlertTitle>Heads up</AlertTitle>
+        <AlertDescription>Text</AlertDescription>
+      </Alert>,
+    );
+    const alert = screen.getByRole('status');
+    expect(alert).toHaveClass('[&>svg]:top-[calc(theme(spacing.4)+(1lh-theme(spacing.4))/2)]', '[&>svg+div]:mt-0');
+    expect(alert.className).not.toMatch(/translate-y-\[-3px\]|top-\[1\.2rem\]/);
+  });
+
+  it('gives the title the alert line height so title and description share one first line height', () => {
+    render(<AlertTitle>Heads up</AlertTitle>);
+    expect(screen.getByText('Heads up')).not.toHaveClass('leading-none');
+  });
+});
+
+describe('compact: icon, text and end actions share the first text line', () => {
+  it('lays the compact note out as a baseline grid with the icon on the middle of the first line', () => {
+    render(
+      <Alert size="compact" variant="info">
+        <svg />
+        <AlertDescription>Text</AlertDescription>
+      </Alert>,
+    );
+    const alert = screen.getByRole('status');
+    expect(alert).toHaveClass('grid', 'grid-cols-[auto_minmax(0,1fr)_auto]', 'items-baseline');
+    expect(alert).toHaveClass('[&>svg]:relative', '[&>svg]:top-[calc((theme(spacing.icon-md)-1cap)/2)]', '[&>svg]:-mt-icon-md', '[&>svg]:mr-2', '[&:has(>[data-slot=alert-close])]:pr-10');
+    expect(alert).toHaveClass('[&>:where(:not(svg,[data-slot=alert-close]))]:col-start-2');
+    expect(alert).not.toHaveClass('[&>svg]:absolute');
+    expect(alert.className).not.toMatch(/\[&>svg~\*[^\]]*\]:pl-/);
+  });
+
+  it('keeps the absolute icon in the default size', () => {
+    render(<Alert>Content</Alert>);
+    expect(screen.getByRole('status')).toHaveClass('[&>svg]:absolute');
+    expect(screen.getByRole('status')).not.toHaveClass('items-baseline');
+  });
+
+  it('drops the description top margin unless it follows a title', () => {
+    render(
+      <Alert size="compact">
+        <AlertTitle>Heads up</AlertTitle>
+        <AlertDescription>Text</AlertDescription>
+      </Alert>,
+    );
+    expect(screen.getByRole('status')).toHaveClass('[&>[data-slot=alert-description]]:mt-0', '[&>[data-slot=alert-title]+[data-slot=alert-description]]:mt-1');
+    expect(screen.getByText('Heads up')).toHaveAttribute('data-slot', 'alert-title');
+    expect(screen.getByText('Text')).toHaveAttribute('data-slot', 'alert-description');
+  });
+
+  it('puts end actions in the third column on the first line and wraps them under the text on the right', () => {
+    render(
+      <Alert size="compact" actionsPlacement="end" variant="info">
+        <svg />
+        <AlertDescription>Text</AlertDescription>
+        <AlertActions>
+          <button type="button">Open</button>
+        </AlertActions>
+      </Alert>,
+    );
+    const alert = screen.getByRole('status');
+    expect(alert).toHaveClass(
+      '@[27rem]:[&>[data-slot=alert-actions]]:col-start-3',
+      '@[27rem]:[&>[data-slot=alert-actions]]:row-start-1',
+      '@[27rem]:[&>[data-slot=alert-actions]]:mt-0',
+      '[&>[data-slot=alert-actions]]:mt-2',
+      '[&>[data-slot=alert-actions]]:justify-end',
+    );
+    expect(alert).not.toHaveClass('@xl:[&>[data-slot=alert-actions]]:self-center', '@xl:[&>*:not(svg)]:col-start-1');
+    expect(alert.parentElement).toHaveAttribute('data-slot', 'alert-frame');
+  });
+
+  it('keeps the centred end actions in the default size', () => {
+    render(
+      <Alert actionsPlacement="end">
+        <AlertActions>
+          <button type="button">Open</button>
+        </AlertActions>
+      </Alert>,
+    );
+    expect(screen.getByRole('status')).toHaveClass('@xl:[&>[data-slot=alert-actions]]:self-center', '@xl:[&>[data-slot=alert-actions]]:col-start-2');
+  });
+});
+
+describe('compact alert with icon and description only', () => {
+  it('drops the description top margin after the icon so the icon stays on its first line (DRP2-RC-01)', () => {
+    render(
+      <Alert size="compact" icon>
+        <AlertDescription>Only a description</AlertDescription>
+      </Alert>,
+    );
+    expect(screen.getByRole('status')).toHaveClass('[&>[data-slot=alert-description]]:mt-0');
+    expect(screen.getByText('Only a description')).toHaveAttribute('data-slot', 'alert-description');
+  });
+});

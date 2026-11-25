@@ -56,7 +56,7 @@ export const Large640: Story = { render: () => <Demo size="lg" /> };
 export const ExtraLarge900: Story = { render: () => <Demo size="xl" /> };
 export const Destructive: Story = { render: () => <Demo size="sm" destructive /> };
 
-// Long content: DialogBody scrolls, the header and the footer stay in view.
+// Long content: DialogBody scrolls, the header and the footer stay in view. In a window up to 480px high (landscape phone) header and footer would leave the body a few pixels, so there the whole panel scrolls and the body keeps its content height.
 export const ScrollingBody: Story = {
   render: () => (
     <Dialog open>

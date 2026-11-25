@@ -116,7 +116,7 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
           data-error={error || undefined}
           {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': accessibleName })}
           className={cn(
-            'relative inline-flex h-8 w-7 shrink-0 items-start justify-center pt-1 rounded-tight rounded-tr-control border border-solid bg-background-default text-icon-subtle',
+            'relative inline-flex h-8 w-7 shrink-0 flex-col items-center justify-center gap-micro rounded-tight rounded-tr-control border border-solid bg-background-default text-icon-subtle',
             error ? 'border-border-destructive text-text-destructive' : 'border-input',
             className,
           )}
@@ -126,7 +126,10 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
           {extension ? (
             <b
               className={cn(
-                'typography-file-tag absolute -left-1 bottom-1 max-w-8 truncate rounded-hairline px-micro',
+                // The tag is capped at the sheet width (28px over the 1px border) and clipped beyond it.
+                'typography-file-tag -mx-px max-w-[theme(spacing.7)] overflow-hidden whitespace-nowrap rounded-hairline',
+                // Four characters get the smaller padding so DOCX or XLSX stay readable.
+                extension.length > 3 ? 'px-px' : 'px-micro',
                 error ? 'bg-background-destructive-bold-default text-text-on-destructive' : extension === 'pdf' ? pdfTag : documentTag[resolved],
               )}
             >
@@ -136,6 +139,7 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
         </span>
       );
     }
+    // Four character labels get the smaller padding so they fit the 40px md tile of the zero theme.
     return (
       <span
         ref={ref}
@@ -143,7 +147,7 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
         data-error={error || undefined}
         {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': accessibleName })}
         className={cn(
-          'inline-flex shrink-0 flex-col items-center justify-center border border-solid',
+          'inline-flex shrink-0 flex-col items-center justify-center gap-micro border border-solid',
           error ? 'border-border-destructive bg-background-destructive-subtle text-text-destructive-on-subtle' : cn('border-hairline', tile),
           s.box,
           className,
@@ -151,7 +155,7 @@ const FileIcon = React.forwardRef<HTMLSpanElement, FileIconProps>(
         {...props}
       >
         <Glyph aria-hidden="true" className={s.icon} />
-        {extension ? <b className={cn('max-w-full truncate px-1 uppercase', s.label)}>{extension.slice(0, 4)}</b> : null}
+        {extension ? <b className={cn('max-w-full truncate uppercase', extension.length > 3 ? 'px-px' : 'px-1', s.label)}>{extension.slice(0, 4)}</b> : null}
       </span>
     );
   },

@@ -8,6 +8,9 @@ import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 5000; // 5 seconds instead of 16.7 minutes
 
+// A toast that carries an action stays open at least this long (ms) unless it sets its own `duration`, so keyboard and screen reader users can reach the action (WCAG 2.2.1). Set on the store entry so custom renderers inherit it.
+export const ACTION_TOAST_DURATION = 10000;
+
 // Action slot as data: `toast({ title, action: { label: 'Undo', onClick } })`. The Toaster renders it as a `ToastAction` that sits before the close button, so it is the first control reached with the keyboard.
 export type ToastActionSpec = {
   label: string;
@@ -159,6 +162,7 @@ function toast({ ...props }: Toast) {
     type: 'ADD_TOAST',
     toast: {
       ...props,
+      duration: props.duration ?? (props.action ? ACTION_TOAST_DURATION : undefined),
       id,
       open: true,
       onOpenChange: (open) => {

@@ -45,6 +45,9 @@ export interface Labels {
   previous: string;
   required: string;
   reset: string;
+  // Customize view: trigger and reset of the show/hide popover.
+  customizeView: string;
+  resetToDefault: string;
   search: string;
   searchEllipsis: string;
   searchIn: (label: string) => string;
@@ -172,6 +175,10 @@ export interface Labels {
   kanbanPosition: (column: string, position: number) => string;
   kanbanPickedUp: (title: string | undefined, position: string) => string;
   kanbanDropped: (title: string | undefined, position: string) => string;
+  // Target of a keyboard or drag move that takes no cards from other columns (KanbanColumn dropDisabled).
+  kanbanDropDisabledTarget: (column: string) => string;
+  // Spoken instead of kanbanDropped when a card is let go over such a column: the card stays in its origin column.
+  kanbanDropDisabled: (column: string, title: string | undefined, origin: string) => string;
   kanbanMoveTo: string;
   kanbanCardActions: (title: string) => string;
   kanbanCurrentColumn: (column: string) => string;
@@ -219,6 +226,8 @@ export interface Labels {
   bulkActions: string;
   deselectAll: string;
   selectedCount: (count: number) => string;
+  // FormErrorSummary title for two or more faulty fields.
+  formErrorSummaryTitle: (count: number) => string;
   moreActions: string;
   noFiltersApplied: string;
   filtersApplied: (count: number) => string;
@@ -439,6 +448,13 @@ export interface Labels {
   annotationYes: string;
   annotationNo: string;
   annotationNotDeclared: string;
+  // Sheet stages, confirm step and discard guard
+  back: string;
+  backTo: (title: string) => string;
+  sheetDiscardTitle: string;
+  sheetDiscardDescription: string;
+  sheetDiscard: string;
+  sheetKeepEditing: string;
 }
 
 // Per-instance override: a plain string, or for parameterised texts a string or the function form.
